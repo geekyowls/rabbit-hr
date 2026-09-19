@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diet Plan · {{clientName}}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #1a2a1e;
+            background: #eaeee6;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .wrap { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+        .header {
+            background: #fff;
+            border-radius: 10px;
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .clinic { display: flex; gap: 12px; align-items: center; }
+        .clinic-logo {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: #1d3d28;
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            overflow: hidden;
+        }
+        .clinic-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .clinic-name { font-size: 16px; font-weight: 700; color: #1a2a1e; }
+        .clinic-meta { font-size: 12px; color: #4b6358; }
+        .client-info { text-align: right; }
+        .client-name { font-size: 16px; font-weight: 700; }
+        .date-range { font-size: 13px; color: #4b6358; margin-top: 2px; }
+
+        .targets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .target-chip {
+            background: #fff;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .target-chip .label { color: #4b6358; font-weight: 600; }
+        .target-chip .value { color: #1d3d28; font-weight: 700; margin-left: 4px; }
+
+        .day-nav {
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            position: sticky;
+            top: 8px;
+            z-index: 10;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .day-nav-scroll {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        .day-nav-scroll::-webkit-scrollbar { height: 4px; }
+        .day-nav-scroll::-webkit-scrollbar-thumb { background: #cdd9cc; border-radius: 2px; }
+        .day-chip {
+            flex-shrink: 0;
+            background: #f1f5ed;
+            border: 1.5px solid transparent;
+            color: #1a2a1e;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+            min-width: 90px;
+            text-align: center;
+        }
+        .day-chip:hover { background: #e3ead9; }
+        .day-chip.active {
+            background: #1d3d28;
+            color: #fff;
+            border-color: #1d3d28;
+        }
+        .day-chip.is-today {
+            border-color: #1d3d28;
+        }
+        .day-chip.is-today.active { border-color: #1d3d28; }
+        .day-chip .chip-label { display: block; font-size: 12px; }
+        .day-chip .chip-date { display: block; font-size: 11px; opacity: 0.8; font-weight: 500; margin-top: 1px; }
+        .day-chip.is-today .chip-label::before { content: '★ '; }
+
+        .grid-wrap { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+
+        @media (min-width: 900px) {
+            table.grid {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                table-layout: fixed;
+            }
+            table.grid thead th {
+                background: #1d3d28;
+                color: #fff;
+                font-size: 13px;
+                font-weight: 700;
+                padding: 12px 12px;
+                border-right: 1px solid #2c4f3a;
+                text-align: center;
+            }
+            table.grid thead th:last-child { border-right: none; }
+            table.grid thead th.meal-head { text-align: left; width: 140px; }
+            table.grid tbody th.meal-cell {
+                background: #f1f5ed;
+                text-align: left;
+                padding: 14px 14px;
+                border-right: 1px solid #cdd9cc;
+                border-bottom: 1px solid #cdd9cc;
+                vertical-align: top;
+                font-size: 13px;
+            }
+            table.grid tbody tr:nth-child(even) th.meal-cell { background: #e7eee0; }
+            table.grid tbody td {
+                border-right: 1px solid #ecefe6;
+                border-bottom: 1px solid #cdd9cc;
+                padding: 14px 14px;
+                vertical-align: top;
+                background: #fff;
+                font-size: 13px;
+            }
+            table.grid tbody td:last-child { border-right: none; }
+            table.grid tbody tr:nth-child(even) td { background: #fafbf7; }
+            .day-target { display: none; }
+        }
+
+        @media (max-width: 899px) {
+            table.grid, table.grid thead, table.grid tbody, table.grid th, table.grid td, table.grid tr { display: block; }
+            table.grid thead { display: none; }
+            .day-target { padding: 4px 0; }
+            table.grid tbody { padding: 12px 14px; }
+            table.grid tbody tr {
+                margin-bottom: 14px;
+                border: 1px solid #cdd9cc;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            table.grid tbody th.meal-cell {
+                background: #1d3d28;
+                color: #fff;
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            table.grid tbody th.meal-cell .meal-name { color: #fff; }
+            table.grid tbody th.meal-cell .meal-time { color: #cdd9cc; }
+            table.grid tbody td {
+                border-top: 1px solid #ecefe6;
+                padding: 10px 12px;
+                background: #fff;
+                font-size: 13px;
+            }
+            table.grid tbody td::before {
+                content: attr(data-day);
+                display: block;
+                font-size: 11px;
+                color: #4b6358;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                margin-bottom: 4px;
+            }
+        }
+
+        .day-section[data-date] { scroll-margin-top: 90px; }
+        .meal-name { font-weight: 700; color: #1d3d28; }
+        .meal-time { font-size: 11px; color: #4b6358; margin-top: 2px; }
+
+        .item { line-height: 1.5; padding: 2px 0; }
+        .item.has-notes { cursor: help; }
+        .item.has-notes::after { content: ' \1F4DD'; opacity: 0.45; font-size: 10px; }
+        .food { font-weight: 600; color: #1a2a1e; }
+        a.food { color: #1d3d28; text-decoration: none; border-bottom: 1px dashed #4a7d68; }
+        a.food:hover { color: #4a7d68; }
+        .qty { color: #4b6358; font-size: 12px; }
+        .item-cal {
+            color: #4a7d68;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+        .empty-cell { color: #b2bdb6; font-size: 12px; font-style: italic; }
+
+        .guidelines {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-top: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .guidelines h3 { color: #1d3d28; font-size: 15px; margin-bottom: 8px; }
+        .guidelines-section { margin-bottom: 8px; }
+        .guidelines-section:last-child { margin-bottom: 0; }
+        .guidelines-section .label { font-weight: 700; color: #1a2a1e; }
+        .guidelines-section ul { padding-left: 20px; margin-top: 4px; }
+        .guidelines-section li { margin-bottom: 3px; font-size: 13px; }
+
+        .footer {
+            text-align: center;
+            color: #6b7a6e;
+            font-size: 12px;
+            padding: 14px 0 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <div class="header">
+        <div class="clinic">
+            <div class="clinic-logo">
+                {{#if clinicLogo}}<img src="{{clinicLogo}}" alt="{{clinicName}}">{{else}}{{clinicInitials}}{{/if}}
+            </div>
+            <div>
+                <div class="clinic-name">{{clinicName}}</div>
+                <div class="clinic-meta">Diet plan</div>
+            </div>
+        </div>
+        <div class="client-info">
+            <div class="client-name">{{clientName}}</div>
+            <div class="date-range">{{dateRange}}</div>
+        </div>
+    </div>
+
+    {{#if targetCalories}}
+    <div class="targets">
+        <div class="target-chip"><span class="label">Calories</span><span class="value">{{targetCalories}} kcal</span></div>
+        {{#if targetProtein}}<div class="target-chip"><span class="label">Protein</span><span class="value">{{targetProtein}}g</span></div>{{/if}}
+        {{#if targetCarbs}}<div class="target-chip"><span class="label">Carbs</span><span class="value">{{targetCarbs}}g</span></div>{{/if}}
+        {{#if targetFat}}<div class="target-chip"><span class="label">Fat</span><span class="value">{{targetFat}}g</span></div>{{/if}}
+    </div>
+    {{/if}}
+
+    {{#if weeklyGrid}}
+    <nav class="day-nav" aria-label="Jump to day">
+        <div class="day-nav-scroll" id="dayNavScroll">
+            {{#each weeklyGrid.days}}
+            <a class="day-chip" data-date="{{date}}" data-day-id="day-{{dayNumber}}" href="#day-{{dayNumber}}">
+                <span class="chip-label">Day {{dayNumber}}</span>
+                <span class="chip-date">{{dateFormatted}}</span>
+            </a>
+            {{/each}}
+        </div>
+    </nav>
+
+    <div class="grid-wrap">
+    <table class="grid">
+        <thead>
+            <tr>
+                <th class="meal-head">Meal</th>
+                {{#each weeklyGrid.days}}
+                <th id="day-{{dayNumber}}" class="day-section" data-date="{{date}}">
+                    Day {{dayNumber}}
+                    <div style="font-weight:400; font-size:12px; opacity:0.85; margin-top:2px;">{{dateFormatted}}</div>
+                </th>
+                {{/each}}
+            </tr>
+        </thead>
+        <tbody>
+            {{#each weeklyGrid.rows}}
+            <tr>
+                <th class="meal-cell">
+                    <div class="meal-name">{{mealName}}</div>
+                    {{#if time}}<div class="meal-time">{{time}}</div>{{/if}}
+                </th>
+                {{#each cells}}
+                <td data-day="Day {{lookup (lookup @root.weeklyGrid.days @index) 'dayNumber'}} · {{lookup (lookup @root.weeklyGrid.days @index) 'dateFormatted'}}">
+                    {{#if items.length}}
+                    {{#each items}}
+                    <div class="item{{#if notes}} has-notes{{/if}}"{{#if notes}} title="{{notes}}"{{/if}}>
+                        {{#if recipeUrl}}
+                        <a class="food" href="{{recipeUrl}}" target="_blank" rel="noopener">{{foodName}}</a>
+                        {{else}}
+                        <span class="food">{{foodName}}</span>
+                        {{/if}}
+                        {{#if @root.includeQuantity}}<span class="qty"> · {{quantity}} {{unit}}</span>{{/if}}
+                        {{#if nutrition.calories}}<span class="item-cal">{{nutrition.calories}} cal</span>{{/if}}
+                    </div>
+                    {{/each}}
+                    {{else}}
+                    <span class="empty-cell">—</span>
+                    {{/if}}
+                </td>
+                {{/each}}
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    </div>
+    {{/if}}
+
+    {{#if guidelines.hasAny}}
+    <div class="guidelines">
+        <h3>Guidelines</h3>
+        {{#if guidelines.dos.length}}
+        <div class="guidelines-section">
+            <span class="label">Do</span>
+            <ul>{{#each guidelines.dos}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if guidelines.donts.length}}
+        <div class="guidelines-section">
+            <span class="label">Don't</span>
+            <ul>{{#each guidelines.donts}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if guidelines.instructions.length}}
+        <div class="guidelines-section">
+            <span class="label">Instructions</span>
+            <ul>{{#each guidelines.instructions}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if notes.length}}
+    <div class="guidelines">
+        <h3>Notes</h3>
+        <ul>{{#each notes}}<li>{{this}}</li>{{/each}}</ul>
+    </div>
+    {{/if}}
+
+    <div class="footer">
+        {{clinicName}}{{#if contactInfo}} &middot; {{contactInfo}}{{/if}}
+    </div>
+</div>
+
+<script>
+(function() {
+    var todayLocal = (function() {
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var dd = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + dd;
+    })();
+
+    var chips = document.querySelectorAll('.day-chip');
+    var sections = document.querySelectorAll('.day-section');
+    var scroller = document.getElementById('dayNavScroll');
+
+    function setActive(dayId) {
+        chips.forEach(function(c) {
+            if (c.dataset.dayId === dayId) {
+                c.classList.add('active');
+            } else {
+                c.classList.remove('active');
+            }
+        });
+    }
+
+    var todayChip = null;
+    chips.forEach(function(c) {
+        if (c.dataset.date === todayLocal) {
+            c.classList.add('is-today');
+            todayChip = c;
+        }
+    });
+
+    if (todayChip && scroller) {
+        var target = document.querySelector('#' + todayChip.dataset.dayId);
+        if (target) {
+            setTimeout(function() {
+                target.scrollIntoView({ behavior: 'auto', block: 'start' });
+                window.scrollBy(0, -8);
+            }, 50);
+        }
+        var chipRect = todayChip.getBoundingClientRect();
+        var scrollerRect = scroller.getBoundingClientRect();
+        scroller.scrollLeft = todayChip.offsetLeft - (scrollerRect.width - chipRect.width) / 2;
+        setActive(todayChip.dataset.dayId);
+    } else if (chips.length) {
+        setActive(chips[0].dataset.dayId);
+    }
+
+    if ('IntersectionObserver' in window && sections.length) {
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    setActive(entry.target.id);
+                }
+            });
+        }, { rootMargin: '-40% 0px -50% 0px', threshold: 0 });
+        sections.forEach(function(s) { observer.observe(s); });
+    }
+})();
+</script>
+</body>
+</html>

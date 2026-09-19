@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diet Plan - {{clientName}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --accent: #fbbf24;
+
+            --bg: #f0fdf4;
+            --surface: #ffffff;
+            --border: #d1fae5;
+
+            --text: #134e4a;
+            --text-light: #5eead4;
+            --text-muted: #14b8a6;
+
+            --breakfast: #fb923c;
+            --lunch: #34d399;
+            --dinner: #a78bfa;
+            --snack: #f472b6;
+        }
+
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .page-break { page-break-before: always; padding-top: 8mm; }
+            .meal-card { break-inside: avoid; page-break-inside: avoid; }
+            .food-entry { break-inside: avoid; page-break-inside: avoid; }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Sora', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 8mm;
+        }
+
+        .header {
+            text-align: center;
+            padding: 2rem 0 2.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+        }
+
+        .clinic-name {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.75rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .prepared-by {
+            font-size: 0.85rem;
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        .client-banner {
+            background: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            border-radius: 24px;
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .client-banner::before,
+        .client-banner::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .client-banner::before { top: -100px; left: -50px; }
+        .client-banner::after { bottom: -100px; right: -50px; width: 150px; height: 150px; }
+
+        .client-name {
+            font-family: 'Instrument Serif', serif;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .client-tags {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            position: relative;
+        }
+
+        .tag {
+            background: rgba(255,255,255,0.15);
+            padding: 0.6rem 1.25rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+
+        .day-block {
+            margin-bottom: 3rem;
+        }
+
+        .day-title-section {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .day-label {
+            display: inline-block;
+            background: var(--primary-dark);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            margin-bottom: 0.75rem;
+        }
+
+        .day-title-section h2 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 2.25rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .day-title-section p {
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+
+        .meals-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+
+        .meal-card {
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meal-card-header {
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            position: relative;
+        }
+
+        .meal-card.breakfast .meal-card-header { background: var(--breakfast); }
+        .meal-card.lunch .meal-card-header { background: var(--lunch); }
+        .meal-card.dinner .meal-card-header { background: var(--dinner); }
+        .meal-card.snack .meal-card-header { background: var(--snack); }
+        .meal-card.other .meal-card-header { background: var(--text-muted); }
+
+        .meal-card-header h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+        }
+
+        .meal-card-header .time {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .meal-card-body {
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .food-entry {
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .food-entry:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .food-name {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.15rem;
+        }
+
+        .food-link {
+            color: var(--primary);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--primary);
+        }
+
+        .food-link:hover {
+            opacity: 0.8;
+        }
+
+        .food-qty {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .food-notes {
+            font-style: italic;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
+        }
+
+        .empty-meal {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .food-alternatives {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            padding-left: 8px;
+        }
+
+        .alternatives-label {
+            font-style: italic;
+            margin-right: 4px;
+        }
+
+        .alternative-item {
+            margin-right: 4px;
+        }
+
+        .alt-link {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .alt-link:hover {
+            opacity: 0.8;
+        }
+
+        .nutrition-values {
+            display: inline-flex;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .nutrition-values .cal { color: #ea580c; }
+        .nutrition-values .protein { color: #2563eb; }
+        .nutrition-values .carbs { color: #16a34a; }
+        .nutrition-values .fat { color: #d97706; }
+        .meal-totals-bar {
+            background: #fff7ed;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+        .item-nutrition {
+            font-size: 0.7rem;
+            margin-top: 0.15rem;
+            opacity: 0.85;
+        }
+        .day-nutrition {
+            margin-top: 0.25rem;
+        }
+
+        .notes-section {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border: 2px solid var(--border);
+        }
+
+        .notes-section h3 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .notes-list {
+            list-style: none;
+            font-size: 0.9rem;
+            color: var(--text);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .notes-list li {
+            padding: 0.5rem 1rem;
+            background: var(--bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notes-list li::before {
+            content: '\2713';
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .guidelines-section {
+            margin-top: 1.5rem;
+            page-break-inside: avoid;
+        }
+
+        .guidelines-section h3 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid var(--primary-dark);
+        }
+
+        .guidelines-columns {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .guideline-block {
+            flex: 1;
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .guideline-block h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .guideline-block.dos h4 {
+            color: #16a34a;
+        }
+
+        .guideline-block.donts h4 {
+            color: #dc2626;
+        }
+
+        .guideline-block.instructions h4 {
+            color: #2563eb;
+        }
+
+        .guideline-list {
+            list-style: none;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 0;
+            padding: 0;
+        }
+
+        .guideline-list li {
+            padding: 0.25rem 0;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+
+        .guideline-block.dos .guideline-list li::before {
+            content: '\2713';
+            position: absolute;
+            left: 0;
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .guideline-block.donts .guideline-list li::before {
+            content: '\2717';
+            position: absolute;
+            left: 0;
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .guideline-block.instructions .guideline-list li::before {
+            content: '\2022';
+            position: absolute;
+            left: 0;
+            color: #2563eb;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 640px) {
+            .page { padding: 1.5rem 1rem; }
+            .client-banner { padding: 1.5rem; }
+            .client-name { font-size: 1.5rem; }
+            .client-tags { gap: 0.5rem; }
+            .tag { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+            .meals-row { grid-template-columns: 1fr; }
+            .day-title-section h2 { font-size: 1.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <header class="header">
+            <div class="logo">
+                {{#if clinicLogo}}
+                <img src="{{clinicLogo}}" alt="Logo">
+                {{else}}
+                {{clinicInitials}}
+                {{/if}}
+            </div>
+            <div class="clinic-name">{{clinicName}}</div>
+            <div class="prepared-by">Prepared by {{dietitianName}}</div>
+        </header>
+
+        <section class="client-banner">
+            <div class="client-name">{{clientName}}</div>
+            <div class="client-tags">
+                <span class="tag">{{dateRange}}</span>
+                {{#if targetCalories}}<span class="tag">{{targetCalories}} kcal/day</span>{{/if}}
+                {{#if targetProtein}}<span class="tag">P:{{targetProtein}}g</span>{{/if}}
+                {{#if targetCarbs}}<span class="tag">C:{{targetCarbs}}g</span>{{/if}}
+                {{#if targetFat}}<span class="tag">F:{{targetFat}}g</span>{{/if}}
+            </div>
+        </section>
+
+        {{#each days}}
+        <section class="day-block{{#unless @first}} page-break{{/unless}}">
+            <div class="day-title-section">
+                <div class="day-label">Day {{dayNumber}}</div>
+                <h2>{{dateFormatted}}</h2>
+                {{#if totals.calories}}
+                <div class="day-nutrition">
+                    <span class="nutrition-values">
+                        <span class="cal">{{totals.calories}} cal</span>
+                        <span class="protein">P:{{totals.protein}}</span>
+                        <span class="carbs">C:{{totals.carbs}}</span>
+                        <span class="fat">F:{{totals.fat}}</span>
+                    </span>
+                </div>
+                {{/if}}
+            </div>
+            <div class="meals-row">
+                {{#each meals}}
+                <div class="meal-card {{mealTypeClass}}">
+                    <div class="meal-card-header">
+                        <h3>{{name}}</h3>
+                        {{#if time}}
+                        <div class="time">{{time}}</div>
+                        {{/if}}
+                    </div>
+                    <div class="meal-card-body">
+                        {{#if totals.calories}}
+                        <div class="meal-totals-bar">
+                            <span class="nutrition-values">
+                                <span class="cal">{{totals.calories}} cal</span>
+                                <span class="protein">P:{{totals.protein}}</span>
+                                <span class="carbs">C:{{totals.carbs}}</span>
+                                <span class="fat">F:{{totals.fat}}</span>
+                            </span>
+                        </div>
+                        {{/if}}
+                        {{#if items.length}}
+                        {{#each items}}
+                        <div class="food-entry">
+                            {{#if recipeUrl}}
+                            <a href="{{recipeUrl}}" class="food-name food-link" target="_blank">{{foodName}}</a>
+                            {{else}}
+                            <span class="food-name">{{foodName}}</span>
+                            {{/if}}
+                            {{#if @root.includeQuantity}}<span class="food-qty">{{quantity}} {{unit}}</span>{{/if}}
+                            {{#if nutrition.calories}}
+                            <div class="item-nutrition">
+                                <span class="nutrition-values">
+                                    <span class="cal">{{nutrition.calories}} cal</span>
+                                    <span class="protein">P:{{nutrition.protein}}</span>
+                                    <span class="carbs">C:{{nutrition.carbs}}</span>
+                                    <span class="fat">F:{{nutrition.fat}}</span>
+                                </span>
+                            </div>
+                            {{/if}}
+                            {{#if notes}}
+                            <div class="food-notes">{{notes}}</div>
+                            {{/if}}
+                            {{#if alternatives.length}}
+                            <div class="food-alternatives">
+                                <span class="alternatives-label">Or:</span>
+                                {{#each alternatives}}
+                                <span class="alternative-item">
+                                    {{#if recipeUrl}}
+                                    <a href="{{recipeUrl}}" class="alt-link" target="_blank">{{foodName}}</a>
+                                    {{else}}
+                                    {{foodName}}
+                                    {{/if}}
+                                    {{#if @root.includeQuantity}}({{quantity}} {{unit}}){{/if}}{{#if notes}} - {{notes}}{{/if}}{{#unless @last}},{{/unless}}
+                                </span>
+                                {{/each}}
+                            </div>
+                            {{/if}}
+                        </div>
+                        {{/each}}
+                        {{else}}
+                        <div class="empty-meal">No items</div>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </section>
+        {{/each}}
+
+        {{#if guidelines.hasAny}}
+        <section class="guidelines-section">
+            <h3>Guidelines</h3>
+            <div class="guidelines-columns">
+                {{#if guidelines.dos.length}}
+                <div class="guideline-block dos">
+                    <h4>Do's</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.dos}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+                {{#if guidelines.donts.length}}
+                <div class="guideline-block donts">
+                    <h4>Don'ts</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.donts}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+                {{#if guidelines.instructions.length}}
+                <div class="guideline-block instructions">
+                    <h4>Instructions</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.instructions}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+            </div>
+        </section>
+        {{/if}}
+
+        {{#if notes.length}}
+        <section class="notes-section">
+            <h3>Notes</h3>
+            <ul class="notes-list">
+                {{#each notes}}
+                <li>{{this}}</li>
+                {{/each}}
+            </ul>
+        </section>
+        {{/if}}
+
+        {{#if contactInfo}}
+        <footer class="footer">
+            {{contactInfo}}
+        </footer>
+        {{/if}}
+
+    </div>
+</body>
+</html>

@@ -1,0 +1,104 @@
+import { Global, Module } from '@nestjs/common';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { join } from 'path';
+import {
+  UserEntity,
+  OrganizationEntity,
+  OrganizationConfigEntity,
+  RoleEntity,
+  AuditLogEntity,
+  SupportedIntegrationEntity,
+  OrganizationIntegrationEntity,
+  PasswordResetOtpEntity,
+  OtpCodeEntity,
+  EmailVerificationEntity,
+  UserSessionEntity,
+  NotificationEntity,
+  WebPushSubscriptionEntity,
+} from './entities';
+import {
+  UserRepository,
+  OrganizationRepository,
+  OrganizationConfigRepository,
+  RoleRepository,
+  AuditLogRepository,
+  SupportedIntegrationRepository,
+  OrganizationIntegrationRepository,
+  PasswordResetOtpRepository,
+  OtpCodeRepository,
+  EmailVerificationRepository,
+  UserSessionRepository,
+  NotificationRepository,
+  WebPushSubscriptionRepository,
+} from './repositories';
+
+const entities = [
+  UserEntity,
+  OrganizationEntity,
+  OrganizationConfigEntity,
+  RoleEntity,
+  AuditLogEntity,
+  SupportedIntegrationEntity,
+  OrganizationIntegrationEntity,
+  PasswordResetOtpEntity,
+  OtpCodeEntity,
+  EmailVerificationEntity,
+  UserSessionEntity,
+  NotificationEntity,
+  WebPushSubscriptionEntity,
+];
+const repositories = [
+  UserRepository,
+  OrganizationRepository,
+  OrganizationConfigRepository,
+  RoleRepository,
+  AuditLogRepository,
+  SupportedIntegrationRepository,
+  OrganizationIntegrationRepository,
+  PasswordResetOtpRepository,
+  OtpCodeRepository,
+  EmailVerificationRepository,
+  UserSessionRepository,
+  NotificationRepository,
+  WebPushSubscriptionRepository,
+];
+
+@Global()
+@Module({
+  imports: [
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: async (
+        config: ConfigService,
+      ): Promise<TypeOrmModuleOptions> => {
+        const nodeEnv = config.get<string>('NODE_ENV');
+        const isCI = config.get<string>('CI');
+        const isDev = nodeEnv === 'development';
+        const synchronize = isDev && !isCI;
+
+        return {
+          type: 'postgres',
+          url: config.get<string>('DB_URL') ?? '',
+          autoLoadEntities: true,
+          entities,
+          migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+          synchronize,
+          migrationsRun: nodeEnv === 'production',
+          logging: isDev ? true : ['error', 'warn'],
+          maxQueryExecutionTime: isDev ? 500 : 1000,
+          extra: {
+            max: 20,
+            min: 5,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+          },
+        };
+      },
+    }),
+    TypeOrmModule.forFeature(entities),
+  ],
+  providers: [...repositories],
+  exports: [TypeOrmModule, ...repositories],
+})
+export class DatabaseModule {}

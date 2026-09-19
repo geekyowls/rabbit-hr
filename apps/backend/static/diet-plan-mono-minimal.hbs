@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diet Plan - {{clientName}}</title>
+    <style>
+        @page { size: A4; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            color: #111;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .container { padding: 14mm; }
+
+        .header {
+            text-align: center;
+            border-bottom: 1px solid #111;
+            padding-bottom: 10px;
+            margin-bottom: 2px;
+        }
+        .logo { margin: 0 auto 6px; width: 40px; height: 40px; }
+        .logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; }
+        .logo-initials { width: 40px; height: 40px; background: #111; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; border-radius: 6px; margin: 0 auto; }
+        .clinic { font-size: 21px; font-weight: 700; letter-spacing: 0.02em; }
+        .sub { font-size: 11px; color: #333; margin-top: 5px; }
+
+        .targets {
+            text-align: center;
+            font-size: 11px;
+            color: #333;
+            padding: 8px 0;
+            border-bottom: 1px solid #111;
+            margin-bottom: 16px;
+        }
+
+        .day { margin-bottom: 15px; page-break-inside: avoid; }
+        .day-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid #999;
+            padding-bottom: 3px;
+            margin-bottom: 7px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .day-title .date {
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            font-style: italic;
+            color: #444;
+        }
+
+        .meal { margin-bottom: 7px; }
+        .meal-h { font-weight: 700; font-size: 12px; }
+        .meal-h .time { font-weight: 400; font-style: italic; color: #444; font-size: 11px; }
+        .foods { list-style: none; margin-top: 2px; }
+        .foods li { padding-left: 15px; position: relative; }
+        .foods li::before { content: '\2022'; position: absolute; left: 2px; }
+        .foods a { color: #111; text-decoration: underline; }
+        .qty { font-style: italic; color: #444; }
+        .note { font-style: italic; color: #444; }
+
+        .section { margin-top: 16px; page-break-inside: avoid; }
+        .section h3 {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid #111;
+            padding-bottom: 3px;
+            margin-bottom: 6px;
+        }
+        .section .sub { font-weight: 700; font-size: 11px; margin-top: 5px; }
+        .section ul { padding-left: 18px; font-size: 11px; }
+        .section li { margin-bottom: 2px; }
+
+        .footer {
+            margin-top: 18px;
+            padding-top: 8px;
+            border-top: 1px solid #111;
+            text-align: center;
+            font-size: 10px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                {{#if clinicLogo}}
+                <img src="{{clinicLogo}}" alt="Logo">
+                {{else}}
+                <div class="logo-initials">{{clinicInitials}}</div>
+                {{/if}}
+            </div>
+            <div class="clinic">{{clinicName}}</div>
+            <div class="sub">Diet Plan for {{clientName}} · {{dateRange}} · Prepared by {{dietitianName}}</div>
+        </div>
+
+        {{#if targetCalories}}
+        <div class="targets">
+            Daily target: {{targetCalories}} kcal{{#if targetProtein}} · Protein {{targetProtein}}g{{/if}}{{#if targetCarbs}} · Carbs {{targetCarbs}}g{{/if}}{{#if targetFat}} · Fat {{targetFat}}g{{/if}}
+        </div>
+        {{/if}}
+
+        {{#each days}}
+        <div class="day">
+            <div class="day-title">
+                <span>Day {{dayNumber}}</span>
+                <span class="date">{{dateFormatted}}</span>
+            </div>
+            {{#each meals}}
+            <div class="meal">
+                <div class="meal-h">{{name}}{{#if time}} <span class="time">({{time}})</span>{{/if}}</div>
+                {{#if items.length}}
+                <ul class="foods">
+                    {{#each items}}
+                    <li>{{#if recipeUrl}}<a href="{{recipeUrl}}" target="_blank">{{foodName}}</a>{{else}}{{foodName}}{{/if}}{{#if @root.includeQuantity}} <span class="qty">{{quantity}} {{unit}}</span>{{/if}}{{#if notes}} <span class="note">· {{notes}}</span>{{/if}}</li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+        {{/each}}
+
+        {{#if guidelines.hasAny}}
+        <div class="section">
+            <h3>Guidelines</h3>
+            {{#if guidelines.dos.length}}<div class="sub">Do</div><ul>{{#each guidelines.dos}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+            {{#if guidelines.donts.length}}<div class="sub">Don't</div><ul>{{#each guidelines.donts}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+            {{#if guidelines.instructions.length}}<div class="sub">Instructions</div><ul>{{#each guidelines.instructions}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+        </div>
+        {{/if}}
+
+        {{#if notes.length}}
+        <div class="section">
+            <h3>Notes</h3>
+            <ul>{{#each notes}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+
+        <div class="footer">
+            {{clinicName}}{{#if contactInfo}} · {{contactInfo}}{{/if}}
+        </div>
+    </div>
+</body>
+</html>

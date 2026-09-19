@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diet Plan - {{clientName}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1a1a2e;
+            --primary-light: #16213e;
+            --accent-color: #e94560;
+            --accent-secondary: #0f3460;
+
+            --bg-color: #f8f9fa;
+            --surface-color: #FFFFFF;
+            --surface-alt: #f1f3f4;
+
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a68;
+            --text-muted: #8888a0;
+
+            --breakfast-color: #ff9f43;
+            --lunch-color: #10ac84;
+            --dinner-color: #5f27cd;
+            --snack-color: #ee5a5a;
+
+            --page-max-width: 900px;
+            --border-radius: 16px;
+        }
+
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .page-break { page-break-before: always; padding-top: 8mm; }
+            .meal-item { break-inside: avoid; page-break-inside: avoid; }
+            .food-item { break-inside: avoid; page-break-inside: avoid; }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: var(--page-max-width);
+            margin: 0 auto;
+            padding: 8mm;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--surface-alt);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent-color), #ff6b6b);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.2rem;
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+
+        .clinic-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .header-meta {
+            text-align: right;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .header-meta strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .client-info {
+            background: var(--primary-color);
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .client-info::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            opacity: 0.1;
+        }
+
+        .client-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.35rem;
+            position: relative;
+        }
+
+        .client-details {
+            display: flex;
+            gap: 1.25rem;
+            font-size: 0.85rem;
+            opacity: 0.9;
+            position: relative;
+        }
+
+        .client-details span {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.4rem 0.75rem;
+            border-radius: 20px;
+        }
+
+        .days-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .day-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .day-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 1.5rem;
+            right: 1.5rem;
+            height: 3px;
+            background: var(--accent-color);
+        }
+
+        .day-info {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+        }
+
+        .day-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.75rem;
+            font-weight: 400;
+            color: white;
+        }
+
+        .day-date {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.8);
+            font-weight: 500;
+        }
+
+        .meals-list {
+            padding: 1rem;
+        }
+
+        .meal-item {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            background: var(--bg-color);
+            border-left: 4px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .meal-item:last-child { margin-bottom: 0; }
+
+        .meal-item.breakfast { border-left-color: var(--breakfast-color); }
+        .meal-item.lunch { border-left-color: var(--lunch-color); }
+        .meal-item.dinner { border-left-color: var(--dinner-color); }
+        .meal-item.snack { border-left-color: var(--snack-color); }
+        .meal-item.other { border-left-color: var(--text-muted); }
+
+        .meal-type {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .meal-type-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .meal-item.breakfast .meal-type-label { color: var(--breakfast-color); }
+        .meal-item.lunch .meal-type-label { color: var(--lunch-color); }
+        .meal-item.dinner .meal-type-label { color: var(--dinner-color); }
+        .meal-item.snack .meal-type-label { color: var(--snack-color); }
+        .meal-item.other .meal-type-label { color: var(--text-muted); }
+
+        .meal-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .food-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .food-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            gap: 0.15rem;
+        }
+
+        .food-item:last-child { border-bottom: none; }
+
+        .food-item-main {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .food-notes {
+            font-style: italic;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .food-name {
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .food-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--accent-color);
+        }
+
+        .food-link:hover {
+            opacity: 0.8;
+        }
+
+        .food-qty {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            margin-left: auto;
+            background: var(--surface-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .empty-meal {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.85rem;
+        }
+
+        .food-alternatives {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            padding-left: 8px;
+        }
+
+        .alternatives-label {
+            font-style: italic;
+            margin-right: 4px;
+        }
+
+        .alternative-item {
+            margin-right: 4px;
+        }
+
+        .alt-link {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        .alt-link:hover {
+            opacity: 0.8;
+        }
+
+        .nutrition-values {
+            display: inline-flex;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .nutrition-values .cal { color: #ea580c; }
+        .nutrition-values .protein { color: #2563eb; }
+        .nutrition-values .carbs { color: #16a34a; }
+        .nutrition-values .fat { color: #d97706; }
+        .meal-totals-bar {
+            background: #fff7ed;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+        .item-nutrition {
+            font-size: 0.7rem;
+            margin-top: 0.15rem;
+            opacity: 0.85;
+        }
+        .day-nutrition {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .notes-section {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 1.25rem;
+            margin-top: 2rem;
+            border: 2px dashed var(--surface-alt);
+        }
+
+        .notes-section h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1rem;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .notes-list {
+            list-style: none;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .notes-list li {
+            padding: 0.4rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .notes-list li::before {
+            content: '\2192';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .guidelines-section {
+            margin-top: 1.5rem;
+            page-break-inside: avoid;
+        }
+
+        .guidelines-section h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .guidelines-columns {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .guideline-block {
+            flex: 1;
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 0.75rem;
+            border: 1px solid var(--surface-alt);
+        }
+
+        .guideline-block h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid var(--surface-alt);
+        }
+
+        .guideline-block.dos h4 {
+            color: #16a34a;
+        }
+
+        .guideline-block.donts h4 {
+            color: #dc2626;
+        }
+
+        .guideline-block.instructions h4 {
+            color: #2563eb;
+        }
+
+        .guideline-list {
+            list-style: none;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin: 0;
+            padding: 0;
+        }
+
+        .guideline-list li {
+            padding: 0.25rem 0;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+
+        .guideline-block.dos .guideline-list li::before {
+            content: '\2713';
+            position: absolute;
+            left: 0;
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .guideline-block.donts .guideline-list li::before {
+            content: '\2717';
+            position: absolute;
+            left: 0;
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .guideline-block.instructions .guideline-list li::before {
+            content: '\2022';
+            position: absolute;
+            left: 0;
+            color: #2563eb;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+            border-top: 2px solid var(--surface-alt);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            .meal-item { grid-template-columns: 1fr; }
+            .meal-type { flex-direction: row; align-items: center; gap: 0.75rem; }
+            .client-info { flex-direction: column; align-items: flex-start; }
+            .client-details { flex-wrap: wrap; gap: 0.5rem; }
+            .day-info { flex-direction: column; gap: 0.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <header class="header">
+            <div class="brand">
+                <div class="logo">
+                    {{#if clinicLogo}}
+                    <img src="{{clinicLogo}}" alt="Logo">
+                    {{else}}
+                    {{clinicInitials}}
+                    {{/if}}
+                </div>
+                <div class="clinic-name">{{clinicName}}</div>
+            </div>
+            <div class="header-meta">
+                <div>Prepared by: <strong>{{dietitianName}}</strong></div>
+            </div>
+        </header>
+
+        <section class="client-info">
+            <div class="client-name">{{clientName}}</div>
+            <div class="client-details">
+                <span>{{dateRange}}</span>
+                {{#if targetCalories}}<span>{{targetCalories}} kcal/day</span>{{/if}}
+                {{#if targetProtein}}<span>P:{{targetProtein}}g</span>{{/if}}
+                {{#if targetCarbs}}<span>C:{{targetCarbs}}g</span>{{/if}}
+                {{#if targetFat}}<span>F:{{targetFat}}g</span>{{/if}}
+            </div>
+        </section>
+
+        <div class="days-container">
+            {{#each days}}
+            <article class="day-card{{#unless @first}} page-break{{/unless}}">
+                <div class="day-header">
+                    <div class="day-info">
+                        <div class="day-title">Day {{dayNumber}}</div>
+                        <div class="day-date">{{dateFormatted}}</div>
+                    </div>
+                    {{#if totals.calories}}
+                    <div class="day-nutrition">
+                        <span class="nutrition-values">
+                            <span class="cal">{{totals.calories}} cal</span>
+                            <span class="protein">P:{{totals.protein}}</span>
+                            <span class="carbs">C:{{totals.carbs}}</span>
+                            <span class="fat">F:{{totals.fat}}</span>
+                        </span>
+                    </div>
+                    {{/if}}
+                </div>
+                <div class="meals-list">
+                    {{#each meals}}
+                    <div class="meal-item {{mealTypeClass}}">
+                        <div class="meal-type">
+                            <div class="meal-type-label">{{name}}</div>
+                            {{#if time}}
+                            <div class="meal-time">{{time}}</div>
+                            {{/if}}
+                        </div>
+                        <div class="food-items">
+                            {{#if totals.calories}}
+                            <div class="meal-totals-bar">
+                                <span class="nutrition-values">
+                                    <span class="cal">{{totals.calories}} cal</span>
+                                    <span class="protein">P:{{totals.protein}}</span>
+                                    <span class="carbs">C:{{totals.carbs}}</span>
+                                    <span class="fat">F:{{totals.fat}}</span>
+                                </span>
+                            </div>
+                            {{/if}}
+                            {{#if items.length}}
+                            {{#each items}}
+                            <div class="food-item">
+                                <div class="food-item-main">
+                                    {{#if recipeUrl}}
+                                    <a href="{{recipeUrl}}" class="food-name food-link" target="_blank">{{foodName}}</a>
+                                    {{else}}
+                                    <span class="food-name">{{foodName}}</span>
+                                    {{/if}}
+                                    {{#if @root.includeQuantity}}<span class="food-qty">{{quantity}} {{unit}}</span>{{/if}}
+                                </div>
+                                {{#if nutrition.calories}}
+                                <div class="item-nutrition">
+                                    <span class="nutrition-values">
+                                        <span class="cal">{{nutrition.calories}} cal</span>
+                                        <span class="protein">P:{{nutrition.protein}}</span>
+                                        <span class="carbs">C:{{nutrition.carbs}}</span>
+                                        <span class="fat">F:{{nutrition.fat}}</span>
+                                    </span>
+                                </div>
+                                {{/if}}
+                                {{#if notes}}
+                                <div class="food-notes">{{notes}}</div>
+                                {{/if}}
+                                {{#if alternatives.length}}
+                                <div class="food-alternatives">
+                                    <span class="alternatives-label">Or:</span>
+                                    {{#each alternatives}}
+                                    <span class="alternative-item">
+                                        {{#if recipeUrl}}
+                                        <a href="{{recipeUrl}}" class="alt-link" target="_blank">{{foodName}}</a>
+                                        {{else}}
+                                        {{foodName}}
+                                        {{/if}}
+                                        {{#if @root.includeQuantity}}({{quantity}} {{unit}}){{/if}}{{#if notes}} - {{notes}}{{/if}}{{#unless @last}},{{/unless}}
+                                    </span>
+                                    {{/each}}
+                                </div>
+                                {{/if}}
+                            </div>
+                            {{/each}}
+                            {{else}}
+                            <div class="empty-meal">No items</div>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </article>
+            {{/each}}
+        </div>
+
+        {{#if guidelines.hasAny}}
+        <section class="guidelines-section">
+            <h3>Guidelines</h3>
+            <div class="guidelines-columns">
+                {{#if guidelines.dos.length}}
+                <div class="guideline-block dos">
+                    <h4>Do's</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.dos}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+                {{#if guidelines.donts.length}}
+                <div class="guideline-block donts">
+                    <h4>Don'ts</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.donts}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+                {{#if guidelines.instructions.length}}
+                <div class="guideline-block instructions">
+                    <h4>Instructions</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.instructions}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+            </div>
+        </section>
+        {{/if}}
+
+        {{#if notes.length}}
+        <section class="notes-section">
+            <h3>Notes</h3>
+            <ul class="notes-list">
+                {{#each notes}}
+                <li>{{this}}</li>
+                {{/each}}
+            </ul>
+        </section>
+        {{/if}}
+
+        {{#if contactInfo}}
+        <footer class="footer">
+            {{contactInfo}}
+        </footer>
+        {{/if}}
+
+    </div>
+</body>
+</html>

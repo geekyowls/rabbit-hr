@@ -1,0 +1,45 @@
+{
+  "name": "@boilerplate/core",
+  "version": "0.2.10",
+  "private": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
+    "@aws-sdk/client-s3": "^3.567.0",
+    "@aws-sdk/client-ses": "^3.922.0",
+    "@aws-sdk/s3-request-presigner": "^3.567.0",
+    "@boilerplate/shared": "workspace:*",
+    "@google-cloud/storage": "^6.2.3",
+    "@google/genai": "^0.3.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
+    "date-fns": "^4.1.0",
+    "googleapis": "^144.0.0",
+    "ioredis": "^5.3.2",
+    "openai": "^4.77.3",
+    "resend": "^6.4.1",
+    "typesense": "^3.0.1"
+  },
+  "devDependencies": {
+    "@nestjs/swagger": "^11.0.0",
+    "@types/ioredis": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diet Plan - {{clientName}}</title>
+    <style>
+        :root {
+            --blue: #1f4e79;
+            --blue-soft: #eef3f9;
+            --ink: #1a1a1a;
+            --muted: #5a6570;
+            --line: #c8d2dc;
+        }
+        @page { size: A4; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, Helvetica, 'Segoe UI', sans-serif;
+            color: var(--ink);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        .container { padding: 12mm; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid var(--blue);
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+        .brand { display: flex; align-items: center; gap: 8px; }
+        .logo { width: 32px; height: 32px; flex-shrink: 0; }
+        .logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; }
+        .logo-initials { width: 32px; height: 32px; background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+        .clinic { font-size: 17px; font-weight: 700; color: var(--blue); }
+        .by { font-size: 10px; color: var(--muted); margin-top: 2px; }
+        .title-block { text-align: right; }
+        .client-name { font-size: 13px; font-weight: 700; }
+        .date-range { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+        .targets {
+            font-size: 10px;
+            color: var(--muted);
+            padding: 7px 0;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--line);
+        }
+        .targets strong { color: var(--ink); }
+
+        .day { margin-bottom: 12px; page-break-inside: avoid; }
+        .day-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--blue);
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .day-title .cal { font-weight: 400; color: var(--muted); font-size: 10px; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td {
+            border: 1px solid var(--line);
+            padding: 5px 7px;
+            text-align: left;
+            vertical-align: top;
+        }
+        thead th { background: var(--blue); color: #fff; font-size: 10px; font-weight: 600; }
+        col.c-meal { width: 92px; }
+        col.c-time { width: 66px; }
+        col.c-qty { width: 84px; }
+        td.meal { font-weight: 700; color: var(--blue); }
+        td.time { color: var(--muted); }
+        tbody tr:nth-child(even) td { background: var(--blue-soft); }
+        .food a { color: var(--blue); text-decoration: none; }
+        .empty { color: var(--muted); font-style: italic; }
+
+        .section { margin-top: 14px; page-break-inside: avoid; }
+        .section h3 {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--blue);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--blue);
+            padding-bottom: 3px;
+            margin-bottom: 6px;
+        }
+        .section .sub { font-weight: 700; font-size: 10.5px; margin-top: 5px; }
+        .section ul { padding-left: 16px; font-size: 10.5px; color: var(--muted); }
+        .section li { margin-bottom: 2px; }
+
+        .footer {
+            margin-top: 14px;
+            padding-top: 6px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="brand">
+                <div class="logo">
+                    {{#if clinicLogo}}
+                    <img src="{{clinicLogo}}" alt="Logo">
+                    {{else}}
+                    <div class="logo-initials">{{clinicInitials}}</div>
+                    {{/if}}
+                </div>
+                <div>
+                    <div class="clinic">{{clinicName}}</div>
+                    <div class="by">Prepared by {{dietitianName}}</div>
+                </div>
+            </div>
+            <div class="title-block">
+                <div class="client-name">{{clientName}}</div>
+                <div class="date-range">{{dateRange}}</div>
+            </div>
+        </div>
+
+        {{#if targetCalories}}
+        <div class="targets">
+            <strong>Daily target:</strong> {{targetCalories}} kcal{{#if targetProtein}} · Protein {{targetProtein}}g{{/if}}{{#if targetCarbs}} · Carbs {{targetCarbs}}g{{/if}}{{#if targetFat}} · Fat {{targetFat}}g{{/if}}
+        </div>
+        {{/if}}
+
+        {{#each days}}
+        <div class="day">
+            <div class="day-title">
+                <span>Day {{dayNumber}} · {{dateFormatted}}</span>
+                {{#if totals.calories}}<span class="cal">{{totals.calories}} kcal</span>{{/if}}
+            </div>
+            <table>
+                <colgroup>
+                    <col class="c-meal"><col class="c-time"><col><col class="c-qty">
+                </colgroup>
+                <thead>
+                    <tr><th>Meal</th><th>Time</th><th>Food items</th><th>Quantity</th></tr>
+                </thead>
+                <tbody>
+                    {{#each meals}}
+                    {{#if items.length}}
+                    {{#each items}}
+                    <tr>
+                        <td class="meal">{{#if @first}}{{../name}}{{/if}}</td>
+                        <td class="time">{{#if @first}}{{../time}}{{/if}}</td>
+                        <td class="food">{{#if recipeUrl}}<a href="{{recipeUrl}}" target="_blank">{{foodName}}</a>{{else}}{{foodName}}{{/if}}{{#if notes}} <span class="empty">({{notes}})</span>{{/if}}</td>
+                        <td>{{#if @root.includeQuantity}}{{quantity}} {{unit}}{{/if}}</td>
+                    </tr>
+                    {{/each}}
+                    {{else}}
+                    <tr>
+                        <td class="meal">{{name}}</td>
+                        <td class="time">{{time}}</td>
+                        <td colspan="2" class="empty">No items</td>
+                    </tr>
+                    {{/if}}
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{/each}}
+
+        {{#if guidelines.hasAny}}
+        <div class="section">
+            <h3>Guidelines</h3>
+            {{#if guidelines.dos.length}}<div class="sub">Do</div><ul>{{#each guidelines.dos}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+            {{#if guidelines.donts.length}}<div class="sub">Don't</div><ul>{{#each guidelines.donts}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+            {{#if guidelines.instructions.length}}<div class="sub">Instructions</div><ul>{{#each guidelines.instructions}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+        </div>
+        {{/if}}
+
+        {{#if notes.length}}
+        <div class="section">
+            <h3>Notes</h3>
+            <ul>{{#each notes}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+
+        <div class="footer">
+            <span>{{clinicName}}</span>
+            {{#if contactInfo}}<span>{{contactInfo}}</span>{{/if}}
+        </div>
+    </div>
+</body>
+</html>

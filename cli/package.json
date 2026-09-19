@@ -1,0 +1,14 @@
+{
+  "name": "@nutricrm/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "nutri.mjs",
+  "bin": {
+    "nutri": "./nutri.mjs"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "picocolors": "^1.0.1"
+  }
+}

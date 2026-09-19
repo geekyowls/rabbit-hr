@@ -1,0 +1,59 @@
+{
+  "name": "rabbithr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RabbitHR - monorepo with Next.js frontend and NestJS backend",
+  "scripts": {
+    "dev": "pnpm --filter \"./apps/*\" dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:packages": "pnpm --filter \"./packages/*\" dev",
+    "dev:shared": "pnpm --filter @boilerplate/shared dev",
+    "dev:core": "pnpm --filter @boilerplate/core dev",
+    "build": "pnpm build:packages && pnpm --filter \"./apps/*\" build",
+    "build:packages": "pnpm --filter \"./packages/*\" build",
+    "build:shared": "pnpm --filter @boilerplate/shared build",
+    "build:core": "pnpm --filter @boilerplate/core build",
+    "build:frontend": "pnpm --filter frontend build",
+    "build:backend": "pnpm --filter backend build",
+    "start:frontend": "pnpm --filter frontend start",
+    "start:backend": "pnpm --filter backend start",
+    "start:prod:backend": "pnpm --filter backend start:prod",
+    "start:prod:frontend": "pnpm --filter frontend start",
+    "lint": "pnpm --filter \"./apps/*\" lint",
+    "lint:fix": "pnpm --filter \"./apps/*\" lint:fix",
+    "test": "pnpm --filter \"./apps/*\" test",
+    "clean": "pnpm --filter \"./apps/*\" clean && pnpm --filter \"./packages/*\" clean && rm -rf node_modules",
+    "prepare": "husky",
+    "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"packages/**/*.ts\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx}\" \"packages/**/*.ts\"",
+    "seed:backend": "pnpm --filter backend seed"
+  },
+  "lint-staged": {
+    "apps/frontend/**/*.{ts,tsx}": [
+      "prettier --write"
+    ],
+    "apps/backend/**/*.ts": [
+      "prettier --write"
+    ],
+    "packages/**/*.ts": [
+      "prettier --write"
+    ]
+  },
+  "keywords": [
+    "monorepo",
+    "pnpm",
+    "nextjs",
+    "nestjs"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.4.2"
+  }
+}

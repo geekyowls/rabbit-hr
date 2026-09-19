@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diet Plan - {{clientName}}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 12mm;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #1a2a1e;
+            font-size: 10px;
+            line-height: 1.35;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1d3d28;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+        .clinic-block { display: flex; align-items: center; gap: 10px; }
+        .clinic-logo {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: #1d3d28;
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px;
+            overflow: hidden;
+        }
+        .clinic-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .clinic-name { font-size: 14px; font-weight: 700; }
+        .meta { font-size: 9px; color: #4b6358; }
+        .title-block { text-align: right; }
+        .client-name { font-size: 13px; font-weight: 700; }
+        .date-range { font-size: 10px; color: #4b6358; margin-top: 2px; }
+
+        .targets {
+            display: flex; gap: 10px;
+            margin-bottom: 12px;
+            font-size: 9px;
+        }
+        .target-chip {
+            background: #f1f5ed;
+            border-radius: 4px;
+            padding: 4px 10px;
+        }
+        .target-chip .label { color: #4b6358; font-weight: 600; }
+        .target-chip .value { color: #1d3d28; font-weight: 700; margin-left: 4px; }
+
+        table.grid {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+            page-break-inside: auto;
+        }
+        table.grid thead th {
+            background: #1d3d28;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            text-align: left;
+            padding: 8px 10px;
+            border-right: 1px solid #2c4f3a;
+        }
+        table.grid thead th:last-child { border-right: 1px solid #1d3d28; }
+        table.grid thead th.day-head { text-align: center; }
+        table.grid tbody th.meal-cell {
+            background: #f1f5ed;
+            text-align: left;
+            padding: 10px 10px;
+            border-right: 1px solid #cdd9cc;
+            border-bottom: 1px solid #cdd9cc;
+            vertical-align: top;
+            width: 110px;
+        }
+        table.grid tbody tr:nth-child(even) th.meal-cell { background: #e7eee0; }
+        table.grid tbody td {
+            border-right: 1px solid #ecefe6;
+            border-bottom: 1px solid #cdd9cc;
+            padding: 10px 11px;
+            vertical-align: top;
+            background: #fff;
+        }
+        table.grid tbody td:last-child { border-right: 1px solid #cdd9cc; }
+        table.grid tbody tr:nth-child(even) td { background: #fafbf7; }
+        .meal-name { font-size: 11px; font-weight: 700; color: #1d3d28; }
+        .meal-time { font-size: 9px; color: #4b6358; margin-top: 3px; font-weight: 500; }
+        .item { line-height: 1.45; padding: 1.5px 0; }
+        .food { font-weight: 600; color: #1a2a1e; font-size: 10px; }
+        .qty { color: #4b6358; font-size: 9.5px; }
+        .item-cal {
+            color: #4a7d68;
+            font-size: 8.5px;
+            font-weight: 600;
+            margin-left: 4px;
+            white-space: nowrap;
+        }
+        .empty-cell { color: #b2bdb6; font-size: 10px; font-style: italic; }
+        .day-num { font-weight: 700; }
+        .day-date { font-weight: 400; font-size: 9px; opacity: 0.85; display: block; margin-top: 1px; }
+
+        .guidelines {
+            margin-top: 14px;
+            border: 1px solid #cdd9cc;
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 9.5px;
+            page-break-inside: avoid;
+        }
+        .guidelines h3 { font-size: 11px; margin-bottom: 6px; color: #1d3d28; }
+        .guidelines-section { margin-bottom: 6px; }
+        .guidelines-section:last-child { margin-bottom: 0; }
+        .guidelines-section .label { font-weight: 700; color: #1a2a1e; }
+        .guidelines-section ul { padding-left: 18px; margin-top: 2px; }
+        .guidelines-section li { margin-bottom: 2px; }
+
+        .footer {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #cdd9cc;
+            display: flex; justify-content: space-between;
+            font-size: 8.5px;
+            color: #6b7a6e;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="clinic-block">
+            <div class="clinic-logo">
+                {{#if clinicLogo}}<img src="{{clinicLogo}}" alt="{{clinicName}}" />{{else}}{{clinicInitials}}{{/if}}
+            </div>
+            <div>
+                <div class="clinic-name">{{clinicName}}</div>
+                <div class="meta">By {{dietitianName}}</div>
+            </div>
+        </div>
+        <div class="title-block">
+            <div class="client-name">{{clientName}}</div>
+            <div class="date-range">{{dateRange}}</div>
+        </div>
+    </div>
+
+    {{#if targetCalories}}
+    <div class="targets">
+        <div class="target-chip"><span class="label">Calories</span><span class="value">{{targetCalories}} kcal</span></div>
+        {{#if targetProtein}}<div class="target-chip"><span class="label">Protein</span><span class="value">{{targetProtein}}g</span></div>{{/if}}
+        {{#if targetCarbs}}<div class="target-chip"><span class="label">Carbs</span><span class="value">{{targetCarbs}}g</span></div>{{/if}}
+        {{#if targetFat}}<div class="target-chip"><span class="label">Fat</span><span class="value">{{targetFat}}g</span></div>{{/if}}
+    </div>
+    {{/if}}
+
+    {{#if weeklyGrid}}
+    <table class="grid">
+        <thead>
+            <tr>
+                <th>Meal</th>
+                {{#each weeklyGrid.days}}
+                <th class="day-head">
+                    <span class="day-num">Day {{dayNumber}}</span>
+                    <span class="day-date">{{dateFormatted}}</span>
+                </th>
+                {{/each}}
+            </tr>
+        </thead>
+        <tbody>
+            {{#each weeklyGrid.rows}}
+            <tr>
+                <th class="meal-cell">
+                    <div class="meal-name">{{mealName}}</div>
+                    {{#if time}}<div class="meal-time">{{time}}</div>{{/if}}
+                </th>
+                {{#each cells}}
+                <td>
+                    {{#if items.length}}
+                    {{#each items}}
+                    <div class="item">
+                        {{#if recipeUrl}}
+                        <a class="food" href="{{recipeUrl}}" target="_blank">{{foodName}}</a>
+                        {{else}}
+                        <span class="food">{{foodName}}</span>
+                        {{/if}}
+                        {{#if @root.includeQuantity}}<span class="qty"> · {{quantity}} {{unit}}</span>{{/if}}
+                        {{#if nutrition.calories}}<span class="item-cal">{{nutrition.calories}} cal</span>{{/if}}
+                    </div>
+                    {{/each}}
+                    {{else}}
+                    <span class="empty-cell">—</span>
+                    {{/if}}
+                </td>
+                {{/each}}
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    {{/if}}
+
+    {{#if guidelines.hasAny}}
+    <div class="guidelines">
+        <h3>Guidelines</h3>
+        {{#if guidelines.dos.length}}
+        <div class="guidelines-section">
+            <span class="label">Do</span>
+            <ul>{{#each guidelines.dos}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if guidelines.donts.length}}
+        <div class="guidelines-section">
+            <span class="label">Don't</span>
+            <ul>{{#each guidelines.donts}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+        {{#if guidelines.instructions.length}}
+        <div class="guidelines-section">
+            <span class="label">Instructions</span>
+            <ul>{{#each guidelines.instructions}}<li>{{this}}</li>{{/each}}</ul>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if notes.length}}
+    <div class="guidelines">
+        <h3>Notes</h3>
+        <ul>{{#each notes}}<li>{{this}}</li>{{/each}}</ul>
+    </div>
+    {{/if}}
+
+    <div class="footer">
+        <span>{{clinicName}}</span>
+        {{#if contactInfo}}<span>{{contactInfo}}</span>{{/if}}
+    </div>
+</body>
+</html>

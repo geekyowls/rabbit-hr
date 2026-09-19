@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diet Plan - {{clientName}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2D5A4A;
+            --primary-light: #3D7A64;
+            --accent-color: #E8B86D;
+
+            --bg-color: #FDFCF9;
+            --surface-color: #FFFFFF;
+            --surface-alt: #F7F5F0;
+
+            --text-primary: #1A1A1A;
+            --text-secondary: #5A5A5A;
+            --text-muted: #8A8A8A;
+
+            --breakfast-color: #F4A261;
+            --lunch-color: #2A9D8F;
+            --dinner-color: #6B5B95;
+            --snack-color: #E76F51;
+
+            --page-max-width: 900px;
+            --border-radius: 8px;
+        }
+
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .day-card { break-inside: avoid; page-break-inside: avoid; }
+            .guidelines-section, .notes-section { break-inside: avoid; page-break-inside: avoid; }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.4;
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: var(--page-max-width);
+            margin: 0 auto;
+            padding: 8mm;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 0.6rem;
+            margin-bottom: 0.9rem;
+            border-bottom: 1px solid var(--surface-alt);
+        }
+
+        .brand { display: flex; align-items: center; gap: 0.6rem; }
+
+        .logo {
+            width: 34px;
+            height: 34px;
+            background: var(--primary-color);
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 7px; }
+
+        .clinic-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .header-meta { text-align: right; font-size: 0.72rem; color: var(--text-muted); }
+        .header-meta strong { color: var(--text-primary); font-weight: 500; }
+
+        .client-info {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 0.7rem 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .client-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        .client-details { display: flex; gap: 1rem; font-size: 0.78rem; opacity: 0.92; }
+        .client-details span { display: flex; align-items: center; gap: 0.3rem; }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+            align-items: start;
+        }
+
+        .day-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            border: 1px solid var(--surface-alt);
+        }
+
+        .day-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.4rem;
+        }
+
+        .day-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .day-date { font-size: 0.68rem; color: rgba(255,255,255,0.85); margin-left: auto; }
+
+        .day-cal {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .meals-list { padding: 0.5rem 0.6rem; }
+
+        .meal-row {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            border-bottom: 1px dashed rgba(0,0,0,0.07);
+        }
+        .meal-row:last-child { border-bottom: none; }
+
+        .meal-badge {
+            flex: none;
+            align-self: flex-start;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: white;
+            white-space: nowrap;
+        }
+        .meal-badge.breakfast { background: var(--breakfast-color); }
+        .meal-badge.lunch { background: var(--lunch-color); }
+        .meal-badge.dinner { background: var(--dinner-color); }
+        .meal-badge.snack { background: var(--snack-color); }
+        .meal-badge.other { background: var(--text-muted); }
+
+        .meal-body { flex: 1; min-width: 0; }
+        .meal-time { font-size: 0.62rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+
+        .food-line { font-size: 0.78rem; color: var(--text-primary); margin-bottom: 0.1rem; }
+        .food-line:last-child { margin-bottom: 0; }
+        .food-name { color: var(--text-primary); }
+        .food-link { color: var(--primary-color); text-decoration: none; border-bottom: 1px dashed var(--primary-color); }
+        .food-qty { color: var(--text-muted); }
+        .food-notes { font-style: italic; color: var(--text-muted); font-size: 0.72rem; }
+        .food-alts { font-size: 0.7rem; color: var(--text-muted); }
+        .alts-label { font-style: italic; margin-right: 2px; }
+        .alt-link { color: var(--primary-color); text-decoration: none; }
+        .empty-meal { color: var(--text-muted); font-style: italic; font-size: 0.72rem; }
+
+        .guidelines-section { margin-top: 1rem; }
+        .guidelines-section h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            color: var(--primary-color);
+            margin-bottom: 0.6rem;
+            padding-bottom: 0.3rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        .guidelines-columns { display: flex; gap: 0.8rem; }
+        .guideline-block {
+            flex: 1;
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 0.6rem 0.7rem;
+            border: 1px solid var(--surface-alt);
+        }
+        .guideline-block h4 {
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            padding-bottom: 0.2rem;
+            border-bottom: 1px solid var(--surface-alt);
+        }
+        .guideline-block.dos h4 { color: #16a34a; }
+        .guideline-block.donts h4 { color: #dc2626; }
+        .guideline-block.instructions h4 { color: #2563eb; }
+        .guideline-list { list-style: none; font-size: 0.74rem; color: var(--text-secondary); }
+        .guideline-list li { padding: 0.2rem 0; padding-left: 1.1rem; position: relative; }
+        .guideline-block.dos .guideline-list li::before { content: '\2713'; position: absolute; left: 0; color: #16a34a; font-weight: bold; }
+        .guideline-block.donts .guideline-list li::before { content: '\2717'; position: absolute; left: 0; color: #dc2626; font-weight: bold; }
+        .guideline-block.instructions .guideline-list li::before { content: '\2022'; position: absolute; left: 0; color: #2563eb; }
+
+        .notes-section {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 0.75rem 0.85rem;
+            margin-top: 1rem;
+            border: 1px solid var(--surface-alt);
+            border-left: 3px solid var(--accent-color);
+        }
+        .notes-section h3 { font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--primary-color); margin-bottom: 0.4rem; }
+        .notes-list { list-style: none; font-size: 0.78rem; color: var(--text-secondary); }
+        .notes-list li { padding: 0.25rem 0; padding-left: 1.1rem; position: relative; }
+        .notes-list li::before { content: '\2022'; position: absolute; left: 0; color: var(--primary-color); }
+
+        .footer {
+            text-align: center;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--surface-alt);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <header class="header">
+            <div class="brand">
+                <div class="logo">
+                    {{#if clinicLogo}}
+                    <img src="{{clinicLogo}}" alt="Logo">
+                    {{else}}
+                    {{clinicInitials}}
+                    {{/if}}
+                </div>
+                <div class="clinic-name">{{clinicName}}</div>
+            </div>
+            <div class="header-meta">
+                <div>Prepared by: <strong>{{dietitianName}}</strong></div>
+            </div>
+        </header>
+
+        <section class="client-info">
+            <div class="client-name">{{clientName}}</div>
+            <div class="client-details">
+                <span>{{dateRange}}</span>
+                {{#if targetCalories}}<span>{{targetCalories}} kcal/day</span>{{/if}}
+                {{#if targetProtein}}<span>P:{{targetProtein}}g</span>{{/if}}
+                {{#if targetCarbs}}<span>C:{{targetCarbs}}g</span>{{/if}}
+                {{#if targetFat}}<span>F:{{targetFat}}g</span>{{/if}}
+            </div>
+        </section>
+
+        <div class="days-grid">
+            {{#each days}}
+            <article class="day-card">
+                <div class="day-header">
+                    <div class="day-title">Day {{dayNumber}}</div>
+                    <div class="day-date">{{dateFormatted}}</div>
+                    {{#if totals.calories}}
+                    <div class="day-cal">{{totals.calories}} cal</div>
+                    {{/if}}
+                </div>
+                <div class="meals-list">
+                    {{#each meals}}
+                    <div class="meal-row">
+                        <div class="meal-badge {{mealTypeClass}}">{{name}}</div>
+                        <div class="meal-body">
+                            {{#if time}}<div class="meal-time">{{time}}</div>{{/if}}
+                            {{#if items.length}}
+                            {{#each items}}
+                            <div class="food-line">
+                                {{#if recipeUrl}}
+                                <a href="{{recipeUrl}}" class="food-name food-link" target="_blank">{{foodName}}</a>
+                                {{else}}
+                                <span class="food-name">{{foodName}}</span>
+                                {{/if}}
+                                {{#if @root.includeQuantity}}<span class="food-qty">— {{quantity}} {{unit}}</span>{{/if}}
+                                {{#if notes}}<span class="food-notes"> · {{notes}}</span>{{/if}}
+                                {{#if alternatives.length}}
+                                <div class="food-alts">
+                                    <span class="alts-label">or:</span>
+                                    {{#each alternatives}}
+                                    {{#if recipeUrl}}<a href="{{recipeUrl}}" class="alt-link" target="_blank">{{foodName}}</a>{{else}}{{foodName}}{{/if}}{{#if @root.includeQuantity}} ({{quantity}} {{unit}}){{/if}}{{#unless @last}}, {{/unless}}
+                                    {{/each}}
+                                </div>
+                                {{/if}}
+                            </div>
+                            {{/each}}
+                            {{else}}
+                            <div class="empty-meal">No items</div>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </article>
+            {{/each}}
+        </div>
+
+        {{#if guidelines.hasAny}}
+        <section class="guidelines-section">
+            <h3>Guidelines</h3>
+            <div class="guidelines-columns">
+                {{#if guidelines.dos.length}}
+                <div class="guideline-block dos">
+                    <h4>Do's</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.dos}}<li>{{this}}</li>{{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+                {{#if guidelines.donts.length}}
+                <div class="guideline-block donts">
+                    <h4>Don'ts</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.donts}}<li>{{this}}</li>{{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+                {{#if guidelines.instructions.length}}
+                <div class="guideline-block instructions">
+                    <h4>Instructions</h4>
+                    <ul class="guideline-list">
+                        {{#each guidelines.instructions}}<li>{{this}}</li>{{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+            </div>
+        </section>
+        {{/if}}
+
+        {{#if notes.length}}
+        <section class="notes-section">
+            <h3>Notes</h3>
+            <ul class="notes-list">
+                {{#each notes}}<li>{{this}}</li>{{/each}}
+            </ul>
+        </section>
+        {{/if}}
+
+        {{#if contactInfo}}
+        <footer class="footer">
+            {{contactInfo}}
+        </footer>
+        {{/if}}
+
+    </div>
+</body>
+</html>

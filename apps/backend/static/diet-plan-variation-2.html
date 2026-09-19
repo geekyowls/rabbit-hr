@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diet Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           CONFIGURATION - CUSTOMIZE HERE
+           ============================================ */
+        :root {
+            --primary-color: #1a1a2e;
+            --primary-light: #16213e;
+            --accent-color: #e94560;
+            --accent-secondary: #0f3460;
+            
+            --bg-color: #f8f9fa;
+            --surface-color: #FFFFFF;
+            --surface-alt: #f1f3f4;
+            
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a68;
+            --text-muted: #8888a0;
+            
+            --breakfast-color: #ff9f43;
+            --lunch-color: #10ac84;
+            --dinner-color: #5f27cd;
+            --snack-color: #ee5a5a;
+            
+            --page-max-width: 900px;
+            --border-radius: 16px;
+        }
+
+        /* Print & PDF */
+        @media print {
+            @page { size: A4; margin: 12mm; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .page-break { page-break-before: always; }
+            .day-card { break-inside: avoid; page-break-inside: avoid; }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: var(--page-max-width);
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ============================================
+           HEADER - Minimal Modern
+           ============================================ */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--surface-alt);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent-color), #ff6b6b);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.2rem;
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+
+        .clinic-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .header-meta {
+            text-align: right;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .header-meta strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* ============================================
+           CLIENT INFO - Modern Card
+           ============================================ */
+        .client-info {
+            background: var(--primary-color);
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .client-info::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            opacity: 0.1;
+        }
+
+        .client-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.35rem;
+            position: relative;
+        }
+
+        .client-details {
+            display: flex;
+            gap: 1.25rem;
+            font-size: 0.85rem;
+            opacity: 0.9;
+            position: relative;
+        }
+
+        .client-details span {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.4rem 0.75rem;
+            border-radius: 20px;
+        }
+
+        /* ============================================
+           DAY CARDS
+           ============================================ */
+        .days-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .day-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .day-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 1.5rem;
+            right: 1.5rem;
+            height: 3px;
+            background: var(--accent-color);
+        }
+
+        .day-info {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+        }
+
+        .day-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.75rem;
+            font-weight: 400;
+            color: white;
+        }
+
+        .day-date {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.8);
+            font-weight: 500;
+        }
+
+        .meals-list {
+            padding: 1rem;
+        }
+
+        /* ============================================
+           MEAL ITEMS
+           ============================================ */
+        .meal-item {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            background: var(--bg-color);
+            border-left: 4px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .meal-item:last-child { margin-bottom: 0; }
+
+        .meal-item.breakfast { border-left-color: var(--breakfast-color); }
+        .meal-item.lunch { border-left-color: var(--lunch-color); }
+        .meal-item.dinner { border-left-color: var(--dinner-color); }
+        .meal-item.snack { border-left-color: var(--snack-color); }
+
+        .meal-type {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .meal-type-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .meal-item.breakfast .meal-type-label { color: var(--breakfast-color); }
+        .meal-item.lunch .meal-type-label { color: var(--lunch-color); }
+        .meal-item.dinner .meal-type-label { color: var(--dinner-color); }
+        .meal-item.snack .meal-type-label { color: var(--snack-color); }
+
+        .meal-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Food Items List */
+        .food-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .food-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            gap: 0.5rem;
+        }
+
+        .food-item:last-child { border-bottom: none; }
+
+        .food-name {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .food-name a {
+            color: var(--accent-secondary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .food-name a:hover {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+
+        .food-qty {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            margin-left: auto;
+            background: var(--surface-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* ============================================
+           NOTES SECTION
+           ============================================ */
+        .notes-section {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 1.25rem;
+            margin-top: 2rem;
+            border: 2px dashed var(--surface-alt);
+        }
+
+        .notes-section h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1rem;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notes-section h3::before {
+            content: '💡';
+            font-size: 1.1rem;
+        }
+
+        .notes-list {
+            list-style: none;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .notes-list li {
+            padding: 0.4rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .notes-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+            border-top: 2px solid var(--surface-alt);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            .meal-item { grid-template-columns: 1fr; }
+            .meal-type { flex-direction: row; align-items: center; gap: 0.75rem; }
+            .client-info { flex-direction: column; align-items: flex-start; }
+            .client-details { flex-wrap: wrap; gap: 0.5rem; }
+            .day-info { flex-direction: column; gap: 0.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- HEADER -->
+        <header class="header">
+            <div class="brand">
+                <div class="logo">
+                    <!-- Replace with: <img src="YOUR_LOGO_URL" alt="Logo"> -->
+                    N
+                </div>
+                <div class="clinic-name">NutriLife Clinic</div>
+            </div>
+            <div class="header-meta">
+                <div>Prepared by: <strong>Dr. Amanda Chen</strong></div>
+            </div>
+        </header>
+
+        <!-- CLIENT INFO -->
+        <section class="client-info">
+            <div class="client-name">Sarah Johnson</div>
+            <div class="client-details">
+                <span>📅 Feb 5 - Feb 11, 2026</span>
+                <span>🎯 1,800 kcal/day</span>
+            </div>
+        </section>
+
+        <!-- DAILY MEAL PLANS -->
+        <div class="days-container">
+            
+            <!-- DAY 1 -->
+            <article class="day-card">
+                <div class="day-header">
+                    <div class="day-info">
+                        <div class="day-title">Day 1</div>
+                        <div class="day-date">Monday, Feb 5</div>
+                    </div>
+                </div>
+                <div class="meals-list">
+                    
+                    <!-- Breakfast -->
+                    <div class="meal-item breakfast">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Breakfast</div>
+                            <div class="meal-time">7:30 AM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/yogurt-bowl" target="_blank">Greek Yogurt Bowl</a></span>
+                                <span class="food-qty">200g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Mixed Berries</span>
+                                <span class="food-qty">100g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Granola (low sugar)</span>
+                                <span class="food-qty">40g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Honey</span>
+                                <span class="food-qty">1 tbsp</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Snack -->
+                    <div class="meal-item snack">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Snack</div>
+                            <div class="meal-time">10:30 AM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name">Apple</span>
+                                <span class="food-qty">1 medium</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Almond Butter</span>
+                                <span class="food-qty">2 tbsp</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lunch -->
+                    <div class="meal-item lunch">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Lunch</div>
+                            <div class="meal-time">1:00 PM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/grilled-chicken" target="_blank">Grilled Chicken Breast</a></span>
+                                <span class="food-qty">150g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Mixed Greens Salad</span>
+                                <span class="food-qty">100g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Cherry Tomatoes</span>
+                                <span class="food-qty">80g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Feta Cheese</span>
+                                <span class="food-qty">30g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Olive Oil Dressing</span>
+                                <span class="food-qty">2 tbsp</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Evening Snack -->
+                    <div class="meal-item snack">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Snack</div>
+                            <div class="meal-time">4:00 PM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/hummus" target="_blank">Hummus</a></span>
+                                <span class="food-qty">60g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Carrot Sticks</span>
+                                <span class="food-qty">50g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Cucumber Slices</span>
+                                <span class="food-qty">50g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dinner -->
+                    <div class="meal-item dinner">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Dinner</div>
+                            <div class="meal-time">7:30 PM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/baked-salmon" target="_blank">Baked Salmon</a></span>
+                                <span class="food-qty">150g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Quinoa</span>
+                                <span class="food-qty">80g (dry)</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Roasted Asparagus</span>
+                                <span class="food-qty">100g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Lemon Wedge</span>
+                                <span class="food-qty">1 piece</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </article>
+
+            <!-- DAY 2 -->
+            <article class="day-card">
+                <div class="day-header">
+                    <div class="day-info">
+                        <div class="day-title">Day 2</div>
+                        <div class="day-date">Tuesday, Feb 6</div>
+                    </div>
+                </div>
+                <div class="meals-list">
+                    
+                    <!-- Breakfast -->
+                    <div class="meal-item breakfast">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Breakfast</div>
+                            <div class="meal-time">7:30 AM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name">Whole Grain Toast</span>
+                                <span class="food-qty">2 slices</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Avocado</span>
+                                <span class="food-qty">½ medium</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/poached-eggs" target="_blank">Poached Eggs</a></span>
+                                <span class="food-qty">2 large</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Cherry Tomatoes</span>
+                                <span class="food-qty">50g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Snack -->
+                    <div class="meal-item snack">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Snack</div>
+                            <div class="meal-time">10:30 AM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name">Banana</span>
+                                <span class="food-qty">1 medium</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Mixed Nuts</span>
+                                <span class="food-qty">25g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lunch -->
+                    <div class="meal-item lunch">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Lunch</div>
+                            <div class="meal-time">1:00 PM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/turkey-wrap" target="_blank">Turkey Wrap</a></span>
+                                <span class="food-qty">1 large</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Lettuce & Spinach</span>
+                                <span class="food-qty">50g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Tomato Slices</span>
+                                <span class="food-qty">50g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Mustard</span>
+                                <span class="food-qty">1 tbsp</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Evening Snack -->
+                    <div class="meal-item snack">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Snack</div>
+                            <div class="meal-time">4:00 PM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name">Greek Yogurt</span>
+                                <span class="food-qty">150g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Walnuts</span>
+                                <span class="food-qty">15g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dinner -->
+                    <div class="meal-item dinner">
+                        <div class="meal-type">
+                            <div class="meal-type-label">Dinner</div>
+                            <div class="meal-time">7:30 PM</div>
+                        </div>
+                        <div class="food-items">
+                            <div class="food-item">
+                                <span class="food-name"><a href="https://example.com/recipe/beef-stirfry" target="_blank">Lean Beef Stir-Fry</a></span>
+                                <span class="food-qty">150g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Brown Rice</span>
+                                <span class="food-qty">80g (dry)</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Stir-Fry Vegetables</span>
+                                <span class="food-qty">150g</span>
+                            </div>
+                            <div class="food-item">
+                                <span class="food-name">Soy Sauce (low sodium)</span>
+                                <span class="food-qty">1 tbsp</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </article>
+
+        </div>
+
+        <!-- NOTES -->
+        <section class="notes-section">
+            <h3>Guidelines</h3>
+            <ul class="notes-list">
+                <li>Drink at least 8 glasses of water daily</li>
+                <li>Meal times are flexible - maintain 3-4 hour gaps</li>
+                <li>Contact clinic if you experience any discomfort</li>
+            </ul>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            📞 +1 (555) 123-4567 &nbsp;•&nbsp; care@nutrilife.com
+        </footer>
+
+    </div>
+</body>
+</html>
