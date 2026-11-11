@@ -4,12 +4,7 @@ import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
 export type SignupStep =
-  | 'email'
-  | 'otp'
-  | 'details'
-  | 'context'
-  | 'welcome'
-  | 'waitlist-thanks';
+  'email' | 'otp' | 'details' | 'context' | 'welcome' | 'waitlist-thanks';
 
 const STEPS: { key: SignupStep; label: string }[] = [
   { key: 'email', label: 'Email' },

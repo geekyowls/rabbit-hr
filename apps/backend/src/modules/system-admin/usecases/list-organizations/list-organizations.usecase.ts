@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import {
-  OrganizationRepository,
-  UserRepository,
-} from '@db/repositories';
+import { OrganizationRepository, UserRepository } from '@db/repositories';
 import { calculateSkip, createPaginationMetadata } from '@boilerplate/core';
 
 import { ListOrganizationsCommand } from './list-organizations.command';

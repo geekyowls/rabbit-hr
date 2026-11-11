@@ -2,7 +2,16 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Search, MoreVertical } from 'lucide-react';
+import {
+  Search,
+  MoreVertical,
+  Calendar,
+  Video,
+  Slack,
+  Users,
+  Puzzle,
+  type LucideIcon,
+} from 'lucide-react';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
@@ -45,6 +54,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   ai: 'AI',
   telephony: 'Telephony',
   payments: 'Payments',
+};
+
+const PROVIDER_ICON: Record<string, { icon: LucideIcon; color: string }> = {
+  google_calendar: { icon: Calendar, color: '#4285F4' },
+  zoom: { icon: Video, color: '#2D8CFF' },
+  slack: { icon: Slack, color: '#4A154B' },
+  microsoft_teams: { icon: Users, color: '#6264A7' },
 };
 
 function categoryLabel(value: string): string {
@@ -193,9 +209,9 @@ function IntegrationCard({
         : null;
 
   return (
-    <div className="group flex h-full flex-col rounded-xl border bg-card p-4 transition-all hover:border-foreground/20 hover:shadow-sm">
+    <div className="group flex h-full flex-col rounded-md border bg-card p-4 transition-all hover:border-foreground/20 hover:shadow-sm">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40 p-1.5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-background p-1.5">
           {integration.iconUrl ? (
             <Image
               src={integration.iconUrl}
@@ -206,7 +222,18 @@ function IntegrationCard({
               unoptimized
             />
           ) : (
-            <div className="h-full w-full rounded bg-muted" />
+            (() => {
+              const meta = PROVIDER_ICON[integration.provider];
+              const Icon = meta?.icon ?? Puzzle;
+              return (
+                <Icon
+                  className="h-5 w-5"
+                  style={{
+                    color: meta?.color ?? 'rgb(var(--muted-foreground))',
+                  }}
+                />
+              );
+            })()
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -240,7 +267,7 @@ function IntegrationCard({
           ) : (
             <Badge
               variant="secondary"
-              className="shrink-0 rounded-full px-2.5 text-[10px] font-medium"
+              className="shrink-0 rounded-sm px-2.5 text-[10px] font-medium"
             >
               {categoryLabel(integration.category)}
             </Badge>
@@ -472,9 +499,9 @@ function IntegrationsContent() {
     return (
       <div className="space-y-6">
         <PageHeader title="Integrations" backHref="/dashboard/settings" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <Skeleton key={i} className="h-32 w-full rounded-md" />
           ))}
         </div>
       </div>
@@ -482,7 +509,7 @@ function IntegrationsContent() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div data-tour="integrations-header">
         <PageHeader title="Integrations" backHref="/dashboard/settings" />
       </div>
@@ -509,7 +536,7 @@ function IntegrationsContent() {
               key={category}
               size="sm"
               variant={activeCategory === category ? 'default' : 'outline'}
-              className="h-7 rounded-full px-3 text-xs"
+              className="h-7 rounded-md px-3 text-xs"
               onClick={() => setActiveCategory(category)}
             >
               {category === 'all' ? 'All' : categoryLabel(category)}
@@ -524,7 +551,7 @@ function IntegrationsContent() {
         </div>
       ) : (
         <div
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           data-tour="integrations-grid"
         >
           {filtered.map((integration) => (

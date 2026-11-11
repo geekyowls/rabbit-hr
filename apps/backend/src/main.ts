@@ -31,7 +31,7 @@ async function bootstrap() {
     .map((o) => o.trim())
     .filter(Boolean);
 
-  const PUBLIC_CORS_PATH_PREFIXES: string[] = [];
+  const PUBLIC_CORS_PATH_PREFIXES: string[] = ['/api/v1/public/'];
   const isPublicCorsPath = (path: string) =>
     PUBLIC_CORS_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
 

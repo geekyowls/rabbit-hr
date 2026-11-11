@@ -2,10 +2,14 @@
 
 ## Stack
 
-- Next.js 15 with static export (`output: "export"`) — fully client-side rendered
+- Next.js 15 with static export (`output: "export"`), fully client-side rendered
+- React 19, TypeScript
 - Radix UI + shadcn components with Tailwind CSS
 - class-variance-authority (CVA) for component variants
 - next-themes for dark mode
+- TanStack Query v5 (data fetching), TanStack Table v8 (data tables), recharts (charts), `@xyflow/react` (flow/hierarchy canvases)
+- react-hook-form + zod v4 for forms
+- GlitchTip (error reporting), OpenPanel (analytics)
 
 ## Hard Rules
 
@@ -14,16 +18,16 @@
 - NEVER change `output: "export"` or `images.unoptimized: true` in `next.config.ts`
 - Components using `useSearchParams()` MUST be wrapped in `<Suspense>`
 - Auth protection via `AuthGuard` component, NEVER middleware
-- NEVER hardcode API URLs — use `API_ROUTES` from `src/config/api-routes.ts`
-- NEVER use raw `fetch` for authenticated API calls — use `fetchApi()` from `src/utils/api-client.ts`
-- NEVER read/write tokens directly — use `getToken()`, `setToken()`, etc. from `src/utils/cookies.ts`
-- NEVER use dynamic routes (e.g. `[id]` folders) — static export does not support them. Use query params instead (e.g. `/roles/edit?id=xxx` instead of `/roles/[id]/edit`)
+- NEVER hardcode API URLs. Use `API_ROUTES` from `src/config/api-routes.ts`
+- NEVER use raw `fetch` for authenticated API calls. Use `fetchApi()` from `src/utils/api-client.ts`
+- NEVER read/write tokens directly. Use `getToken()`, `setToken()`, etc. from `src/utils/cookies.ts`
+- NEVER use dynamic routes (e.g. `[id]` folders), static export does not support them. Use query params instead (e.g. `/roles/edit?id=xxx` instead of `/roles/[id]/edit`)
 
 ## API Calls
 
 There are two ways to make API calls. Know when to use which:
 
-**`fetchApi(endpoint, options)`** — for all authenticated/data calls:
+**`fetchApi(endpoint, options)`**: for all authenticated/data calls:
 - Automatically attaches Bearer token from localStorage
 - Automatically handles 401 → refresh token → retry
 - Automatically unwraps `{ data: T }` response wrapper
@@ -34,7 +38,7 @@ const roles = await fetchApi<Role[]>(API_ROUTES.ROLES.LIST);
 await fetchApi(API_ROUTES.ROLES.DELETE(id), { method: 'DELETE' });
 ```
 
-**`fetch(buildApiUrl(route), options)`** — only for unauthenticated calls (login, register) or calls that bypass the refresh flow (session context refresh/logout):
+**`fetch(buildApiUrl(route), options)`**: only for unauthenticated calls (login, register, signup OTP, forgot/reset password) or calls that bypass the refresh flow (session context refresh/logout):
 
 ```typescript
 const response = await fetch(buildApiUrl(API_ROUTES.AUTH.LOGIN), { ... });
@@ -46,103 +50,85 @@ const response = await fetch(buildApiUrl(API_ROUTES.AUTH.LOGIN), { ... });
 
 All routes are defined in `src/config/api-routes.ts`. Here's what exists:
 
-**Auth** (unauthenticated — use `fetch(buildApiUrl(...))`)
-- `AUTH.LOGIN` — `POST /auth/login`
-- `AUTH.REGISTER` — `POST /auth/register`
-- `AUTH.REFRESH` — `POST /auth/refresh`
-- `AUTH.LOGOUT` — `POST /auth/logout`
-- `AUTH.FORGOT_PASSWORD` — `POST /auth/reset/request`
-- `AUTH.RESET_PASSWORD` — `POST /auth/reset`
-- `AUTH.UPDATE_PASSWORD` — `POST /auth/update-password`
+**App**
+- `VERSION`: `GET /version`
+- `HEALTH`: `GET /health`
 
-**Users** (authenticated — use `fetchApi(...)`)
-- `USERS.ME` — `GET /users/me`
-- `USERS.PROFILE` — `PUT /users/profile`
-- `USERS.LIST` — `POST /users/list` — **paginated**, body: `{ page, limit, status?, search? }`
-- `USERS.INVITE` — `POST /users/invite`
-- `USERS.RESEND_INVITE` — `POST /users/resend-invite`
-- `USERS.UPDATE(id)` — `PUT /users/:id`
-- `USERS.BLOCK(id)` — `POST /users/:id/block`
-- `USERS.UNBLOCK(id)` — `POST /users/:id/unblock`
+**Auth**
+- `AUTH.LOGIN`: `POST /auth/login` (unauthenticated)
+- `AUTH.REGISTER`: `POST /auth/register` (unauthenticated)
+- `AUTH.GOOGLE`: `POST /auth/google` (unauthenticated)
+- `AUTH.SEND_SIGNUP_OTP`: `POST /auth/signup/send-otp` (unauthenticated)
+- `AUTH.VERIFY_SIGNUP_OTP`: `POST /auth/signup/verify-otp` (unauthenticated)
+- `AUTH.FORGOT_PASSWORD`: `POST /auth/reset/request` (unauthenticated)
+- `AUTH.RESET_PASSWORD`: `POST /auth/reset` (unauthenticated)
+- `AUTH.REFRESH`: `POST /auth/refresh`
+- `AUTH.LOGOUT`: `POST /auth/logout`
+- `AUTH.UPDATE_PASSWORD`: `POST /auth/update-password`
+- `AUTH.ONBOARDING_CONTEXT`: `POST /auth/onboarding-context`
+- `AUTH.IMPERSONATE`: `POST /auth/impersonate`
 
-**Roles** (authenticated — use `fetchApi(...)`)
-- `ROLES.LIST` — `GET /roles` — **not paginated**, returns all roles
-- `ROLES.CREATE` — `POST /roles`
-- `ROLES.GET(id)` — `GET /roles/:id`
-- `ROLES.UPDATE(id)` — `PUT /roles/:id`
-- `ROLES.DELETE(id)` — `DELETE /roles/:id`
+**Users** (authenticated, use `fetchApi(...)`)
+- `USERS.ME`: `GET /users/me`
+- `USERS.PROFILE`: `PUT /users/profile`
+- `USERS.LIST`: `POST /users/list`, **paginated**, body: `{ page, limit, status?, search? }`
+- `USERS.NAMES(teamOnly?)`: `GET /users/names`
+- `USERS.INVITE`: `POST /users/invite`
+- `USERS.CREATE`: `POST /users/create`
+- `USERS.ACCEPT_INVITE`: `POST /users/accept-invite`
+- `USERS.RESEND_INVITE`: `POST /users/resend-invite`
+- `USERS.COMPLETE_TOUR`: `PUT /users/tour-complete`
+- `USERS.UPDATE(id)`: `PUT /users/:id`
+- `USERS.BLOCK(id)` / `USERS.UNBLOCK(id)`: `POST /users/:id/block|unblock`
+- `USERS.HIERARCHY`: `GET /users/hierarchy`
+- `USERS.SET_MANAGER(id)`: `POST /users/:id/set-manager`
+- `USERS.DESCENDANTS(id)`: `GET /users/:id/descendants`
+- `USERS.RESET_PASSWORD(id)`: `POST /users/:id/reset-password`
+- `USERS.PAGE_PREFERENCES`: `PUT /users/me/page-preferences`
 
-**Leads** (authenticated)
-- `LEADS.LIST` — `POST /leads/list` — **paginated**, body: `{ page, limit, status?, source?, assignedTo?, search? }`
-- `LEADS.CREATE` — `POST /leads`
-- `LEADS.GET(id)` — `GET /leads/:id`
-- `LEADS.UPDATE(id)` — `PUT /leads/:id`
-- `LEADS.UPDATE_STATUS(id)` — `PATCH /leads/:id/status`
-- `LEADS.ASSIGN(id)` — `POST /leads/:id/assign`
-- `LEADS.DELETE(id)` — `DELETE /leads/:id`
+**Roles** (authenticated)
+- `ROLES.LIST`: `GET /roles`, **not paginated**, returns all roles
+- `ROLES.LIST_FULL`: `POST /roles/list`
+- `ROLES.CREATE`: `POST /roles`
+- `ROLES.GET(id)`: `GET /roles/:id`
+- `ROLES.UPDATE(id)`: `PUT /roles/:id`
+- `ROLES.DELETE(id)`: `DELETE /roles/:id`
 
-**Clients** (authenticated)
-- `CLIENTS.LIST` — `POST /clients/list` — **paginated**, body: `{ page, limit, status?, assignedTo?, search? }`
-- `CLIENTS.CREATE` — `POST /clients`
-- `CLIENTS.GET(id)` — `GET /clients/:id`
-- `CLIENTS.UPDATE(id)` — `PUT /clients/:id`
-- `CLIENTS.UPDATE_STATUS(id)` — `PATCH /clients/:id/status`
-- `CLIENTS.ASSIGN(id)` — `POST /clients/:id/assign`
-- `CLIENTS.CONVERT_FROM_LEAD` — `POST /clients/convert-from-lead`
+**Audit** (authenticated)
+- `AUDIT.LIST`: `POST /audit/list`, **paginated**
+- `AUDIT.GET(id)`: `GET /audit/:id`
 
-**Foods** (authenticated)
-- `FOODS.LIST` — `POST /foods/list` — **paginated**, body: `{ page, limit, category?, search? }`
-- `FOODS.CREATE` — `POST /foods`
-- `FOODS.GET(id)` — `GET /foods/:id`
-- `FOODS.UPDATE(id)` — `PUT /foods/:id`
-- `FOODS.DELETE(id)` — `DELETE /foods/:id`
+**Sessions** (authenticated)
+- `SESSIONS.LIST`: `GET /sessions`
+- `SESSIONS.REVOKE(id)`: `POST /sessions/:id/revoke`
 
-**Diet Templates** (authenticated)
-- `DIET_TEMPLATES.LIST` — `POST /diet-templates/list` — **paginated**, body: `{ page, limit, tags?, search? }`
-- `DIET_TEMPLATES.CREATE` — `POST /diet-templates`
-- `DIET_TEMPLATES.GET(id)` — `GET /diet-templates/:id`
-- `DIET_TEMPLATES.UPDATE(id)` — `PUT /diet-templates/:id`
-- `DIET_TEMPLATES.DELETE(id)` — `DELETE /diet-templates/:id`
-
-**Client Diet** (authenticated)
-- `CLIENT_DIET.CREATE` — `POST /client-diet` — save single diet day
-- `CLIENT_DIET.BULK_CREATE` — `POST /client-diet/bulk` — save multiple days
-- `CLIENT_DIET.LIST` — `POST /client-diet/list` — **paginated** diet days for client
-- `CLIENT_DIET.GET_BY_DATE(contactId, date)` — `GET /client-diet/:contactId/:date`
-- `CLIENT_DIET.DELETE(contactId, date)` — `DELETE /client-diet/:contactId/:date`
-- `CLIENT_DIET.EXPORT_PDF` — `POST /client-diet/export-pdf`
-
-**Vitals** (authenticated)
-- `VITALS.RECORD` — `POST /vitals` — record single vital
-- `VITALS.RECORD_BULK` — `POST /vitals/bulk` — record multiple vitals
-- `VITALS.LIST` — `POST /vitals/list` — **paginated**, body: `{ page, limit, contactId, vitalType? }`
-- `VITALS.CHART` — `POST /vitals/chart` — get chart data for visualization
-- `VITALS.LATEST(contactId)` — `GET /vitals/latest/:contactId`
-- `VITALS.GET(id)` — `GET /vitals/:id`
-- `VITALS.UPDATE(id)` — `PUT /vitals/:id`
-- `VITALS.DELETE(id)` — `DELETE /vitals/:id`
-
-**Subscriptions** (authenticated)
-- `SUBSCRIPTIONS.LIST` — `POST /subscriptions/list` — **paginated**, body: `{ page, limit, clientId?, status? }`
-- `SUBSCRIPTIONS.CREATE` — `POST /subscriptions`
-- `SUBSCRIPTIONS.GET(id)` — `GET /subscriptions/:id`
-- `SUBSCRIPTIONS.UPDATE(id)` — `PUT /subscriptions/:id`
-- `SUBSCRIPTIONS.DELETE(id)` — `DELETE /subscriptions/:id`
-- `SUBSCRIPTIONS.RECORD_PAYMENT(id)` — `POST /subscriptions/:id/payments`
-- `SUBSCRIPTIONS.LIST_PAYMENTS(id)` — `GET /subscriptions/:id/payments`
-
-**Payments** (authenticated)
-- `PAYMENTS.UPDATE(id)` — `PUT /payments/:id`
-- `PAYMENTS.DELETE(id)` — `DELETE /payments/:id`
-
-**Contact Activities** (authenticated)
-- `CONTACT_ACTIVITIES.LIST` — `POST /contact-activities/list` — **paginated**, body: `{ page, limit, contactId, activityType? }`
-- `CONTACT_ACTIVITIES.CREATE` — `POST /contact-activities`
+**Notifications** (authenticated)
+- `NOTIFICATION_FEED.FEED`: `GET /me/notifications`
+- `NOTIFICATION_FEED.MARK_READ(id)`: `POST /me/notifications/:id/read`
+- `NOTIFICATION_FEED.READ_ALL`: `POST /me/notifications/read-all`
+- `NOTIFICATION_FEED.WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_SUBSCRIBE` / `WEB_PUSH_UNSUBSCRIBE`
+- `NOTIFICATION_FEED.TEST`: `POST /me/notifications/dev/test`
 
 **Integrations** (authenticated)
-- `INTEGRATIONS.LIST` — `GET /integrations`
-- `INTEGRATIONS.CONNECT(provider)` — `POST /integrations/:provider/connect`
-- `INTEGRATIONS.DISCONNECT(provider)` — `DELETE /integrations/:provider`
+- `INTEGRATIONS.LIST`: `GET /integrations`
+- `INTEGRATIONS.CONNECT(provider)`: `POST /integrations/:provider/connect`
+- `INTEGRATIONS.DISCONNECT(provider)`: `DELETE /integrations/:provider`
+- `INTEGRATIONS.CREDENTIALS(provider)`: `POST /integrations/:provider/credentials`
+- `INTEGRATIONS.HEALTH_CHECK(provider)`: `POST /integrations/:provider/health-check`
+- `INTEGRATIONS.RAZORPAY_WEBHOOK_TOKEN`, `INTEGRATIONS.RAZORPAY_WEBHOOK(token)`
+
+**Organization** (authenticated)
+- `ORGANIZATION.GET`: `GET /organization`
+- `ORGANIZATION.UPDATE`: `PUT /organization`
+- `ORGANIZATION_CONFIG.CREATE`: `POST /organization-config`
+
+**Storage** (authenticated)
+- `STORAGE.UPLOAD_URL`: `GET /storage/upload-url`
+
+**System Admin** (authenticated, system org only)
+- `SYSTEM_ADMIN.ORGANIZATIONS.LIST` / `CREATE` / `UPDATE_STATUS(id)` / `ACCESS(id)`
+- `SYSTEM_ADMIN.RESET_LOGIN_LOCKOUT`
+- `SYSTEM_ADMIN.SYNC_PERMISSIONS`
 
 ## Pagination
 
@@ -164,7 +150,7 @@ const roles = await fetchApi<Role[]>(API_ROUTES.ROLES.LIST);
 // roles = array of all roles
 ```
 
-When the backend wraps in `{ data: T }`, `fetchApi` unwraps it automatically. But for paginated responses that return `{ data: T[], page, total, ... }`, the outer `{ data: ... }` is unwrapped by fetchApi, so you receive `{ data: T[], page, total, ... }` — the inner `data` field is the actual array.
+When the backend wraps in `{ data: T }`, `fetchApi` unwraps it automatically. But for paginated responses that return `{ data: T[], page, total, ... }`, the outer `{ data: ... }` is unwrapped by fetchApi, so you receive `{ data: T[], page, total, ... }`, the inner `data` field is the actual array.
 
 ## Pagination Rules (IMPORTANT)
 
@@ -180,6 +166,8 @@ When the backend wraps in `{ data: T }`, `fetchApi` unwraps it automatically. Bu
    - Next: `setPage(p => p + 1)`
    - Disable previous when `page === 1`
    - Disable next when `page >= totalPages`
+
+TanStack Table's internal `pageIndex` is 0-based. If you use it, convert at the API boundary (`page: pageIndex + 1`) and never send it raw.
 
 ### Why 1-indexed:
 
@@ -210,16 +198,19 @@ When the backend wraps in `{ data: T }`, `fetchApi` unwraps it automatically. Bu
 
 1. Add the route to `API_ROUTES` in `src/config/api-routes.ts`
 2. Use `fetchApi(API_ROUTES.YOUR.ROUTE)` in your component
-3. Match the response type to the backend DTO
+3. Match the response type to the backend DTO (types live in `src/types/`)
 4. For paginated endpoints, send `{ page, limit }` in body and handle the pagination metadata
 
 ## Token Storage
 
 Tokens are stored in **localStorage** (not cookies). The file is named `cookies.ts` for historical reasons but uses `localStorage` exclusively.
 
-- `getToken()` / `setToken(token)` — access token
-- `getRefreshToken()` / `setRefreshToken(token)` — refresh token
-- `clearTokens()` — remove both
+- `getToken()` / `setToken(token)`: access token
+- `getRefreshToken()` / `setRefreshToken(token)`: refresh token
+- `clearTokens()`: remove both
+- `getActiveToken()`: the token currently in effect (accounts for system-admin access)
+- Impersonation: `saveOriginalTokens()`, `getOriginalToken()`, `getOriginalRefreshToken()`, `clearOriginalTokens()`, `hasOriginalTokens()`
+- System-admin org access: `setSystemAdminAccess()`, `isSystemAdminAccess()`, `getSystemAccessToken()`, `setSystemAccessToken()`, `clearSystemAccessToken()`
 
 ## Auto-Refresh Flow
 
@@ -235,10 +226,11 @@ Session context also attempts refresh on app init when the access token is expir
 
 ## Session & Auth
 
-- `useSession()` — returns `{ user, setUser, isLoading, isAuthenticated, logout }`
+- `useSession()` returns `{ user, organization, organizationConfig, userPreferences, pagePreferences, setUser, setOrganization, setOrganizationConfig, setUserPreferences, setPagePreferences, isLoading, isAuthenticated, isLoggingOut, logout, loadFullSession }`
 - `SessionProvider` wraps the entire app in root layout
-- On mount: decodes access token → if expired, tries refresh → sets user or clears tokens
+- On mount: decodes access token → if expired, tries refresh → sets user or clears tokens; `GET /users/me` fills organization, config and preferences
 - `logout()` calls backend `/auth/logout`, clears tokens, redirects to `/`
+- Auth screens: `/` (login), `/signup` (OTP signup stepper), `/forgot-password`, `/reset-password`, `/login/success` and `/oauth/callback` (OAuth returns), `/no-access`, `/no-access/pending`, `/no-access/suspended`
 
 ## Route Protection
 
@@ -254,19 +246,21 @@ export default function DashboardLayout({ children }) {
 </PermissionGuard>
 ```
 
+`PermissionGuard` props: `permissions` (one or many), `requireAll?` (default any), `fallback?`.
+
 ## Permissions
 
-- `usePermissions()` — returns `{ hasPermission, hasAnyPermission, hasAllPermissions, getScope }`
+- `usePermissions()` returns `{ hasPermission, hasAnyPermission, hasAllPermissions, getScope }`
 - Permission constants re-exported from `@boilerplate/shared` in `src/constants/permissions.constants.ts`
 - Available exports: `PERMISSIONS_ENUM`, `ALL_PERMISSIONS`, `PERMISSION_GROUPS`, `PERMISSION_BASE`, `PermissionScope`
 - `NEXT_PUBLIC_DEV_BYPASS_PERMISSIONS=true` bypasses all permission checks in development
-- Scope support: `getScope(PERMISSION_BASE.CLIENT_LIST_READ)` returns `PermissionScope | null`
-- NEVER hardcode scope strings (`'own'`, `'team'`, `'all'`) — use `PermissionScope.OWN`, `PermissionScope.TEAM`, `PermissionScope.ALL`
-- NEVER hardcode base permission strings — use `PERMISSION_BASE.CLIENT_LIST_READ`, `PERMISSION_BASE.LEAD_UPDATE`, etc.
+- Scope support: `getScope(PERMISSION_BASE.USER_LIST_READ)` returns `PermissionScope | null`
+- NEVER hardcode scope strings (`'own'`, `'team'`, `'all'`). Use `PermissionScope.OWN`, `PermissionScope.TEAM`, `PermissionScope.ALL`
+- NEVER hardcode base permission strings. Use `PERMISSION_BASE.USER_LIST_READ`, `PERMISSION_BASE.USER_UPDATE`, etc.
 
 ## Error Handling
 
-- `fetchApi` throws `ApiError(message, statusCode)` on failures
+- `fetchApi` throws `ApiError(message, statusCode)` on failures (`src/utils/error-class.ts`)
 - Catch in components with try/catch, show toast:
   ```typescript
   try {
@@ -276,7 +270,10 @@ export default function DashboardLayout({ children }) {
     toast.error(err.message || 'Something went wrong');
   }
   ```
-- Error boundary catches unhandled 401s, shows countdown, auto-logs out
+- Error boundary (`src/components/error-boundary.tsx`) catches unhandled 401s, shows countdown, auto-logs out
+- `src/app/error.tsx`, `src/app/global-error.tsx`, `src/app/dashboard/error.tsx` are route-level error screens
+- `chunk-error-recovery.tsx` + `src/lib/chunk-reload.ts` reload the page once after a stale-deploy chunk load failure
+- GlitchTip is initialised by `glitchtip-init.tsx` (`src/lib/glitchtip.ts`)
 
 ## Component Library
 
@@ -284,87 +281,87 @@ This project uses **shadcn/ui** (new-york style) with **Radix UI** primitives an
 
 - Config: `components.json` (style: `new-york`, base color: `zinc`)
 - Add new components: `npx shadcn@latest add <component>`
-- NEVER modify existing `src/components/ui/` files unless fixing a bug — these are shadcn-managed
-- Icons: `lucide-react`
+- NEVER modify existing `src/components/ui/` files unless fixing a bug, these are shadcn-managed
+- Icons: `lucide-react` (brand logos in `src/components/icons/brand-icons.tsx`)
 - Class merging: `cn()` from `src/lib/utils.ts` (uses `clsx` + `tailwind-merge`)
-- Variants: `class-variance-authority` (CVA) — used in Button, Badge, etc.
+- Variants: `class-variance-authority` (CVA), used in Button, Badge, etc.
 
-### Available UI Components
+### UI Primitives (`src/components/ui/`)
 
-All in `src/components/ui/`:
-
-- **Layout**: `card`, `separator`, `tabs`, `scroll-area`
-- **Forms**: `input`, `label`, `button`, `checkbox`, `select`, `multi-select`, `switch`
-- **Data Display**: `table`, `table-skeleton`, `badge`, `avatar`, `skeleton`
-- **Feedback**: `toast`, `toaster`, `tooltip`, `alert-dialog`, `dialog`
+- **Layout**: `card`, `separator`, `tabs`, `scroll-area`, `accordion`, `collapsible`, `sheet`, `page-header`, `breadcrumb`
+- **Forms**: `input`, `textarea`, `label`, `button`, `checkbox`, `select`, `multi-select`, `switch`, `toggle`, `calendar`, `date-picker`, `time-slot-select`, `phone-input`, `country-combobox`, `state-combobox`, `dynamic-tag-input`, `tag-input-with-suggestions`
+- **Data Display**: `table`, `table-skeleton`, `list-page-skeleton`, `badge`, `avatar`, `initials-avatar`, `skeleton`, `progress`, `keyboard-shortcut`
+- **Feedback**: `toast`, `toaster`, `use-toast`, `tooltip`, `alert-dialog`, `dialog`
 - **Navigation**: `dropdown-menu`, `command`, `popover`
 - **Status**: `status-select`
 
+### Patterns (`src/components/patterns/`)
+
+Reusable composites built on the primitives. Import from `@/components/patterns`. Live gallery at `/dashboard/components` (and `/dashboard/components/toolbars`), development only.
+
+- `toolbar`: `FilterBar`, `SearchInput`, `SegmentedControl`, toolbar controls
+- `data-table`: `DataTable` (TanStack Table), `DataTablePagination`, `DataTableToolbar`, `DataTableColumnToggle`, `StatusPill`, `AvatarStack`, `SortableHeader`, `RowActions`
+- `data-grid`: `DataGrid` (+ `DataGridColumn`), `ColumnChooser`
+- `detail-drawer`: side drawer for entity details
+- `cards`: `EntityCard`, `SectionCard`, `SourceCard`
+- `stats`: `StatTile`, `TrendStat`
+- `charts`: chart wrappers, `FunnelChart`, `DeltaBadge`
+- `analytics`, `kanban`, `timeline`, `rating` (`RatingStars`), `feedback` (`EmptyState`)
+
+Before building a new table, toolbar, drawer, card or chart, check the patterns first.
+
 ### Feature Components
 
-- `src/components/auth/` — `AuthGuard`, `PermissionGuard`, `LoginForm`, `ForgotPasswordForm`, `ResetPasswordForm`
-- `src/components/dashboard/` — `DashboardContent`, `DashboardHeader`, `DashboardNav`
-- `src/components/roles/` — `PermissionPicker`
-- `src/components/leads/` — `LeadForm`, `CreateLeadDialog`, `EditLeadDialog`, `ViewLeadDialog`, `LeadStatusSelect`, `ConvertToClientDialog`
-- `src/components/clients/` — `ClientForm`, `ClientProfileHeader`, `ClientStatusBadge`, dialogs, tab components (OverviewTab, DietPlansTab, VitalsTab, SubscriptionsTab, CounsellingTab, FollowupsTab)
-- `src/components/foods/` — `FoodForm`, `CreateFoodDialog`, `EditFoodDialog`, `ViewFoodDialog`
-- `src/components/diet-templates/` — `DietGrid`, `DietTemplateForm`, `MealCell`, `AddFoodDialog`
-- `src/components/vitals/` — `RecordVitalsDialog`, `EditVitalDialog`, `DeleteVitalDialog`, `LatestVitalsCard`, `VitalsHistoryTable`, `VitalsProgressChart`
-- `src/components/error-boundary.tsx` — global error boundary with 401 auto-logout
-- `src/components/theme-provider.tsx` — next-themes wrapper
+- `src/components/auth/`: `AuthGuard`, `PermissionGuard`, `DemoGuard`, `LoginForm`, `SignupForm`, `SignupStepper`, `GoogleLoginButton`, `ForgotPasswordForm`, `ResetPasswordForm`
+- `src/components/dashboard/`: `DashboardHeader`, `DashboardNav`, `MobileNav`, `BrandLockup`, `ProtectedNavLink`, `NotificationsBell`, `WebPushToggle`, `SupportFooter`
+- `src/components/common/`: `CommandPalette`, `KeyboardShortcutsHelp`, `DisplaySettings`, `SavedViewsBar`, `AssignedToFilter`, `StickyTab`
+- `src/components/roles/`: `PermissionPicker`, `PermissionSection`, `PermissionSubGroup`, `ScopeSelector`, `NotificationDigestPanel`, `permission-ui-config.ts`
+- `src/components/users/`: `CreateUserDialog`, `EditUserDialog`, `SetManagerDialog`, `UserHierarchy` (xyflow tree)
+- `src/components/audit/`: `AuditLogView`
+- `src/components/integrations/`: `ApiKeyConnectionDialog`
+- `src/components/system/`: `SystemHeader`, `SystemNav`
+- `src/components/skeletons/`: `SettingsPageSkeleton`
+- HR product UI: `candidates/`, `jobs/`, `pipeline/`, `interviews/`, `offers/`, `agents/`, `reports/` (see Feature Pages)
+- `src/components/error-boundary.tsx`: global error boundary with 401 auto-logout
+- `src/components/theme-provider.tsx`: next-themes wrapper
 
 ---
 
 ## Feature Pages
 
-### Dashboard Overview (`/dashboard`)
-Main dashboard with summary widgets and quick actions.
+### HR product pages (UI only, no backend yet)
 
-### Leads (`/dashboard/leads`)
-Lead management with table listing, status filters, search, and assignment. Components: create/edit/view dialogs, convert-to-client flow.
+These pages are built on the patterns library with local/sample data (`*-data.ts`, in-file constants, `agent-store.ts`). None of them call `fetchApi` yet; there are no backend modules for them. When wiring one up, add the backend module + `API_ROUTES` + types in the same change.
 
-### Clients (`/dashboard/clients`)
-Client list with status badges and filtering.
+- **Dashboard** (`/dashboard`): overview widgets
+- **Candidates** (`/dashboard/candidates`): `DataGrid` list, add-candidate drawer, candidate detail drawer (resume preview via `docx-viewer`)
+- **Jobs** (`/dashboard/jobs`): job list + `JobFormDrawer`
+- **Pipeline** (`/dashboard/pipeline`): kanban board per job (`PipelineBoard`, `PipelineCard`, `JobSummary`)
+- **Interviews** (`/dashboard/interviews`): schedule drawer, scorecard form
+- **Offers** (`/dashboard/offers`): offer list + `OfferFormDrawer`
+- **Agents** (`/dashboard/agents`, `/dashboard/agents/new`): AI agent builder with flow preview and test run
+- **Reports** (`/dashboard/reports`): executive, pipeline, sourcing, outcome, team, compliance reports
+- **Help** (`/dashboard/help`)
 
-**Client Details** (`/dashboard/clients/details?id=xxx`) — Tabbed interface:
-- **Overview** — Profile info, health context panel, activity timeline
-- **Diet Plans** — Diet grid editor, template import, PDF export
-- **Vitals** — Record vitals, view history table, progress charts
-- **Subscriptions** — Manage subscriptions, record payments
-- **Counselling** — First consultation tracking
-- **Follow-ups** — Recurring session management
+### Settings (`/dashboard/settings`), backed by the API
 
-### Food Database (`/dashboard/food-database`)
-Food item management with nutrition data (calories, protein, carbs, fat, fiber). Search and category filtering.
+- **General** (`/dashboard/settings/general`): account settings
+- **Organization** (`/dashboard/settings/organization`): organization profile
+- **Users** (`/dashboard/settings/users`): user list (`DataTable`), invite/create, edit, block/unblock, set manager, hierarchy view
+- **Roles** (`/dashboard/settings/roles`, `/new`, `/edit?id=xxx`): role management with permission picker and scopes
+- **Integrations** (`/dashboard/settings/integrations`): OAuth and API-key connections
+- **Audit** (`/dashboard/settings/audit`): activity logs with filters
 
-### Diet Templates (`/dashboard/diet-templates`)
-Reusable 7-day diet plan templates.
+### System admin (`/system`)
 
-- **List** — Template cards with tags
-- **New** (`/dashboard/diet-templates/new`) — Create template with meal grid
-- **Edit** (`/dashboard/diet-templates/edit?id=xxx`) — Edit existing template
-- **View** (`/dashboard/diet-templates/view?id=xxx`) — Read-only template view
-
-**Diet Grid Interface**: 7 columns (days) × 4 rows (breakfast, lunch, dinner, snacks). Each cell shows food items with quantities. Add food via search dialog.
-
-### Reports (`/dashboard/reports`)
-Analytics and reporting dashboard.
-
-### Settings (`/dashboard/settings`)
-
-- **General** (`/dashboard/settings/general`) — Organization settings
-- **Users** (`/dashboard/settings/users`) — User list, invite users, block/unblock
-- **Roles** (`/dashboard/settings/roles`) — Role management with permission picker
-- **Integrations** (`/dashboard/settings/integrations`) — OAuth connections (Google Calendar, etc.)
-- **Audit** (`/dashboard/settings/audit`) — Activity logs with filters
+For users of the system org: `/system`, `/system/organizations` (org list, status, access), `/system/organizations/create`. `/auth/system-access` completes the system-admin org access handoff (`useSystemAdminAccess`).
 
 ---
 
 ## Data Tables
 
-Tables use the composable shadcn `Table` component (`src/components/ui/table.tsx`), NOT a third-party data table library.
-
-### Table Components
+- List pages use `DataTable` from `@/components/patterns` (TanStack Table under the hood, with `DataTablePagination`, `SortableHeader`, `RowActions`, `StatusPill`). Spreadsheet-like lists use `DataGrid`.
+- For a small static table, the composable shadcn `Table` (`src/components/ui/table.tsx`) is fine:
 
 ```typescript
 import {
@@ -375,7 +372,7 @@ import {
 
 ### Loading State
 
-Use `TableSkeleton` from `src/components/ui/table-skeleton.tsx` as a placeholder while data loads.
+Use `TableSkeleton` (`src/components/ui/table-skeleton.tsx`) or `ListPageSkeleton` as a placeholder while data loads.
 
 ### Pattern for List Pages
 
@@ -417,22 +414,15 @@ Data fetching and caching via **TanStack React Query v5**.
 
 ### Setup
 
-Query client configured in `src/app/providers.tsx`. Wrap app with `QueryClientProvider`.
+Query client configured in `src/providers/query-provider.tsx` (`QueryClientProvider`), mounted from the root layout.
 
 ### Query Hooks
 
-All query hooks live in `src/hooks/queries/`:
+Query hooks live in `src/hooks/queries/` (exported from `index.ts`):
 
-- `useVitalsQuery` — vitals CRUD with chart data
-- `useActivitiesQuery` — infinite scroll for contact activities
-- `useCounsellingQuery` — counselling sessions
-- `useAttachmentsQuery` — file attachments
-- `useSubscriptionsQuery` — subscription management
-- `useFoodTagsQuery` — food tag autocomplete
-- `useClientDietQuery` — diet day management
-- `useFoodFacetsQuery` — Typesense facet counts
-- `useDietTemplatesQuery` — diet template search
-- `useTransformationsQuery` — client transformations
+- `use-notifications-query.ts`: `notificationsKeys`, `useNotificationsFeedQuery`, `useMarkNotificationReadMutation`, `useMarkAllNotificationsReadMutation`, `useSendTestNotificationMutation`
+
+Add new hooks here, one file per resource, with a `<resource>Keys` factory for query keys.
 
 ### Patterns
 
@@ -440,14 +430,14 @@ All query hooks live in `src/hooks/queries/`:
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const { data, isLoading, error } = useQuery({
-  queryKey: ['vitals', contactId],
-  queryFn: () => fetchApi<Vital[]>(API_ROUTES.VITALS.LIST),
+  queryKey: ['roles'],
+  queryFn: () => fetchApi<Role[]>(API_ROUTES.ROLES.LIST),
 });
 
 const queryClient = useQueryClient();
 const mutation = useMutation({
-  mutationFn: (data) => fetchApi(API_ROUTES.VITALS.RECORD, { method: 'POST', body: JSON.stringify(data) }),
-  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vitals'] }),
+  mutationFn: (data) => fetchApi(API_ROUTES.ROLES.CREATE, { method: 'POST', body: JSON.stringify(data) }),
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
 });
 ```
 
@@ -458,49 +448,11 @@ const mutation = useMutation({
 
 ---
 
-## Typesense Search Integration
-
-Full-text search via Typesense with scoped API keys.
-
-### Client Setup (`src/lib/typesense.ts`)
-
-- `getTypesenseClient(collection?)` — get cached Typesense client
-- Search key expires after 5 minutes, auto-refreshes
-- Retry logic on 401 (expired key) errors
-
-### Search Functions
-
-```typescript
-import { searchTypesense, searchTypesenseWithMeta, getTypesenseFacets } from '@/lib/typesense';
-
-const results = await searchTypesense<Food>('foods', query, { limit: 10 });
-const { hits, found } = await searchTypesenseWithMeta<Food>('foods', query);
-const facets = await getTypesenseFacets('foods', 'dietType');
-```
-
-### Search Hooks (`src/hooks/use-typesense-search.ts`)
-
-```typescript
-import { useTypesenseSearch, useTypesenseSearchInfinite, useTypesenseFacets } from '@/hooks/use-typesense-search';
-
-const { results, isLoading } = useTypesenseSearch<Food>('foods', query, { limit: 15, debounceMs: 500 });
-const { results, hasMore, found } = useTypesenseSearchInfinite<Food>('foods', query, { page });
-const { facets } = useTypesenseFacets('foods', 'cuisine');
-```
-
-### Collections
-
-- `foods` — food items (queryBy: `name,description,tags`)
-- `recipes` — recipes (queryBy: `title,description,tags`)
-- `diet-templates` — templates (queryBy: `name,description,tags`)
-
----
-
 ## Forms (react-hook-form + zod)
 
 All forms use **react-hook-form** with **zod v4** validation.
 
-**IMPORTANT**: NEVER import `zodResolver` from `@hookform/resolvers/zod` — it doesn't support Zod v4 schemas. Always use the compatibility wrapper:
+**IMPORTANT**: NEVER import `zodResolver` from `@hookform/resolvers/zod`, it doesn't support Zod v4 schemas. Always use the compatibility wrapper:
 
 ```typescript
 // ❌ BAD - causes TS2769 overload error with Zod v4 schemas
@@ -514,8 +466,11 @@ import { zodResolver } from '@/lib/zod-resolver';
 
 Schemas live in `src/schemas/`:
 
-- `auth.schema.ts` — `loginSchema`, `forgotPasswordSchema`, `resetPasswordSchema`
-- `role.schema.ts` — `roleSchema`
+- `auth.schema.ts`: `loginSchema`, `forgotPasswordSchema`, `resetPasswordSchema`, `sendOtpSchema`, `verifyOtpSchema`, `signupDetailsSchema`, `signupSchema`
+- `user.schema.ts`: `inviteUserSchema`, `createUserSchema`, `editUserSchema`, `acceptInviteSchema`, `updateProfileSchema`
+- `role.schema.ts`: `roleSchema`
+- `organization.schema.ts`: `organizationSchema`, `addressSchema`, `invoiceSettingsSchema`, `pdfTemplateSchema`
+- `helpers.ts`: `strongPasswordSchema`, `PASSWORD_REGEX`, `PASSWORD_COMPLEXITY_MESSAGE`, `optionalNumber`, `requiredNumber`
 
 When adding a new form, create a schema in the appropriate file (or a new file in `src/schemas/`). Always export the inferred type alongside the schema:
 
@@ -556,7 +511,7 @@ const onSubmit = async (data: MyFormData) => {
 return (
   <form onSubmit={handleSubmit(onSubmit)}>
     <Input {...register('name')} />
-    {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+    {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
     <Button type="submit" disabled={isSubmitting}>Submit</Button>
   </form>
 );
@@ -583,8 +538,8 @@ import { Controller } from 'react-hook-form';
 
 ### Form Rules
 
-- NEVER use raw `useState` for form fields — use `useForm` + zod
-- NEVER use manual `isLoading` state for form submission — use `isSubmitting` from `formState`
+- NEVER use raw `useState` for form fields. Use `useForm` + zod
+- NEVER use manual `isLoading` state for form submission. Use `isSubmitting` from `formState`
 - Always provide `defaultValues` in `useForm`
 - Use `reset()` to populate form with fetched data (edit pages)
 - Show field errors with `errors.fieldName?.message`
@@ -592,41 +547,52 @@ import { Controller } from 'react-hook-form';
 
 ## Component Conventions
 
-- UI primitives in `src/components/ui/` (shadcn pattern — do not modify unless necessary)
+- UI primitives in `src/components/ui/` (shadcn pattern, do not modify unless necessary)
+- Reusable composites in `src/components/patterns/`
 - Feature components in `src/components/<feature>/`
 - Use `cn()` from `src/lib/utils.ts` for merging Tailwind classes
 - Use `toast.success()`, `toast.error()`, `toast.info()` from `src/lib/toast.ts`
 - Use `formatDateTime()`, `formatDate()` from `src/lib/utils.ts`
+- Breadcrumbs are set with `useBreadcrumb()` from `src/contexts/breadcrumb-context.tsx` and rendered only by the dashboard header
 
 ## Key Utilities
 
 ### API & Data
 
-- `fetchApi<T>(endpoint, options?)` — `src/utils/api-client.ts`
-- `fetchApiBlob(endpoint, options?)` — binary response handling for PDFs
-- `useSession()` — `src/contexts/session-context.tsx`
-- `usePermissions()` — `src/hooks/use-permissions.ts`
+- `fetchApi<T>(endpoint, options?)`: `src/utils/api-client.ts`
+- `fetchApiBlob(endpoint, options?)`: binary responses (files, PDFs)
+- `useSession()`: `src/contexts/session-context.tsx`
+- `usePermissions()`: `src/hooks/use-permissions.ts`
 
-### Keyboard Navigation Hooks
+### Contexts (`src/contexts/`)
 
-- `useKeyboardShortcuts()` — multiple shortcuts with modifier keys
-- `useKeyboardShortcut()` — single shortcut
-- `useDietGridNavigation()` — 2D grid navigation for diet editor
-- `useArrowNavigation()` — generic list/grid navigation
-- `useInfiniteScroll()` — intersection observer for lazy loading
+- `SessionProvider` / `useSession`
+- `BreadcrumbProvider` / `useBreadcrumb`, `useBreadcrumbContext`
+- `SidebarProvider` / `useSidebar`
+- `KeyboardProvider` / `useKeyboardContext`, `useKeyboardEnabled`, `useRegisteredShortcuts`, `useShortcutsByContext`
+- `DisplayPrefsProvider` / `useDisplayPrefs` (text size etc., stored in localStorage)
+- `FocusModeProvider` / `useFocusMode`
+- `UnsavedChangesProvider` / `useUnsavedChanges`
 
-### Advanced Hooks
+### Hooks (`src/hooks/`)
 
-- `useClientDiet(contactId)` — diet management with save/export
-- `useImpersonation()` — admin impersonation workflow
-- `useDebounce(value, delay)` — debounce any value
+- `useKeyboardShortcuts()`: multiple shortcuts with modifier keys; `useKeyboardShortcut()`: single shortcut; `formatShortcut()`
+- `useArrowNavigation()`: generic list/grid navigation
+- `useInfiniteScroll()`: intersection observer for lazy loading
+- `useDebounce(value, delay)`: debounce any value
+- `useSavedViews()`: saved list views backed by page preferences
+- `useImpersonation()`: admin impersonation workflow
+- `useSystemAdminAccess()`: system-admin org access flow
+- `useAnalytics()`: OpenPanel event tracking
 
 ### Utility Files
 
-- `src/utils/nutrition-colors.ts` — `MACRO_COLORS` with dark mode variants
-- `src/utils/diet-compatibility.ts` — dietary restriction checking
-- `src/lib/form-utils.ts` — `getNumberFieldError()`
-- `src/lib/zod-resolver.ts` — Zod v4 compatibility wrapper
+- `src/lib/utils.ts`: `cn`, `formatDateTime`, `formatDate`, `generateAvatarColors`, `getInitials`, `getCurrencySymbol`, `formatCurrency`, `formatBytes`, `formatPhone`
+- `src/lib/text.ts`: `formatFreeTextLabel`, `titleCaseTag`, `formatTagListDisplay`
+- `src/lib/export-csv.ts`: `downloadCsv`, `CsvColumn`
+- `src/lib/web-push.ts`: push support/permission/subscribe helpers
+- `src/lib/form-utils.ts`: `getNumberFieldError()`
+- `src/lib/zod-resolver.ts`: Zod v4 compatibility wrapper
 
 ## Dark Mode Styling
 
@@ -636,8 +602,8 @@ This app supports dark mode via `next-themes`. **Always include dark mode varian
 
 - NEVER use light-only backgrounds like `bg-blue-50` without a `dark:` variant
 - NEVER use light-only text colors like `text-blue-600` without a `dark:` variant
-- Use semantic colors (`text-muted-foreground`, `bg-muted`, `border-border`) when possible — they auto-adapt
-- For custom status/badge colors, always pair light and dark variants
+- Use semantic colors (`text-muted-foreground`, `bg-muted`, `border-border`) when possible, they auto-adapt
+- For custom status/badge colors, always pair light and dark variants (or use `StatusPill` tones)
 
 ### Pattern for Custom Color Badges
 
@@ -762,14 +728,12 @@ import { useDebounce } from '@/hooks/use-debounce';
 function MyListPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
   const debouncedSearch = useDebounce(search, 500);
 
   const loadData = useCallback(async () => {
-    const body = {
-      page: pagination.pageIndex + 1,
-      limit: pagination.pageSize,
-    };
+    const body: Record<string, unknown> = { page, limit };
     if (debouncedSearch) body.search = debouncedSearch;
     if (statusFilter !== 'all') body.status = statusFilter;
 
@@ -777,14 +741,14 @@ function MyListPage() {
       method: 'POST',
       body: JSON.stringify(body),
     });
-  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, statusFilter]);
+  }, [page, limit, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    setPage(1);
   }, [debouncedSearch, statusFilter]);
 
   return (
@@ -808,64 +772,30 @@ function MyListPage() {
 ❌ Single-click actions (buttons, links)
 ❌ Select/dropdown changes (these are discrete, not continuous)
 
-## Types
+## Types (`src/types/`)
 
-**Core Types**
-- `JWTPayload` — decoded access token: `{ userId, email, organizationId, permissions[], firstName?, lastName? }`
-- `LoginResponse` — `{ accessToken, refreshToken, user, organization }`
-- `Role` — `{ id, name, permissions[], organizationId, isDefault, createdAt, updatedAt }`
-- `PaginatedResponse<T>` — `{ data: T[], page, limit, total, totalPages, hasNextPage, hasPreviousPage }`
-- `Permission` — union type of all `PERMISSIONS_ENUM` values
-- `UserBasic` — `{ id, firstName, lastName, email }` for dropdowns/assignments
+- `user.type.ts`: `UserStatus`, `User`, `Organization`, `JWTPayload` (`{ userId, email, organizationId, permissions[], firstName?, lastName? }`), `LoginResponse` (`{ accessToken, refreshToken, user, organization }`), `GoogleLoginResponse`, `UserDropdown`, `HierarchyUser`, `getFullName`
+- `common.type.ts`: `UserBasic` (`{ id, firstName, lastName, email }` for dropdowns/assignments), `PaginatedResponse<T>`
+- `pagination.type.ts`: `PaginatedResponse<T>` (`{ data: T[], page, limit, total, totalPages, hasNextPage, hasPreviousPage }`)
+- `role.type.ts`: `Role` (`{ id, name, permissions[], organizationId, isDefault, createdAt, updatedAt }`), `RoleDropdown`
+- `permissions.type.ts`: `Permission` (union of all `PERMISSIONS_ENUM` values)
+- `organization.type.ts`: `Organization`, `OrganizationAddress`, `InvoiceSettings`, `UpdateOrganizationRequest`, feature controls
+- `organization-config.type.ts`: `OrganizationConfigType`, `ConfigItem`, `OrganizationConfig`
+- `integration.type.ts`: `IntegrationCategory`, `IntegrationAuthType`, `IntegrationStatus`, `IntegrationListItem`, `SaveCredentialsResponse`, `HealthCheckResponse`
+- `notification.ts`: `NotificationPriority`, `NotificationFeedItem`, `NotificationFeedResponse`
+- `session.ts`: `ActiveSession`
+- `page-preferences.type.ts`: `SavedView`, `PagePreference`, `PagePreferences`
 
-**Lead Types** (`src/types/lead.ts`)
-- `LeadStatus` — new, contacted, qualified, unqualified, converted, lost
-- `LeadSource` — website, referral, social_media, advertisement, walk_in, other
-- `Lead` — full lead object with contact info, status, source, assignedTo
-- `LeadListResponse` — paginated response with Lead[]
-
-**Client Types** (`src/types/client.ts`)
-- `Gender` — male, female, other
-- `DietaryPreference` — vegetarian, non_vegetarian, vegan, eggetarian
-- `Client` — full client with health profile (age, weight, height, conditions, allergies)
-- `ClientListResponse` — paginated response with Client[]
-
-**Food Types** (`src/types/food.ts`)
-- `FoodItem` — name, category, calories, protein, carbs, fat, fiber, servingSize, servingUnit
-- `FoodListResponse` — paginated response with FoodItem[]
-
-**Diet Template Types** (`src/types/diet-template.ts`)
-- `MealItem` — foodId, foodName, quantity, unit, calories, protein, carbs, fat
-- `Meal` — array of MealItem (breakfast, lunch, dinner, snacks)
-- `DietDay` — dayNumber, meals object with breakfast/lunch/dinner/snacks
-- `DietTemplate` — name, description, tags, days[]
-- `DietTemplateListResponse` — paginated response
-
-**Client Diet Types** (`src/types/client-diet.ts`)
-- `ClientDietMeal` — meal items for a specific meal slot
-- `ClientDietDay` — contactId, date, meals, totals (calories, protein, carbs, fat)
-- `SaveDietDaysBulkRequest` — bulk save request shape
-
-**Vital Types** (`src/types/vital.ts`)
-- `VitalType` — weight, height, bmi, body_fat, blood_pressure_systolic, blood_pressure_diastolic, blood_sugar_fasting, blood_sugar_pp, waist, hip, chest, arm
-- `Vital` — id, contactId, vitalType, value, unit, recordedAt
-- `VitalChartPoint` — date, value for chart visualization
-- `RecordVitalRequest`, `RecordVitalsBulkRequest` — request shapes
-
-**Subscription Types** (`src/types/subscription.ts`)
-- `SubscriptionStatus` — active, paused, expired, cancelled
-- `PaymentMode` — cash, upi, card, bank_transfer, other
-- `Subscription` — clientId, planName, amount, startDate, endDate, status, payments[]
-- `Payment` — subscriptionId, amount, paymentMode, paidAt
-
-**Contact Activity Types** (`src/types/contact-activity.ts`)
-- `ActivityType` — note, call, email, meeting, status_change, assignment, subscription_created, diet_plan_created, vital_recorded, etc.
-- `ContactActivity` — contactId, activityType, title, description, metadata, createdBy, createdAt
+`PaginatedResponse<T>` is declared in both `common.type.ts` and `pagination.type.ts`; prefer `pagination.type.ts` for new code.
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL` — backend base URL (default: `http://localhost:4000`)
-- `NEXT_PUBLIC_DEV_BYPASS_PERMISSIONS` — set to `'true'` to bypass permission checks
+- `NEXT_PUBLIC_API_URL`: backend base URL (default: `http://localhost:4000`)
+- `NEXT_PUBLIC_DEV_BYPASS_PERMISSIONS`: set to `'true'` to bypass permission checks
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google sign-in
+- `NEXT_PUBLIC_GLITCHTIP_DSN`, `NEXT_PUBLIC_GLITCHTIP_ENV`: error reporting
+- `NEXT_PUBLIC_OPENPANEL_DASHBOARD_CLIENT_ID`: analytics
+- `NEXT_PUBLIC_APP_VERSION`: build version shown in the app
 
 ## Linting
 

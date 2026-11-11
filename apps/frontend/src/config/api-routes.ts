@@ -87,6 +87,86 @@ export const API_ROUTES = {
   STORAGE: {
     UPLOAD_URL: '/storage/upload-url',
   },
+  CLIENTS: {
+    LIST: '/clients/list',
+    CREATE: '/clients',
+    GET: (id: string) => `/clients/${id}` as const,
+    UPDATE: (id: string) => `/clients/${id}` as const,
+    DELETE: (id: string) => `/clients/${id}` as const,
+    CREATE_CONTACT: (id: string) => `/clients/${id}/contacts` as const,
+    UPDATE_CONTACT: (id: string, contactId: string) =>
+      `/clients/${id}/contacts/${contactId}` as const,
+    DELETE_CONTACT: (id: string, contactId: string) =>
+      `/clients/${id}/contacts/${contactId}` as const,
+  },
+  JOBS: {
+    LIST: '/jobs/list',
+    CREATE: '/jobs',
+    GET: (id: string) => `/jobs/${id}` as const,
+    UPDATE: (id: string) => `/jobs/${id}` as const,
+    UPDATE_STATUS: (id: string) => `/jobs/${id}/status` as const,
+    DELETE: (id: string) => `/jobs/${id}` as const,
+  },
+  CANDIDATES: {
+    LIST: '/candidates/list',
+    CREATE: '/candidates',
+    GET: (id: string) => `/candidates/${id}` as const,
+    UPDATE: (id: string) => `/candidates/${id}` as const,
+    DELETE: (id: string) => `/candidates/${id}` as const,
+    DOCUMENTS: (id: string) => `/candidates/${id}/documents` as const,
+    CREATE_DOCUMENT: (id: string) => `/candidates/${id}/documents` as const,
+  },
+  APPLICATIONS: {
+    LIST: '/applications/list',
+    BOARD: '/applications/board',
+    CREATE: '/applications',
+    GET: (id: string) => `/applications/${id}` as const,
+    UPDATE: (id: string) => `/applications/${id}` as const,
+    UPDATE_STAGE: (id: string) => `/applications/${id}/stage` as const,
+    DELETE: (id: string) => `/applications/${id}` as const,
+    SEND_EMAIL: (id: string) => `/applications/${id}/email` as const,
+  },
+  ACTIVITIES: {
+    LIST: '/activities/list',
+    CREATE: '/activities',
+  },
+  TASKS: {
+    LIST: '/tasks/list',
+    CREATE: '/tasks',
+    UPDATE: (id: string) => `/tasks/${id}` as const,
+    COMPLETE: (id: string) => `/tasks/${id}/complete` as const,
+    DELETE: (id: string) => `/tasks/${id}` as const,
+  },
+  DOCUMENTS: {
+    VERIFY: (id: string) => `/documents/${id}/verify` as const,
+    DOWNLOAD_URL: (id: string) => `/documents/${id}/download-url` as const,
+    DELETE: (id: string) => `/documents/${id}` as const,
+  },
+  EMAIL_TEMPLATES: {
+    LIST: (category?: string) =>
+      category
+        ? (`/email-templates?category=${encodeURIComponent(category)}` as const)
+        : ('/email-templates' as const),
+    CREATE: '/email-templates',
+    UPDATE: (id: string) => `/email-templates/${id}` as const,
+    DELETE: (id: string) => `/email-templates/${id}` as const,
+  },
+  ATS: {
+    DASHBOARD: '/ats/dashboard',
+  },
+  PUBLIC_CAREERS: {
+    ORGANIZATION: (orgSlug: string) => `/public/careers/${orgSlug}` as const,
+    JOBS: (orgSlug: string, query?: string) =>
+      query
+        ? (`/public/careers/${orgSlug}/jobs?${query}` as const)
+        : (`/public/careers/${orgSlug}/jobs` as const),
+    JOB: (orgSlug: string, jobId: string) =>
+      `/public/careers/${orgSlug}/jobs/${jobId}` as const,
+    APPLY: (orgSlug: string, jobId: string) =>
+      `/public/careers/${orgSlug}/jobs/${jobId}/apply` as const,
+    UPLOAD_URL: (orgSlug: string) =>
+      `/public/careers/${orgSlug}/upload-url` as const,
+  },
   SYSTEM_ADMIN: {
     ORGANIZATIONS: {
       LIST: '/system-admin/organizations/list',

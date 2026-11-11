@@ -51,7 +51,7 @@ export class AccessOrganization {
       ...systemAdminUser,
       organizationId: command.targetOrganizationId,
       roleId: null,
-    } as UserEntity;
+    };
 
     const accessToken = this.authService.generateImpersonationToken(
       virtualUser,

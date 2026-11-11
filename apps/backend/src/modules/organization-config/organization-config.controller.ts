@@ -34,6 +34,6 @@ export class OrganizationConfigController {
         name: dto.name,
         value: dto.value,
       }),
-    ) as any;
+    );
   }
 }

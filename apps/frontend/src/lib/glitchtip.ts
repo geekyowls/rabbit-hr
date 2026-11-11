@@ -20,8 +20,7 @@ export function initGlitchtip() {
     ],
     beforeSend(event) {
       const headers = event.request?.headers as
-        | Record<string, string>
-        | undefined;
+        Record<string, string> | undefined;
       if (headers) {
         delete headers.Authorization;
         delete headers.authorization;

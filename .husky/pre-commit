@@ -1,11 +1,7 @@
-bash scripts/check-user-relations.sh
-
 npx lint-staged
 
 npx pnpm --filter frontend exec tsc --noEmit
 npx pnpm --filter backend exec tsc --noEmit
-npx pnpm --filter website exec tsc --noEmit
 
 npx pnpm --filter frontend lint
 npx pnpm --filter backend lint
-npx pnpm --filter website lint

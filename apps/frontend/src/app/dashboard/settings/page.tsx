@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Plug2,
   Building2,
+  Mail,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/use-permissions';
 import { isSystemAdminAccess } from '@/utils/cookies';
@@ -82,6 +83,14 @@ const settingsCards: SettingsCard[] = [
     icon: Plug2,
     permission: PERMISSIONS_ENUM.INTEGRATION_LIST_READ,
     tourId: 'settings-integrations',
+  },
+  {
+    href: '/dashboard/settings/email-templates',
+    title: 'Email templates',
+    description: 'Reusable candidate emails with merge fields',
+    icon: Mail,
+    permission: PERMISSIONS_ENUM.EMAIL_TEMPLATE_READ,
+    tourId: 'settings-email-templates',
   },
 ];
 

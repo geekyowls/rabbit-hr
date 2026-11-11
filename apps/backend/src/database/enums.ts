@@ -333,3 +333,125 @@ export enum AccountDeletionScope {
   ACCOUNT_AND_DATA = 'account_and_data',
   SPECIFIC_DATA = 'specific_data',
 }
+
+export enum ClientStatus {
+  ACTIVE = 'active',
+  RETIRED = 'retired',
+}
+
+export enum EmploymentType {
+  PERMANENT = 'permanent',
+  TEMPORARY = 'temporary',
+  CONTRACT = 'contract',
+}
+
+export enum WorkMode {
+  ONSITE = 'onsite',
+  HYBRID = 'hybrid',
+  REMOTE = 'remote',
+}
+
+export enum RateUnit {
+  HOUR = 'hour',
+  DAY = 'day',
+  YEAR = 'year',
+}
+
+export enum JobStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  ON_HOLD = 'on_hold',
+  CLOSED = 'closed',
+  FILLED = 'filled',
+}
+
+export enum CandidateSource {
+  CAREERS_PAGE = 'careers_page',
+  LINKEDIN = 'linkedin',
+  INDEED = 'indeed',
+  REED = 'reed',
+  TOTALJOBS = 'totaljobs',
+  CV_LIBRARY = 'cv_library',
+  REFERRAL = 'referral',
+  AGENCY_DATABASE = 'agency_database',
+  OTHER = 'other',
+}
+
+export enum RightToWork {
+  UNKNOWN = 'unknown',
+  UK_CITIZEN = 'uk_citizen',
+  SETTLED_STATUS = 'settled_status',
+  VISA_SPONSORSHIP_REQUIRED = 'visa_sponsorship_required',
+  WORK_VISA = 'work_visa',
+}
+
+export enum ApplicationStage {
+  APPLIED = 'applied',
+  SCREENING = 'screening',
+  INTERVIEW = 'interview',
+  OFFER = 'offer',
+  PLACED = 'placed',
+  REJECTED = 'rejected',
+  WITHDRAWN = 'withdrawn',
+}
+
+export const APPLICATION_STAGE_ORDER: ApplicationStage[] = [
+  ApplicationStage.APPLIED,
+  ApplicationStage.SCREENING,
+  ApplicationStage.INTERVIEW,
+  ApplicationStage.OFFER,
+  ApplicationStage.PLACED,
+  ApplicationStage.REJECTED,
+  ApplicationStage.WITHDRAWN,
+];
+
+export const INACTIVE_APPLICATION_STAGES: ApplicationStage[] = [
+  ApplicationStage.PLACED,
+  ApplicationStage.REJECTED,
+  ApplicationStage.WITHDRAWN,
+];
+
+export enum ActivityType {
+  NOTE = 'note',
+  STAGE_CHANGE = 'stage_change',
+  EMAIL = 'email',
+  CALL = 'call',
+  CREATED = 'created',
+  DOCUMENT = 'document',
+  TASK = 'task',
+}
+
+export enum TaskStatus {
+  OPEN = 'open',
+  DONE = 'done',
+}
+
+export enum TaskDueFilter {
+  OVERDUE = 'overdue',
+  TODAY = 'today',
+  UPCOMING = 'upcoming',
+}
+
+export enum DocumentType {
+  CV = 'cv',
+  ID = 'id',
+  RIGHT_TO_WORK = 'right_to_work',
+  REFERENCE = 'reference',
+  CERTIFICATE = 'certificate',
+  DBS = 'dbs',
+  OTHER = 'other',
+}
+
+export enum DocumentVerificationStatus {
+  PENDING = 'pending',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
+}
+
+export enum EmailTemplateCategory {
+  INVITE = 'invite',
+  REJECTION = 'rejection',
+  OFFER = 'offer',
+  INTERVIEW = 'interview',
+  GENERAL = 'general',
+}

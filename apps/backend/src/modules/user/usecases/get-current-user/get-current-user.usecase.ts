@@ -1,9 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  UserRepository,
-  OrganizationConfigRepository,
-} from '@db/repositories';
+import { UserRepository, OrganizationConfigRepository } from '@db/repositories';
 import { UserStatus, OrganizationConfigType } from '@db/enums';
 import { buildUrl, getFeatureControl } from '@boilerplate/core';
 

@@ -19,7 +19,7 @@ import { useTheme } from 'next-themes';
 import { SunIcon, MoonIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useBreadcrumbContext } from '@/contexts/breadcrumb-context';
 import { useSidebar } from '@/contexts/sidebar-context';
-import { HelpCircle, Keyboard, Search, LogOut } from 'lucide-react';
+import { Keyboard, Search, LogOut } from 'lucide-react';
 import { DisplaySettings } from '@/components/common/display-settings';
 import { KeyboardShortcutsHelp } from '@/components/common/keyboard-shortcuts-help';
 import { MobileNav } from './mobile-nav';
@@ -115,27 +115,12 @@ export function DashboardHeader() {
               }`}
             />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            aria-label="Help Center"
-            className={`h-9 w-9 rounded-md transition-colors ${
-              pathname.startsWith('/dashboard/help')
-                ? 'bg-muted text-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            <Link href="/dashboard/help">
-              <HelpCircle className="h-5 w-5" />
-            </Link>
-          </Button>
           {user && <NotificationsBell />}
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 rounded-full p-0">
-                  <div className="h-8 w-8 rounded-full bg-zinc-900 dark:bg-zinc-700 flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-full bg-[#3F6650] dark:bg-[#3F6650] flex items-center justify-center">
                     <span className="text-sm font-medium text-white">
                       {user.email[0].toUpperCase()}
                     </span>

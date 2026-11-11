@@ -10,7 +10,6 @@ import { BreadcrumbProvider } from '@/contexts/breadcrumb-context';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { CommandPalette } from '@/components/common/command-palette';
 import { KeyboardShortcutsHelp } from '@/components/common/keyboard-shortcuts-help';
-import { SupportFooter } from '@/components/dashboard/support-footer';
 import { cn } from '@/lib/utils';
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
@@ -27,7 +26,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           >
             {children}
           </main>
-          {!isFocusMode && <SupportFooter />}
         </div>
       </div>
     </div>

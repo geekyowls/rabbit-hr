@@ -27,7 +27,10 @@ import {
   getPaginationRowModel,
   ColumnDef,
 } from '@tanstack/react-table';
-import { DataTable, DataTablePagination } from '@/components/common/data-table';
+import {
+  DataTable,
+  DataTablePagination,
+} from '@/components/patterns/data-table';
 import { X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 

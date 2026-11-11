@@ -18,9 +18,9 @@ export class RolePermissionListener {
       .createQueryBuilder()
       .update()
       .set({
-        refreshToken: null as any,
-        refreshTokenExpires: null as any,
-        refreshTokenJti: null as any,
+        refreshToken: null,
+        refreshTokenExpires: null,
+        refreshTokenJti: null,
       })
       .where('roleId = :roleId', { roleId: event.roleId })
       .andWhere('organizationId = :organizationId', {

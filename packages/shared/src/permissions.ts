@@ -39,6 +39,47 @@ export enum PERMISSIONS_ENUM {
   NOTIFICATION_DAILY_DIGEST_SLOT_MORNING = 'notification:daily-digest:slot:morning',
   NOTIFICATION_DAILY_DIGEST_SLOT_AFTERNOON = 'notification:daily-digest:slot:afternoon',
   NOTIFICATION_DAILY_DIGEST_SLOT_EVENING = 'notification:daily-digest:slot:evening',
+
+  CLIENT_LIST_READ = 'client:list:read',
+  CLIENT_READ = 'client:read',
+  CLIENT_CREATE = 'client:create',
+  CLIENT_UPDATE = 'client:update',
+  CLIENT_DELETE = 'client:delete',
+
+  JOB_LIST_READ = 'job:list:read',
+  JOB_READ = 'job:read',
+  JOB_CREATE = 'job:create',
+  JOB_UPDATE = 'job:update',
+  JOB_DELETE = 'job:delete',
+
+  CANDIDATE_LIST_READ = 'candidate:list:read',
+  CANDIDATE_READ = 'candidate:read',
+  CANDIDATE_CREATE = 'candidate:create',
+  CANDIDATE_UPDATE = 'candidate:update',
+  CANDIDATE_DELETE = 'candidate:delete',
+
+  APPLICATION_LIST_READ = 'application:list:read',
+  APPLICATION_READ = 'application:read',
+  APPLICATION_CREATE = 'application:create',
+  APPLICATION_UPDATE = 'application:update',
+  APPLICATION_DELETE = 'application:delete',
+
+  TASK_LIST_READ = 'task:list:read',
+  TASK_READ = 'task:read',
+  TASK_CREATE = 'task:create',
+  TASK_UPDATE = 'task:update',
+  TASK_DELETE = 'task:delete',
+
+  DOCUMENT_READ = 'document:read',
+  DOCUMENT_CREATE = 'document:create',
+  DOCUMENT_VERIFY = 'document:verify',
+  DOCUMENT_DELETE = 'document:delete',
+
+  EMAIL_TEMPLATE_READ = 'email-template:read',
+  EMAIL_TEMPLATE_MANAGE = 'email-template:manage',
+  EMAIL_TEMPLATE_SEND = 'email-template:send',
+
+  ATS_DASHBOARD_READ = 'ats-dashboard:read',
 }
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS_ENUM);
@@ -148,5 +189,76 @@ export const PERMISSION_GROUPS: Record<
       PERMISSIONS_ENUM.NOTIFICATION_DAILY_DIGEST_SLOT_AFTERNOON,
       PERMISSIONS_ENUM.NOTIFICATION_DAILY_DIGEST_SLOT_EVENING,
     ],
+  },
+  clients: {
+    label: 'Clients',
+    permissions: [
+      PERMISSIONS_ENUM.CLIENT_LIST_READ,
+      PERMISSIONS_ENUM.CLIENT_READ,
+      PERMISSIONS_ENUM.CLIENT_CREATE,
+      PERMISSIONS_ENUM.CLIENT_UPDATE,
+      PERMISSIONS_ENUM.CLIENT_DELETE,
+    ],
+  },
+  jobs: {
+    label: 'Jobs',
+    permissions: [
+      PERMISSIONS_ENUM.JOB_LIST_READ,
+      PERMISSIONS_ENUM.JOB_READ,
+      PERMISSIONS_ENUM.JOB_CREATE,
+      PERMISSIONS_ENUM.JOB_UPDATE,
+      PERMISSIONS_ENUM.JOB_DELETE,
+    ],
+  },
+  candidates: {
+    label: 'Candidates',
+    permissions: [
+      PERMISSIONS_ENUM.CANDIDATE_LIST_READ,
+      PERMISSIONS_ENUM.CANDIDATE_READ,
+      PERMISSIONS_ENUM.CANDIDATE_CREATE,
+      PERMISSIONS_ENUM.CANDIDATE_UPDATE,
+      PERMISSIONS_ENUM.CANDIDATE_DELETE,
+    ],
+  },
+  applications: {
+    label: 'Applications',
+    permissions: [
+      PERMISSIONS_ENUM.APPLICATION_LIST_READ,
+      PERMISSIONS_ENUM.APPLICATION_READ,
+      PERMISSIONS_ENUM.APPLICATION_CREATE,
+      PERMISSIONS_ENUM.APPLICATION_UPDATE,
+      PERMISSIONS_ENUM.APPLICATION_DELETE,
+    ],
+  },
+  tasks: {
+    label: 'Tasks',
+    permissions: [
+      PERMISSIONS_ENUM.TASK_LIST_READ,
+      PERMISSIONS_ENUM.TASK_READ,
+      PERMISSIONS_ENUM.TASK_CREATE,
+      PERMISSIONS_ENUM.TASK_UPDATE,
+      PERMISSIONS_ENUM.TASK_DELETE,
+    ],
+  },
+  documents: {
+    label: 'Documents',
+    permissions: [
+      PERMISSIONS_ENUM.DOCUMENT_READ,
+      PERMISSIONS_ENUM.DOCUMENT_CREATE,
+      PERMISSIONS_ENUM.DOCUMENT_VERIFY,
+      PERMISSIONS_ENUM.DOCUMENT_DELETE,
+    ],
+  },
+  emailTemplates: {
+    label: 'Email Templates',
+    permissions: [
+      PERMISSIONS_ENUM.EMAIL_TEMPLATE_READ,
+      PERMISSIONS_ENUM.EMAIL_TEMPLATE_MANAGE,
+      PERMISSIONS_ENUM.EMAIL_TEMPLATE_SEND,
+    ],
+  },
+  atsDashboard: {
+    label: 'ATS Dashboard',
+    permissions: [PERMISSIONS_ENUM.ATS_DASHBOARD_READ],
   },
 };

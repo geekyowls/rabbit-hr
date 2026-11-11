@@ -36,7 +36,10 @@ import {
   ColumnDef,
   VisibilityState,
 } from '@tanstack/react-table';
-import { DataTable, DataTablePagination } from '@/components/common/data-table';
+import {
+  DataTable,
+  DataTablePagination,
+} from '@/components/patterns/data-table';
 import {
   Dialog,
   DialogContent,

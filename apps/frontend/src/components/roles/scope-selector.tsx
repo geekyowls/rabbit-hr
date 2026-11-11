@@ -33,7 +33,7 @@ export function ScopeSelector({
             className={cn(
               'px-2.5 py-0.5 text-xs font-medium rounded-sm transition-colors',
               isActive
-                ? 'bg-zinc-900 text-zinc-50 shadow-sm dark:bg-zinc-50 dark:text-zinc-900'
+                ? 'bg-[#3F6650] text-white shadow-sm dark:bg-[#8FBFA1] dark:text-[#0f1a14]'
                 : 'text-muted-foreground hover:bg-muted',
               disabled && 'opacity-50 cursor-not-allowed',
             )}

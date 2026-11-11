@@ -16,6 +16,15 @@ import {
   UserSessionEntity,
   NotificationEntity,
   WebPushSubscriptionEntity,
+  ClientEntity,
+  ClientContactEntity,
+  JobEntity,
+  CandidateEntity,
+  ApplicationEntity,
+  ActivityEntity,
+  TaskEntity,
+  CandidateDocumentEntity,
+  EmailTemplateEntity,
 } from './entities';
 
 dotenv.config({ path: join(__dirname, '../../.env') });
@@ -34,6 +43,15 @@ const entities = [
   UserSessionEntity,
   NotificationEntity,
   WebPushSubscriptionEntity,
+  ClientEntity,
+  ClientContactEntity,
+  JobEntity,
+  CandidateEntity,
+  ApplicationEntity,
+  ActivityEntity,
+  TaskEntity,
+  CandidateDocumentEntity,
+  EmailTemplateEntity,
 ];
 
 const isDev = process.env.NODE_ENV === 'development';

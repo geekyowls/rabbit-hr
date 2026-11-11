@@ -22,6 +22,16 @@ import { SystemAdminModule } from './modules/system-admin/system-admin.module';
 import { UserNotificationsModule } from './modules/user-notifications/user-notifications.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SessionModule } from './modules/session/session.module';
+import { ClientModule } from './modules/client/client.module';
+import { JobModule } from './modules/job/job.module';
+import { CandidateModule } from './modules/candidate/candidate.module';
+import { ApplicationModule } from './modules/application/application.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { TaskModule } from './modules/task/task.module';
+import { DocumentModule } from './modules/document/document.module';
+import { EmailTemplateModule } from './modules/email-template/email-template.module';
+import { AtsDashboardModule } from './modules/ats-dashboard/ats-dashboard.module';
+import { CareersModule } from './modules/careers/careers.module';
 
 @Module({
   imports: [
@@ -63,6 +73,16 @@ import { SessionModule } from './modules/session/session.module';
     UserNotificationsModule,
     QueueModule,
     SessionModule,
+    ClientModule,
+    JobModule,
+    CandidateModule,
+    ApplicationModule,
+    ActivityModule,
+    TaskModule,
+    DocumentModule,
+    EmailTemplateModule,
+    AtsDashboardModule,
+    CareersModule,
   ],
   controllers: [AppController],
   providers: [

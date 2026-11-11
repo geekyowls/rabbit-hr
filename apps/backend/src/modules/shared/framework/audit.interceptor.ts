@@ -75,7 +75,7 @@ export class AuditInterceptor implements NestInterceptor {
   }
 
   private buildAuditData(request: Request) {
-    const user = request.user as RequestUser | undefined;
+    const { user } = request as Request & { user?: RequestUser };
     const routePath = (request.route as { path?: string })?.path || request.url;
 
     return {

@@ -16,6 +16,15 @@ import {
   UserSessionEntity,
   NotificationEntity,
   WebPushSubscriptionEntity,
+  ClientEntity,
+  ClientContactEntity,
+  JobEntity,
+  CandidateEntity,
+  ApplicationEntity,
+  ActivityEntity,
+  TaskEntity,
+  CandidateDocumentEntity,
+  EmailTemplateEntity,
 } from './entities';
 import {
   UserRepository,
@@ -31,6 +40,15 @@ import {
   UserSessionRepository,
   NotificationRepository,
   WebPushSubscriptionRepository,
+  ClientRepository,
+  ClientContactRepository,
+  JobRepository,
+  CandidateRepository,
+  ApplicationRepository,
+  ActivityRepository,
+  TaskRepository,
+  CandidateDocumentRepository,
+  EmailTemplateRepository,
 } from './repositories';
 
 const entities = [
@@ -47,6 +65,15 @@ const entities = [
   UserSessionEntity,
   NotificationEntity,
   WebPushSubscriptionEntity,
+  ClientEntity,
+  ClientContactEntity,
+  JobEntity,
+  CandidateEntity,
+  ApplicationEntity,
+  ActivityEntity,
+  TaskEntity,
+  CandidateDocumentEntity,
+  EmailTemplateEntity,
 ];
 const repositories = [
   UserRepository,
@@ -62,6 +89,15 @@ const repositories = [
   UserSessionRepository,
   NotificationRepository,
   WebPushSubscriptionRepository,
+  ClientRepository,
+  ClientContactRepository,
+  JobRepository,
+  CandidateRepository,
+  ApplicationRepository,
+  ActivityRepository,
+  TaskRepository,
+  CandidateDocumentRepository,
+  EmailTemplateRepository,
 ];
 
 @Global()
