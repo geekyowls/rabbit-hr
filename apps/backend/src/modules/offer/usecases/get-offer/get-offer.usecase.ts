@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OfferRepository, UserRepository } from '@db/repositories';
 import { loadOfferDetail } from '../offer-query';
 
@@ -7,6 +8,7 @@ export class GetOffer {
   constructor(
     private readonly offerRepository: OfferRepository,
     private readonly userRepository: UserRepository,
+    private readonly config: ConfigService,
   ) {}
 
   async execute(offerId: string, organizationId: string) {
@@ -15,6 +17,7 @@ export class GetOffer {
       this.userRepository,
       offerId,
       organizationId,
+      this.config,
     );
   }
 }

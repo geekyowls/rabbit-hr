@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EmailTemplateModule } from '@modules/email-template/email-template.module';
+import { InterviewCalendarSyncModule } from '@modules/interview-calendar-sync/interview-calendar-sync.module';
 import { InterviewController } from './interview.controller';
 import { ApplicationInterviewsController } from './application-interviews.controller';
 import { InterviewInviteService } from './usecases/interview-invite.service';
@@ -24,8 +25,9 @@ const USE_CASES = [
 ];
 
 @Module({
-  imports: [EmailTemplateModule],
+  imports: [EmailTemplateModule, InterviewCalendarSyncModule],
   controllers: [InterviewController, ApplicationInterviewsController],
   providers: [...USE_CASES, InterviewInviteService],
+  exports: [CreateInterview, UpdateInterviewStatus, GetInterview],
 })
 export class InterviewModule {}

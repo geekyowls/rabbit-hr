@@ -9,6 +9,7 @@ export const CACHE_TTL = {
   DIET_SHARE_OTP_ATTEMPTS: 600,
   TEAM_DESCENDANTS: 300,
   COVERAGE_COVERED: 300,
+  INTEGRATION_CAPABILITIES: 60,
 } as const;
 
 export const CACHE_KEYS = {
@@ -18,6 +19,10 @@ export const CACHE_KEYS = {
   webhookDodo: (webhookId: string) => `webhook:dodo:${webhookId}`,
   webhookRazorpay: (webhookId: string) => `webhook:razorpay:${webhookId}`,
   oauthNonce: (nonce: string) => `oauth_nonce:${nonce}`,
+  integrationCapabilities: (organizationId: string) =>
+    `${organizationId}:integration:capabilities`,
+  mailboxOauthNonce: (organizationId: string, nonce: string) =>
+    `${organizationId}:mailbox-oauth-nonce:${nonce}`,
   dietShare: (organizationId: string, token: string) =>
     `${organizationId}:diet-share:${token}`,
   dietShareOtp: (token: string) => `diet-share-otp:${token}`,

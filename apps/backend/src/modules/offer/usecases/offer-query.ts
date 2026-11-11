@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EntityManager, In } from 'typeorm';
 import { OfferEntity } from '@db/entities';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@db/repositories';
 import { ActivityType, OfferStatus } from '@db/enums';
 import { safeUserSelect } from '@shared/helpers/safe-user-select';
+import { offerSignStatus, signUrl } from './offer-signing';
 
 type UserSummary = {
   id: string;
@@ -59,6 +61,7 @@ export async function hydrateOffers(
   userRepository: UserRepository,
   organizationId: string,
   offers: OfferEntity[],
+  config?: ConfigService,
 ) {
   const userIds = [...new Set(offers.flatMap((o) => o.approverIds))];
   const users: UserSummary[] =
@@ -70,9 +73,19 @@ export async function hydrateOffers(
       : [];
   const userById = new Map(users.map((u) => [u.id, u]));
   return offers.map((offer) => {
-    const { candidate, job, application, creator, ...rest } = offer;
+    const { candidate, job, application, creator, signToken, ...rest } = offer;
     return {
       ...rest,
+      signature: {
+        status: offerSignStatus(offer),
+        signUrl: signToken && config ? signUrl(config, signToken) : null,
+        expiresAt: offer.signTokenExpiresAt,
+        signedAt: offer.signedAt,
+        signedName: offer.signedName,
+        signedIp: offer.signedIp,
+        signedUserAgent: offer.signedUserAgent,
+        signatureHash: offer.signatureHash,
+      },
       candidate,
       job,
       client: job.client ?? null,
@@ -100,16 +113,21 @@ export async function loadOfferDetail(
   userRepository: UserRepository,
   offerId: string,
   organizationId: string,
+  config?: ConfigService,
 ) {
   const offer = await buildOfferQuery(offerRepository, organizationId)
+    .addSelect('offer.signToken')
     .andWhere('offer.id = :offerId', { offerId })
     .getOne();
   if (!offer) {
     throw new NotFoundException('Offer not found');
   }
-  const [hydrated] = await hydrateOffers(userRepository, organizationId, [
-    offer,
-  ]);
+  const [hydrated] = await hydrateOffers(
+    userRepository,
+    organizationId,
+    [offer],
+    config,
+  );
   return hydrated;
 }
 
@@ -172,7 +190,7 @@ export interface OfferActivityInput {
   offer: OfferEntity;
   event: string;
   title: string;
-  actorId: string;
+  actorId: string | null;
   body?: string | null;
   metadata?: Record<string, unknown>;
 }

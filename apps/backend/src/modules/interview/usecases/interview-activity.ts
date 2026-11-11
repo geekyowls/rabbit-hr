@@ -7,7 +7,7 @@ export interface InterviewActivityInput {
   interview: InterviewEntity;
   event: string;
   title: string;
-  actorId: string;
+  actorId: string | null;
   body?: string | null;
   metadata?: Record<string, unknown>;
 }

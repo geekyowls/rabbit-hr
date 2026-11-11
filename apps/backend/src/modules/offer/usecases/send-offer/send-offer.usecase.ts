@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { OfferEntity } from '@db/entities';
 import { ActivityRepository, OfferRepository } from '@db/repositories';
@@ -12,6 +13,7 @@ import {
 import { OfferActionCommand } from '../offer-action.command';
 import { OfferLetterService } from '../offer-letter.service';
 import { GetOffer } from '../get-offer/get-offer.usecase';
+import { generateSignToken, signTokenExpiry, signUrl } from '../offer-signing';
 
 @Injectable()
 export class SendOffer {
@@ -22,6 +24,7 @@ export class SendOffer {
     private readonly applicationStageMover: ApplicationStageMover,
     private readonly offerLetterService: OfferLetterService,
     private readonly getOffer: GetOffer,
+    private readonly config: ConfigService,
   ) {}
 
   async execute(command: OfferActionCommand) {
@@ -32,10 +35,21 @@ export class SendOffer {
       organizationId,
     );
     assertOfferStatus(offer, [OfferStatus.APPROVED], 'send');
+    const sentAt = new Date();
+    const token = generateSignToken();
+    const letter = await this.offerLetterService.renderLetter(offer, userId);
 
     const saved = await this.dataSource.transaction(async (manager) => {
       offer.status = OfferStatus.SENT;
-      offer.sentAt = new Date();
+      offer.sentAt = sentAt;
+      offer.signToken = token;
+      offer.signTokenExpiresAt = signTokenExpiry(offer, sentAt);
+      offer.sentLetterBody = letter;
+      offer.signedAt = null;
+      offer.signedName = null;
+      offer.signedIp = null;
+      offer.signedUserAgent = null;
+      offer.signatureHash = null;
       const result = await manager.getRepository(OfferEntity).save(offer);
       await recordOfferActivity(
         this.activityRepository,
@@ -61,7 +75,11 @@ export class SendOffer {
       return result;
     });
 
-    this.offerLetterService.sendInBackground(saved, userId);
+    this.offerLetterService.sendInBackground(
+      saved,
+      userId,
+      signUrl(this.config, token),
+    );
     return this.getOffer.execute(saved.id, organizationId);
   }
 }

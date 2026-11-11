@@ -75,6 +75,12 @@ import {
   formatDuration,
   personLabel,
 } from './interview-data';
+import {
+  CALENDAR_SYNC_LABEL,
+  CALENDAR_SYNC_TONE,
+  MEETING_PROVIDER_LABEL,
+  isAutoMeetingProvider,
+} from './meeting-providers';
 
 function DetailItem({
   label,
@@ -87,6 +93,48 @@ function DetailItem({
     <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="truncate font-medium">{children}</dd>
+    </div>
+  );
+}
+
+function CalendarSyncNote({ interview }: { interview: InterviewDetail }) {
+  const fmt = useFormatters();
+  const status = interview.calendarSyncStatus;
+  if (status === 'skipped' && !interview.calendarProvider) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">
+        Not added to a calendar, connect Google Calendar or Microsoft 365 in
+        integrations to sync interviews
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-1 rounded-md border border-border px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground">Calendar</span>
+        <StatusPill tone={CALENDAR_SYNC_TONE[status]} dot>
+          {CALENDAR_SYNC_LABEL[status]}
+        </StatusPill>
+        {status === 'synced' && interview.calendarSyncedAt && (
+          <span className="text-muted-foreground">
+            {fmt.relative(interview.calendarSyncedAt)}
+          </span>
+        )}
+      </div>
+      {status === 'failed' && (
+        <>
+          {interview.calendarSyncError && (
+            <p className="text-destructive">{interview.calendarSyncError}</p>
+          )}
+          <p className="text-muted-foreground">
+            Check the calendar connection in integrations, then save the
+            interview again to retry
+          </p>
+        </>
+      )}
+      {status === 'skipped' && interview.calendarSyncError && (
+        <p className="text-muted-foreground">{interview.calendarSyncError}</p>
+      )}
     </div>
   );
 }
@@ -367,7 +415,13 @@ export function InterviewDetailDrawer({
                 <DetailItem label="Location">
                   {interview.location || 'Not set'}
                 </DetailItem>
-                <DetailItem label="Meeting link">
+                <DetailItem
+                  label={
+                    isAutoMeetingProvider(interview.meetingProvider)
+                      ? MEETING_PROVIDER_LABEL[interview.meetingProvider]
+                      : 'Meeting link'
+                  }
+                >
                   {interview.meetingUrl ? (
                     <a
                       href={interview.meetingUrl}
@@ -390,6 +444,7 @@ export function InterviewDetailDrawer({
                     `, avg ${interview.averageRating.toFixed(1)}`}
                 </DetailItem>
               </dl>
+              <CalendarSyncNote interview={interview} />
               {interview.cancelledReason && (
                 <p className="mt-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                   Cancelled: {interview.cancelledReason}

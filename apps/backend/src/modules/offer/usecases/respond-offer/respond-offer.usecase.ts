@@ -12,6 +12,18 @@ import {
 import { GetOffer } from '../get-offer/get-offer.usecase';
 import { RespondOfferCommand } from './respond-offer.command';
 
+export interface OfferSignatureInput {
+  signedName: string;
+  signedIp: string | null;
+  signedUserAgent: string | null;
+  signatureHash: string;
+}
+
+export interface PublicResponseContext {
+  channel: 'e_sign';
+  signature?: OfferSignatureInput;
+}
+
 @Injectable()
 export class RespondOffer {
   constructor(
@@ -22,8 +34,12 @@ export class RespondOffer {
     private readonly getOffer: GetOffer,
   ) {}
 
-  async execute(command: RespondOfferCommand) {
-    const { organizationId, userId } = command;
+  async execute(
+    command: RespondOfferCommand,
+    publicContext?: PublicResponseContext,
+  ) {
+    const { organizationId } = command;
+    const actorId = publicContext ? null : command.userId;
     const accepted = command.response === OfferResponse.ACCEPTED;
     const offer = await loadOfferEntity(
       this.offerRepository,
@@ -41,6 +57,11 @@ export class RespondOffer {
       offer.status = accepted ? OfferStatus.ACCEPTED : OfferStatus.DECLINED;
       offer.respondedAt = new Date();
       offer.declineReason = accepted ? null : reason;
+      if (accepted && publicContext?.signature) {
+        Object.assign(offer, publicContext.signature, {
+          signedAt: offer.respondedAt,
+        });
+      }
       const result = await manager.getRepository(OfferEntity).save(offer);
       await recordOfferActivity(
         this.activityRepository,
@@ -51,7 +72,13 @@ export class RespondOffer {
             ? `Offer accepted: ${result.title}`
             : `Offer declined: ${result.title}`,
           body: reason,
-          actorId: userId,
+          actorId,
+          metadata: publicContext
+            ? {
+                via: publicContext.channel,
+                signedName: publicContext.signature?.signedName ?? null,
+              }
+            : undefined,
         },
         manager,
       );
@@ -66,7 +93,7 @@ export class RespondOffer {
             PipelineStageCategory.INTERVIEW,
             PipelineStageCategory.OFFER,
           ],
-          actorId: userId,
+          actorId,
         });
       }
       return result;

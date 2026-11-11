@@ -13,6 +13,7 @@ import {
   FileText,
   Lock,
   Mail,
+  MessageCircle,
   MessageSquare,
   Phone,
   UserPlus,
@@ -63,6 +64,10 @@ const ACTIVITY_ICON: Record<ActivityType, { icon: ReactNode; color?: string }> =
     offer: {
       icon: <FileSignature className="h-3.5 w-3.5" />,
       color: '#C2410C',
+    },
+    whatsapp: {
+      icon: <MessageCircle className="h-3.5 w-3.5" />,
+      color: '#25A35A',
     },
   };
 

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
 import { IntegrationProvider } from '../..';
+import { toZonedDateTimeStr } from '../../utils/zoned-time';
 
 import { OAuthTokens } from './integration.service';
 import {
@@ -67,13 +68,11 @@ export class ZoomService extends CalendarIntegrationService {
     this.clientSecret =
       this.configService.get<string>('ZOOM_CLIENT_SECRET') || '';
     this.redirectUri =
-      this.configService.get<string>('ZOOM_REDIRECT_URI') || '';
+      this.configService.get<string>('ZOOM_REDIRECT_URI') ||
+      this.configService.get<string>('OAUTH_REDIRECT_URI') ||
+      '';
 
-    this.isConfigured = !!(
-      this.clientId &&
-      this.clientSecret &&
-      this.redirectUri
-    );
+    this.isConfigured = !!(this.clientId && this.clientSecret);
   }
 
   isServiceConfigured(): boolean {
@@ -83,7 +82,7 @@ export class ZoomService extends CalendarIntegrationService {
   private ensureConfigured(): void {
     if (!this.isConfigured) {
       throw new Error(
-        'Zoom integration is not configured. Please set ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, and ZOOM_REDIRECT_URI environment variables.',
+        'Zoom integration is not configured. Please set ZOOM_CLIENT_ID and ZOOM_CLIENT_SECRET environment variables.',
       );
     }
   }
@@ -213,47 +212,56 @@ export class ZoomService extends CalendarIntegrationService {
     }
   }
 
+  private buildMeetingRequest(event: CalendarEvent): ZoomMeetingRequest {
+    const durationMs = event.endTime.getTime() - event.startTime.getTime();
+    const durationMinutes = Math.max(1, Math.round(durationMs / (1000 * 60)));
+    const timeZone = event.timeZone || 'UTC';
+    const request: ZoomMeetingRequest = {
+      topic: event.summary.slice(0, 200),
+      type: 2,
+      start_time: toZonedDateTimeStr(event.startTime, timeZone),
+      duration: durationMinutes,
+      timezone: timeZone,
+      settings: {
+        waiting_room: true,
+        join_before_host: false,
+        auto_recording: 'none',
+      },
+    };
+    if (event.description) {
+      request.agenda = event.description.slice(0, 2000);
+    }
+    return request;
+  }
+
+  private async zoomRequest(
+    tokens: OAuthTokens,
+    path: string,
+    method: 'POST' | 'PATCH' | 'DELETE' | 'GET',
+    body?: unknown,
+  ): Promise<Response> {
+    this.ensureConfigured();
+    return fetch(`${ZOOM_API_BASE}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${tokens.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  }
+
   async createCalendarEvent(
     tokens: OAuthTokens,
     event: CalendarEvent,
   ): Promise<{ eventId: string; meetingLink?: string }> {
-    this.ensureConfigured();
-
     try {
-      const durationMs = event.endTime.getTime() - event.startTime.getTime();
-      const durationMinutes = Math.max(1, Math.round(durationMs / (1000 * 60)));
-
-      const meetingRequest: ZoomMeetingRequest = {
-        topic: event.summary,
-        type: 2,
-        start_time: event.startTime.toISOString(),
-        duration: durationMinutes,
-        timezone: 'UTC',
-        settings: {
-          waiting_room: true,
-          join_before_host: false,
-          auto_recording: 'none',
-        },
-      };
-
-      if (event.description) {
-        meetingRequest.agenda = event.description;
-      }
-
-      if (event.attendeeEmails && event.attendeeEmails.length > 0) {
-        meetingRequest.registrants = event.attendeeEmails.map((email) => ({
-          email,
-        }));
-      }
-
-      const response = await fetch(`${ZOOM_API_BASE}/users/me/meetings`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${tokens.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(meetingRequest),
-      });
+      const response = await this.zoomRequest(
+        tokens,
+        '/users/me/meetings',
+        'POST',
+        this.buildMeetingRequest(event),
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -274,6 +282,63 @@ export class ZoomService extends CalendarIntegrationService {
       };
     } catch (error: any) {
       throw new Error(`Failed to create Zoom meeting: ${error.message}`);
+    }
+  }
+
+  async updateCalendarEvent(
+    tokens: OAuthTokens,
+    eventId: string,
+    event: CalendarEvent,
+  ): Promise<{ eventId: string; meetingLink?: string }> {
+    try {
+      const response = await this.zoomRequest(
+        tokens,
+        `/meetings/${encodeURIComponent(eventId)}`,
+        'PATCH',
+        this.buildMeetingRequest(event),
+      );
+      if (response.status === 404) {
+        return this.createCalendarEvent(tokens, event);
+      }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Zoom meeting update failed: ${response.status} ${errorText}`,
+        );
+      }
+      const details = await this.zoomRequest(
+        tokens,
+        `/meetings/${encodeURIComponent(eventId)}`,
+        'GET',
+      );
+      const meetingData = details.ok
+        ? ((await details.json()) as ZoomMeetingResponse)
+        : null;
+      return meetingData?.join_url
+        ? { eventId, meetingLink: meetingData.join_url }
+        : { eventId };
+    } catch (error: any) {
+      throw new Error(`Failed to update Zoom meeting: ${error.message}`);
+    }
+  }
+
+  async deleteCalendarEvent(
+    tokens: OAuthTokens,
+    eventId: string,
+  ): Promise<void> {
+    try {
+      const response = await this.zoomRequest(
+        tokens,
+        `/meetings/${encodeURIComponent(eventId)}`,
+        'DELETE',
+      );
+      if (response.ok || response.status === 404) return;
+      const errorText = await response.text();
+      throw new Error(
+        `Zoom meeting delete failed: ${response.status} ${errorText}`,
+      );
+    } catch (error: any) {
+      throw new Error(`Failed to delete Zoom meeting: ${error.message}`);
     }
   }
 }

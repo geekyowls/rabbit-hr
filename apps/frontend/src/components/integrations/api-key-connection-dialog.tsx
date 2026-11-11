@@ -65,6 +65,20 @@ const PROVIDER_FIELDS: Record<string, ProviderFieldConfig[]> = {
       type: 'text',
     },
   ],
+  wappcloud: [
+    {
+      name: 'apiKey',
+      label: 'API key',
+      placeholder: 'Your WappCloud API key',
+      type: 'password',
+    },
+    {
+      name: 'authToken',
+      label: 'Access token',
+      placeholder: 'Your WappCloud access token',
+      type: 'password',
+    },
+  ],
   razorpay: [
     {
       name: 'authId',

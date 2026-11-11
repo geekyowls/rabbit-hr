@@ -7,6 +7,7 @@ import {
   Briefcase,
   CalendarPlus,
   FileSignature,
+  Link2,
   Mail,
   Plus,
   Star,
@@ -53,12 +54,14 @@ export function CandidateApplicationsTab({
   onEmail,
   onAddToJob,
   onSchedule,
+  onBookingLink,
 }: {
   candidate: CandidateDetail;
   focusedApplicationId?: string | null;
   onEmail: (application: CandidateApplicationSummary) => void;
   onAddToJob: () => void;
   onSchedule: (application: CandidateApplicationSummary) => void;
+  onBookingLink: (application: CandidateApplicationSummary) => void;
 }) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission(PERMISSIONS_ENUM.APPLICATION_UPDATE);
@@ -237,6 +240,18 @@ export function CandidateApplicationsTab({
                   Schedule interview
                 </ToolbarButton>
               </PermissionGuard>
+              {!stageMeta.isRejected(app.stage) && (
+                <PermissionGuard
+                  permissions={PERMISSIONS_ENUM.INTERVIEW_CREATE}
+                >
+                  <ToolbarButton
+                    icon={Link2}
+                    onClick={() => onBookingLink(app)}
+                  >
+                    Send booking link
+                  </ToolbarButton>
+                </PermissionGuard>
+              )}
               {!stageMeta.isRejected(app.stage) && (
                 <PermissionGuard permissions={PERMISSIONS_ENUM.OFFER_CREATE}>
                   <Link

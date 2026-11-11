@@ -66,6 +66,7 @@ import {
   candidateName,
   offerSalary,
 } from './offer-meta';
+import { OfferSignatureSection } from './offer-signature-section';
 import {
   OfferReasonDialog,
   type OfferReasonDialogConfig,
@@ -606,10 +607,16 @@ export function OfferDetailDrawer({
               )}
             </PanelSection>
 
-            <PanelSection title="Offer letter">
-              {offer.body ? (
+            <OfferSignatureSection offer={offer} />
+
+            <PanelSection
+              title={
+                offer.sentLetterBody ? 'Offer letter as sent' : 'Offer letter'
+              }
+            >
+              {offer.sentLetterBody || offer.body ? (
                 <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 text-sm">
-                  {offer.body}
+                  {offer.sentLetterBody || offer.body}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">

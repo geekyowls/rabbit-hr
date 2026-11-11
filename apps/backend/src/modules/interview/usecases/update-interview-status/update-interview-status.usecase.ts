@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { EventName, type InterviewCancelledEvent } from '@boilerplate/core';
+import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
 import { ActivityRepository, InterviewRepository } from '@db/repositories';
 import { InterviewStatus } from '@db/enums';
-import { loadInterviewEntity } from '../interview-query';
+import { interviewExternalRefs, loadInterviewEntity } from '../interview-query';
 import { recordInterviewActivity } from '../interview-activity';
 import { GetInterview } from '../get-interview/get-interview.usecase';
 import { UpdateInterviewStatusCommand } from './update-interview-status.command';
@@ -19,6 +21,7 @@ export class UpdateInterviewStatus {
     private readonly interviewRepository: InterviewRepository,
     private readonly activityRepository: ActivityRepository,
     private readonly getInterview: GetInterview,
+    private readonly eventEmitter: AppEventEmitter,
   ) {}
 
   async execute(command: UpdateInterviewStatusCommand) {
@@ -54,6 +57,20 @@ export class UpdateInterviewStatus {
       body: reason,
       actorId: command.userId,
     });
+
+    if (cancelling) {
+      this.eventEmitter.emit<InterviewCancelledEvent>({
+        eventName: EventName.INTERVIEW_CANCELLED,
+        timestamp: new Date(),
+        organizationId: command.organizationId,
+        triggeredBy: command.userId,
+        interviewId: saved.id,
+        applicationId: saved.applicationId,
+        deleted: false,
+        reason,
+        externalRefs: interviewExternalRefs(saved),
+      });
+    }
 
     return this.getInterview.execute(saved.id, command.organizationId);
   }

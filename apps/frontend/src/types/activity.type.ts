@@ -9,7 +9,8 @@ export type ActivityType =
   | 'document'
   | 'task'
   | 'interview'
-  | 'offer';
+  | 'offer'
+  | 'whatsapp';
 
 export type ManualActivityType = Extract<
   ActivityType,

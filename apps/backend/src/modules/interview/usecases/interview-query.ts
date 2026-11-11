@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { In } from 'typeorm';
+import type { InterviewExternalRefs } from '@boilerplate/core';
 import { InterviewEntity, ScorecardEntity } from '@db/entities';
 import {
   InterviewRepository,
@@ -169,6 +170,17 @@ export async function loadInterviewEntity(
     throw new NotFoundException('Interview not found');
   }
   return interview;
+}
+
+export function interviewExternalRefs(
+  interview: InterviewEntity,
+): InterviewExternalRefs {
+  return {
+    meetingProvider: interview.meetingProvider,
+    meetingExternalId: interview.meetingExternalId,
+    calendarProvider: interview.calendarProvider,
+    externalEventId: interview.externalEventId,
+  };
 }
 
 export async function assertInterviewers(

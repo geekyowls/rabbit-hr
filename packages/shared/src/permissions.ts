@@ -97,11 +97,22 @@ export enum PERMISSIONS_ENUM {
 
   REPORT_READ = 'report:read',
 
+  INBOX_READ = 'inbox:read',
+  INBOX_SEND = 'inbox:send',
+  MAILBOX_SHARED_MANAGE = 'mailbox:shared:manage',
+
   ATS_DASHBOARD_READ = 'ats-dashboard:read',
 
   ATS_SETTINGS_MANAGE = 'ats-settings:manage',
   PIPELINE_STAGE_MANAGE = 'pipeline-stage:manage',
   CUSTOM_FIELD_MANAGE = 'custom-field:manage',
+
+  CALL_CREATE = 'call:create',
+
+  WHATSAPP_SEND = 'whatsapp:send',
+  WHATSAPP_TEMPLATE_MANAGE = 'whatsapp:template:manage',
+
+  JOB_FEED_MANAGE = 'job-feed:manage',
 }
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS_ENUM);
@@ -307,6 +318,14 @@ export const PERMISSION_GROUPS: Record<
     label: 'Reports',
     permissions: [PERMISSIONS_ENUM.REPORT_READ],
   },
+  inbox: {
+    label: 'Inbox',
+    permissions: [
+      PERMISSIONS_ENUM.INBOX_READ,
+      PERMISSIONS_ENUM.INBOX_SEND,
+      PERMISSIONS_ENUM.MAILBOX_SHARED_MANAGE,
+    ],
+  },
   atsDashboard: {
     label: 'ATS Dashboard',
     permissions: [PERMISSIONS_ENUM.ATS_DASHBOARD_READ],
@@ -318,5 +337,20 @@ export const PERMISSION_GROUPS: Record<
       PERMISSIONS_ENUM.PIPELINE_STAGE_MANAGE,
       PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE,
     ],
+  },
+  calls: {
+    label: 'Calls',
+    permissions: [PERMISSIONS_ENUM.CALL_CREATE],
+  },
+  whatsapp: {
+    label: 'WhatsApp',
+    permissions: [
+      PERMISSIONS_ENUM.WHATSAPP_SEND,
+      PERMISSIONS_ENUM.WHATSAPP_TEMPLATE_MANAGE,
+    ],
+  },
+  jobFeed: {
+    label: 'Job Board Feed',
+    permissions: [PERMISSIONS_ENUM.JOB_FEED_MANAGE],
   },
 };

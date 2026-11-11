@@ -104,14 +104,28 @@ export class OfferLetterService {
     return this.candidateEmailService.render(body, context.values);
   }
 
-  sendInBackground(offer: OfferEntity, userId: string): void {
-    this.send(offer, userId).catch((error: unknown) => {
+  async renderLetter(offer: OfferEntity, userId: string): Promise<string> {
+    if (!offer.body) return this.renderDefaultBody(offer, userId);
+    const context = await this.buildContext(offer, userId);
+    return this.candidateEmailService.render(offer.body, context.values);
+  }
+
+  sendInBackground(
+    offer: OfferEntity,
+    userId: string,
+    signUrl: string | null = null,
+  ): void {
+    this.send(offer, userId, signUrl).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Offer email not sent: ${message}`);
     });
   }
 
-  private async send(offer: OfferEntity, userId: string): Promise<void> {
+  private async send(
+    offer: OfferEntity,
+    userId: string,
+    signUrl: string | null,
+  ): Promise<void> {
     const [context, template] = await Promise.all([
       this.buildContext(offer, userId),
       this.candidateEmailService.findTemplate(
@@ -119,14 +133,24 @@ export class OfferLetterService {
         EmailTemplateCategory.OFFER,
       ),
     ]);
-    const body = offer.body ?? (await this.renderDefaultBody(offer, userId));
+    const letter =
+      offer.sentLetterBody ??
+      offer.body ??
+      (await this.renderDefaultBody(offer, userId));
+    const body = signUrl
+      ? `${letter}\n\nReview and sign your offer online: ${signUrl}`
+      : letter;
     await this.candidateEmailService.send({
       organizationId: offer.organizationId,
       userId,
       context,
       subject: template?.subject ?? FALLBACK_SUBJECT,
       body,
-      metadata: { templateId: template?.id ?? null, offerId: offer.id },
+      metadata: {
+        templateId: template?.id ?? null,
+        offerId: offer.id,
+        signUrl,
+      },
     });
   }
 }

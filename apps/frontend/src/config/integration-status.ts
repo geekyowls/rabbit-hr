@@ -54,7 +54,13 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
   },
   '/dashboard/clients/details': {
     level: 'integrated',
-    live: ['Client overview', 'Contacts', 'Jobs for this client', 'Billing'],
+    live: [
+      'Client overview',
+      'Contacts',
+      'Jobs for this client',
+      'Billing',
+      'Linked email threads when a mailbox is connected',
+    ],
   },
   '/dashboard/candidates': {
     level: 'integrated',
@@ -70,6 +76,10 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
       'Expected salary in organization currency',
       'Schedule interviews and interview history',
       'Make offer from an application',
+      'Email from your connected mailbox, linked threads and replies',
+      'Click to call with recording, outcome and notes when calling is connected',
+      'WhatsApp template messages and history when WhatsApp is connected',
+      'Interview booking links from an application',
     ],
     preview: [
       'AI summary and insights',
@@ -104,8 +114,22 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
       'Complete, no show, cancel with reason, delete',
       'Scorecards with criteria and recommendation',
       'Candidate emails and move to interview stage',
+      'Automatic meeting links for connected Google Meet, Teams and Zoom',
+      'Calendar sync status on the interview',
+      'Send booking link and booking links list with cancel',
     ],
-    preview: ['Automatic meeting links'],
+  },
+  '/dashboard/inbox': {
+    level: 'integrated',
+    live: [
+      'Stats, mailbox switcher, folders, search and filters',
+      'Thread list and reading pane with layout toggle',
+      'Read, unread, archive and trash',
+      'Link and unlink candidate, unlink client',
+      'Reply, reply all and compose with templates',
+      'Demo mailbox data',
+    ],
+    preview: ['Attachment download'],
   },
   '/dashboard/offers': {
     level: 'integrated',
@@ -116,6 +140,7 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
       'Submit, approve, reject, send, record response, withdraw, delete',
       'Approvals and offer activity',
       'Salary in the offer currency',
+      'E-signature status, signing link and public signing page',
     ],
   },
   '/dashboard/reports': {
@@ -160,7 +185,18 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
   '/dashboard/settings/roles': SETTINGS_LIVE,
   '/dashboard/settings/roles/new': SETTINGS_LIVE,
   '/dashboard/settings/roles/edit': SETTINGS_LIVE,
-  '/dashboard/settings/integrations': SETTINGS_LIVE,
+  '/dashboard/settings/integrations': {
+    level: 'integrated',
+    live: [
+      'Calendar and meetings, communication and hiring channel groups',
+      'OAuth and API key connections with health check',
+      'Email inbox mailboxes with sync and disconnect',
+      'Job board feed status',
+    ],
+  },
+  '/dashboard/settings/integrations/whatsapp': SETTINGS_LIVE,
+  '/dashboard/settings/integrations/job-feed': SETTINGS_LIVE,
+  '/dashboard/settings/availability': SETTINGS_LIVE,
   '/dashboard/settings/audit': SETTINGS_LIVE,
   '/dashboard/settings/email-templates': SETTINGS_LIVE,
   '/dashboard/settings/ats': SETTINGS_LIVE,

@@ -1,33 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import Image from 'next/image';
-import {
-  Search,
-  MoreVertical,
-  Calendar,
-  Video,
-  Slack,
-  Users,
-  Puzzle,
-  type LucideIcon,
-} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useBreadcrumb } from '@/contexts/breadcrumb-context';
+import { integrationCapabilitiesKeys } from '@/hooks/queries';
 import { PermissionGuard } from '@/components/auth/permission-guard';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/ui/page-header';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { SearchInput } from '@/components/patterns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,247 +29,55 @@ import type {
 } from '@/types/integration.type';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { ApiKeyConnectionDialog } from '@/components/integrations/api-key-connection-dialog';
+import { IntegrationCard } from '@/components/integrations/integration-card';
+import { MailboxCard } from '@/components/integrations/mailbox-card';
+import { JobFeedCard } from '@/components/integrations/job-feed-card';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  calendar: 'Calendar',
-  video_conferencing: 'Video',
-  messaging: 'Messaging',
-  productivity: 'Productivity',
-  ai: 'AI',
-  telephony: 'Telephony',
-  payments: 'Payments',
-};
+const WHATSAPP_SETTINGS_PATH = '/dashboard/settings/integrations/whatsapp';
 
-const PROVIDER_ICON: Record<string, { icon: LucideIcon; color: string }> = {
-  google_calendar: { icon: Calendar, color: '#4285F4' },
-  zoom: { icon: Video, color: '#2D8CFF' },
-  slack: { icon: Slack, color: '#4A154B' },
-  microsoft_teams: { icon: Users, color: '#6264A7' },
-};
+const CALENDAR_PROVIDERS = ['google_calendar', 'microsoft_teams', 'zoom'];
+const COMMUNICATION_PROVIDERS = ['wappcloud', 'plivo'];
+const GROUPED_PROVIDERS = new Set([
+  ...CALENDAR_PROVIDERS,
+  ...COMMUNICATION_PROVIDERS,
+]);
 
-function categoryLabel(value: string): string {
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
-    CATEGORY_LABELS[value] ??
-    value
-      .split('_')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ')
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold">{title}</h2>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
+    </section>
   );
 }
 
-function IntegrationCard({
-  integration,
-  onConnect,
-  onDisconnect,
-  onTestConnection,
-  connecting,
-  testing,
-}: {
-  integration: IntegrationListItem;
-  onConnect: (integration: IntegrationListItem) => void;
-  onDisconnect: (provider: string) => void;
-  onTestConnection: (provider: string) => void;
-  connecting: string | null;
-  testing: string | null;
-}) {
-  const { hasPermission } = usePermissions();
-  const isConnecting = connecting === integration.provider;
-  const isTesting = testing === integration.provider;
-  const isApiKey = integration.authType === 'api_key';
-  const canConnect = hasPermission(PERMISSIONS_ENUM.INTEGRATION_CONNECT);
-  const canDisconnect = hasPermission(PERMISSIONS_ENUM.INTEGRATION_DISCONNECT);
-
-  const renderStatusBadge = () => {
-    if (!integration.isConfigured) {
-      return (
-        <Badge
-          variant="outline"
-          className="shrink-0 text-[10px] font-normal text-muted-foreground"
-        >
-          Not configured
-        </Badge>
-      );
-    }
-    switch (integration.status) {
-      case 'connected':
-        return (
-          <Badge className="shrink-0 border-transparent bg-green-100 text-[10px] font-medium text-green-700 dark:bg-green-950 dark:text-green-400">
-            Connected
-          </Badge>
-        );
-      case 'expired':
-        return (
-          <Badge variant="secondary" className="shrink-0 text-[10px]">
-            Expired
-          </Badge>
-        );
-      case 'error':
-        return (
-          <Badge variant="destructive" className="shrink-0 text-[10px]">
-            Error
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderAction = () => {
-    if (integration.isConnected) {
-      if (!canDisconnect && !(isApiKey && canConnect)) return null;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 text-muted-foreground"
-              aria-label="Manage integration"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {isApiKey && canConnect && (
-              <DropdownMenuItem onClick={() => onConnect(integration)}>
-                Configure
-              </DropdownMenuItem>
-            )}
-            {isApiKey && canConnect && (
-              <DropdownMenuItem
-                onClick={() => onTestConnection(integration.provider)}
-                disabled={isTesting}
-              >
-                {isTesting ? 'Testing...' : 'Test connection'}
-              </DropdownMenuItem>
-            )}
-            {canDisconnect && (
-              <DropdownMenuItem
-                onClick={() => onDisconnect(integration.provider)}
-                className="text-destructive focus:text-destructive"
-              >
-                Disconnect
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    }
-
-    if (!integration.isConfigured || !canConnect) return null;
-
-    const label =
-      integration.status === 'error'
-        ? isApiKey
-          ? 'Update'
-          : 'Reconnect'
-        : integration.status === 'expired'
-          ? 'Reconnect'
-          : 'Connect';
-
-    const variant =
-      integration.status === 'error' || integration.status === 'expired'
-        ? 'outline'
-        : 'default';
-
-    return (
-      <Button
-        size="sm"
-        variant={variant}
-        className="h-7 shrink-0 px-3 text-xs"
-        onClick={() => onConnect(integration)}
-        disabled={isConnecting}
-      >
-        {isConnecting ? 'Connecting...' : label}
-      </Button>
-    );
-  };
-
-  const subtext =
-    integration.status === 'error' && integration.errorMessage
-      ? integration.errorMessage
-      : integration.isConnected && integration.accountEmail
-        ? integration.accountEmail
-        : null;
-
-  return (
-    <div className="group flex h-full flex-col rounded-md border bg-card p-4 transition-all hover:border-foreground/20 hover:shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-background p-1.5">
-          {integration.iconUrl ? (
-            <Image
-              src={integration.iconUrl}
-              alt={integration.name}
-              width={40}
-              height={40}
-              className="h-full w-full object-contain"
-              unoptimized
-            />
-          ) : (
-            (() => {
-              const meta = PROVIDER_ICON[integration.provider];
-              const Icon = meta?.icon ?? Puzzle;
-              return (
-                <Icon
-                  className="h-5 w-5"
-                  style={{
-                    color: meta?.color ?? 'rgb(var(--muted-foreground))',
-                  }}
-                />
-              );
-            })()
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-sm font-semibold">
-              {integration.name}
-            </h3>
-            {renderStatusBadge()}
-          </div>
-          {integration.description && (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-              {integration.description}
-            </p>
-          )}
-        </div>
-        {integration.isConnected && renderAction()}
-      </div>
-
-      {(subtext || !integration.isConnected) && (
-        <div className="mt-4 flex min-h-[28px] items-center justify-between gap-2">
-          {subtext ? (
-            <span
-              className={`truncate text-xs ${
-                integration.status === 'error'
-                  ? 'text-destructive'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              {subtext}
-            </span>
-          ) : (
-            <Badge
-              variant="secondary"
-              className="shrink-0 rounded-sm px-2.5 text-[10px] font-medium"
-            >
-              {categoryLabel(integration.category)}
-            </Badge>
-          )}
-          {!integration.isConnected && renderAction()}
-        </div>
-      )}
-    </div>
-  );
+function isNotConfiguredError(message: string) {
+  return /not configured/i.test(message);
 }
 
 function IntegrationsContent() {
+  useBreadcrumb([
+    { label: 'Settings', href: '/dashboard/settings' },
+    { label: 'Integrations', active: true },
+  ]);
+  const qc = useQueryClient();
+  const { hasPermission } = usePermissions();
   const [integrations, setIntegrations] = useState<IntegrationListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
   const [disconnectTarget, setDisconnectTarget] =
     useState<IntegrationListItem | null>(null);
   const [apiKeyDialogTarget, setApiKeyDialogTarget] =
@@ -301,14 +93,20 @@ function IntegrationsContent() {
       );
       setIntegrations(data || []);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to load integrations';
-      toast.error(message);
+      toast.error(
+        'Could not load integrations',
+        err instanceof Error ? err.message : undefined,
+      );
       setIntegrations([]);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const refresh = useCallback(() => {
+    loadIntegrations();
+    qc.invalidateQueries({ queryKey: integrationCapabilitiesKeys.all });
+  }, [loadIntegrations, qc]);
 
   useEffect(() => {
     loadIntegrations();
@@ -334,14 +132,11 @@ function IntegrationsContent() {
       setConnecting(null);
 
       if (success && provider) {
-        const providerName = provider.replace(/_/g, ' ');
-        toast.success(
-          `${providerName.charAt(0).toUpperCase() + providerName.slice(1)} connected successfully`,
-        );
+        toast.success('Integration connected');
         trackSettingsEvent('INTEGRATION_CONNECTED', { provider });
-        loadIntegrations();
+        refresh();
       } else if (error) {
-        toast.error(`Failed to connect: ${error}`);
+        toast.error('Could not connect', error);
       }
     };
 
@@ -352,18 +147,24 @@ function IntegrationsContent() {
       }
     };
 
-    const handleStorageEvent = (event: StorageEvent) => {
-      if (event.key === 'oauth-callback' && event.newValue) {
-        const data = JSON.parse(event.newValue);
+    const readStored = (raw: string | null) => {
+      if (!raw) return;
+      try {
         localStorage.removeItem('oauth-callback');
-        handleOAuthResult(data);
+        handleOAuthResult(JSON.parse(raw));
+      } catch {
+        return;
       }
     };
 
-    const pendingCallback = localStorage.getItem('oauth-callback');
-    if (pendingCallback) {
-      localStorage.removeItem('oauth-callback');
-      handleOAuthResult(JSON.parse(pendingCallback));
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key === 'oauth-callback') readStored(event.newValue);
+    };
+
+    try {
+      readStored(localStorage.getItem('oauth-callback'));
+    } catch {
+      setConnecting(null);
     }
 
     window.addEventListener('message', handleOAuthMessage);
@@ -376,7 +177,7 @@ function IntegrationsContent() {
         clearInterval(popupCheckInterval.current);
       }
     };
-  }, [loadIntegrations, trackSettingsEvent]);
+  }, [refresh, trackSettingsEvent]);
 
   const handleConnect = async (integration: IntegrationListItem) => {
     if (integration.authType === 'api_key') {
@@ -403,7 +204,7 @@ function IntegrationsContent() {
       );
 
       if (!popupRef.current) {
-        toast.error('Please allow popups to connect integrations');
+        toast.error('Allow popups to connect integrations');
         setConnecting(null);
         return;
       }
@@ -418,30 +219,40 @@ function IntegrationsContent() {
         }
       }, 500);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to initiate connection';
-      toast.error(message);
+      const message = err instanceof Error ? err.message : '';
+      if (isNotConfiguredError(message)) {
+        toast.error(
+          'Not configured on server',
+          'Ask your administrator to add the app credentials for this integration',
+        );
+      } else {
+        toast.error('Could not start the connection', message || undefined);
+      }
       setConnecting(null);
     }
   };
 
-  const handleTestConnection = async (provider: string) => {
-    setTesting(provider);
+  const handleTestConnection = async (integration: IntegrationListItem) => {
+    setTesting(integration.provider);
     try {
       const result = await fetchApi<HealthCheckResponse>(
-        API_ROUTES.INTEGRATIONS.HEALTH_CHECK(provider),
+        API_ROUTES.INTEGRATIONS.HEALTH_CHECK(integration.provider),
         { method: 'POST' },
       );
       if (result.ok) {
         toast.success('Connection is healthy');
       } else {
-        toast.error(result.errorMessage || 'Connection check failed');
+        toast.error(
+          'Connection check failed',
+          result.errorMessage ?? undefined,
+        );
       }
-      loadIntegrations();
+      refresh();
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to run health check';
-      toast.error(message);
+      toast.error(
+        'Could not check the connection',
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setTesting(null);
     }
@@ -452,126 +263,153 @@ function IntegrationsContent() {
     try {
       await fetchApi(
         API_ROUTES.INTEGRATIONS.DISCONNECT(disconnectTarget.provider),
-        {
-          method: 'DELETE',
-        },
+        { method: 'DELETE' },
       );
-      toast.success(`${disconnectTarget.name} disconnected`);
+      toast.success('Integration disconnected');
       trackSettingsEvent('INTEGRATION_DISCONNECTED', {
         provider: disconnectTarget.provider,
       });
-      loadIntegrations();
+      refresh();
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to disconnect';
-      toast.error(message);
+      toast.error(
+        'Could not disconnect',
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setDisconnectTarget(null);
     }
   };
 
-  const categories = useMemo(() => {
-    const present = Array.from(
-      new Set(integrations.map((i) => i.category)),
-    ).sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
-    return ['all', ...present];
-  }, [integrations]);
-
-  const connectedCount = useMemo(
-    () => integrations.filter((i) => i.isConnected).length,
-    [integrations],
+  const query = search.trim().toLowerCase();
+  const matches = useCallback(
+    (text: string) => !query || text.toLowerCase().includes(query),
+    [query],
   );
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return integrations.filter((i) => {
-      const matchesCategory =
-        activeCategory === 'all' || i.category === activeCategory;
-      const matchesSearch =
-        !query ||
-        i.name.toLowerCase().includes(query) ||
-        (i.description ?? '').toLowerCase().includes(query);
-      return matchesCategory && matchesSearch;
-    });
-  }, [integrations, search, activeCategory]);
+  const byProvider = useMemo(() => {
+    const map = new Map<string, IntegrationListItem>();
+    for (const i of integrations) map.set(i.provider, i);
+    return map;
+  }, [integrations]);
+
+  const pick = (providers: string[]) =>
+    providers
+      .map((p) => byProvider.get(p))
+      .filter(
+        (i): i is IntegrationListItem =>
+          !!i && matches(`${i.name} ${i.description ?? ''}`),
+      );
+
+  const others = integrations.filter(
+    (i) =>
+      !GROUPED_PROVIDERS.has(i.provider) &&
+      matches(`${i.name} ${i.description ?? ''}`),
+  );
+
+  const renderCard = (integration: IntegrationListItem) => (
+    <IntegrationCard
+      key={integration.id}
+      integration={integration}
+      onConnect={handleConnect}
+      onDisconnect={setDisconnectTarget}
+      onTestConnection={handleTestConnection}
+      connecting={connecting === integration.provider}
+      testing={testing === integration.provider}
+      {...(integration.provider === 'wappcloud' && {
+        manageHref: WHATSAPP_SETTINGS_PATH,
+        manageLabel: 'Manage templates',
+      })}
+    />
+  );
+
+  const calendar = pick(CALENDAR_PROVIDERS);
+  const communication = pick(COMMUNICATION_PROVIDERS);
+  const showMailbox =
+    hasPermission(PERMISSIONS_ENUM.INBOX_READ) &&
+    matches('email inbox gmail outlook mailbox');
+  const showJobFeed =
+    hasPermission(PERMISSIONS_ENUM.JOB_FEED_MANAGE) &&
+    matches('job board feed indeed linkedin xml');
+  const connectedCount = integrations.filter((i) => i.isConnected).length;
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader title="Integrations" backHref="/dashboard/settings" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-md" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-md" />
           ))}
         </div>
       </div>
     );
   }
 
+  const nothing =
+    calendar.length === 0 &&
+    communication.length === 0 &&
+    others.length === 0 &&
+    !showMailbox &&
+    !showJobFeed;
+
   return (
     <div className="space-y-6">
       <div data-tour="integrations-header">
-        <PageHeader title="Integrations" backHref="/dashboard/settings" />
+        <PageHeader
+          title="Integrations"
+          description={`${connectedCount} of ${integrations.length} connected`}
+          backHref="/dashboard/settings"
+          actions={
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search integrations"
+            />
+          }
+        />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search integrations..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <span className="text-sm text-muted-foreground">
-          {connectedCount} of {integrations.length} connected
-        </span>
-      </div>
-
-      {categories.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <Button
-              key={category}
-              size="sm"
-              variant={activeCategory === category ? 'default' : 'outline'}
-              className="h-7 rounded-md px-3 text-xs"
-              onClick={() => setActiveCategory(category)}
-            >
-              {category === 'all' ? 'All' : categoryLabel(category)}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {filtered.length === 0 ? (
+      {nothing && (
         <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
           No integrations match your search
         </div>
-      ) : (
-        <div
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          data-tour="integrations-grid"
-        >
-          {filtered.map((integration) => (
-            <IntegrationCard
-              key={integration.id}
-              integration={integration}
-              onConnect={handleConnect}
-              onDisconnect={(provider) => {
-                const target = integrations.find(
-                  (i) => i.provider === provider,
-                );
-                if (target) setDisconnectTarget(target);
-              }}
-              onTestConnection={handleTestConnection}
-              connecting={connecting}
-              testing={testing}
-            />
-          ))}
-        </div>
       )}
+
+      <div className="space-y-6" data-tour="integrations-grid">
+        {calendar.length > 0 && (
+          <Section
+            title="Calendar and meetings"
+            description="Sync interviews to calendars and create meeting links automatically"
+          >
+            {calendar.map(renderCard)}
+          </Section>
+        )}
+
+        {(showMailbox || communication.length > 0) && (
+          <Section
+            title="Communication"
+            description="Email, WhatsApp and calls with candidates and clients"
+          >
+            {showMailbox && <MailboxCard />}
+            {communication.map(renderCard)}
+          </Section>
+        )}
+
+        {showJobFeed && (
+          <Section
+            title="Hiring channels"
+            description="Share your open jobs with job boards"
+          >
+            <JobFeedCard />
+          </Section>
+        )}
+
+        {others.length > 0 && (
+          <Section title="Other" description="More connected services">
+            {others.map(renderCard)}
+          </Section>
+        )}
+      </div>
 
       <ApiKeyConnectionDialog
         integration={apiKeyDialogTarget}
@@ -579,9 +417,7 @@ function IntegrationsContent() {
         onOpenChange={(open) => {
           if (!open) setApiKeyDialogTarget(null);
         }}
-        onSaved={() => {
-          loadIntegrations();
-        }}
+        onSaved={refresh}
       />
 
       <AlertDialog
@@ -592,8 +428,8 @@ function IntegrationsContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect integration</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to disconnect {disconnectTarget?.name}? You
-              can reconnect it later.
+              Features that use this integration are hidden until you connect it
+              again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -613,7 +449,7 @@ export default function IntegrationsPage() {
     <PermissionGuard
       permissions={PERMISSIONS_ENUM.INTEGRATION_LIST_READ}
       fallback={
-        <div className="flex items-center justify-center h-64 text-muted-foreground">
+        <div className="flex h-64 items-center justify-center text-muted-foreground">
           You don&apos;t have permission to view integrations
         </div>
       }

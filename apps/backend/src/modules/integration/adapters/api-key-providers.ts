@@ -1,4 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
+import {
+  wappCloudApiBase,
+  wappCloudErrorMessage,
+  wappCloudHeaders,
+} from '@modules/whatsapp/providers/wappcloud.constants';
 
 export interface ApiKeyCredentials {
   apiKey?: string;
@@ -19,6 +24,7 @@ export const API_KEY_PROVIDERS = [
   'gemini',
   'plivo',
   'razorpay',
+  'wappcloud',
 ] as const;
 export type ApiKeyProvider = (typeof API_KEY_PROVIDERS)[number];
 
@@ -58,6 +64,14 @@ export function validateCredentials(
         throw new BadRequestException('Key Secret is required');
       }
       return;
+    case 'wappcloud':
+      if (!credentials.apiKey || credentials.apiKey.trim() === '') {
+        throw new BadRequestException('API key is required');
+      }
+      if (!credentials.authToken || credentials.authToken.trim() === '') {
+        throw new BadRequestException('Access token is required');
+      }
+      return;
     default:
       throw new BadRequestException(
         `Unsupported api-key provider: ${provider}`,
@@ -78,6 +92,8 @@ export async function runHealthCheck(
       return checkPlivo(credentials.authId!, credentials.authToken!);
     case 'razorpay':
       return checkRazorpay(credentials.authId!, credentials.authToken!);
+    case 'wappcloud':
+      return checkWappCloud(credentials.apiKey!, credentials.authToken!);
     default:
       return {
         ok: false,
@@ -215,6 +231,36 @@ async function checkRazorpay(
       ok: false,
       errorMessage:
         err instanceof Error ? err.message : 'Razorpay request failed',
+    };
+  }
+}
+
+async function checkWappCloud(
+  apiKey: string,
+  accessToken: string,
+): Promise<HealthCheckResult> {
+  try {
+    const response = await fetch(`${wappCloudApiBase()}/external/templates`, {
+      method: 'GET',
+      headers: wappCloudHeaders(apiKey, accessToken),
+      signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS),
+    });
+
+    if (response.status !== 401 && response.status !== 403) {
+      return { ok: true, accountIdentifier: 'WappCloud' };
+    }
+
+    return {
+      ok: false,
+      errorMessage:
+        wappCloudErrorMessage(await safeJson(response)) ||
+        'WappCloud rejected the API key or access token',
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      errorMessage:
+        err instanceof Error ? err.message : 'WappCloud request failed',
     };
   }
 }

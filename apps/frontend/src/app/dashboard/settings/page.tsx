@@ -13,6 +13,7 @@ import {
   Globe2,
   Workflow,
   ListPlus,
+  CalendarClock,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/use-permissions';
 import { isSystemAdminAccess } from '@/utils/cookies';
@@ -45,6 +46,13 @@ const settingsCards: SettingsCard[] = [
     description: 'Account information and profile settings',
     icon: User,
     tourId: 'settings-general',
+  },
+  {
+    href: '/dashboard/settings/availability',
+    title: 'My availability',
+    description: 'Working hours, time off and interview booking rules',
+    icon: CalendarClock,
+    tourId: 'settings-availability',
   },
   {
     href: '/dashboard/settings/organization',

@@ -9,6 +9,7 @@ import {
   ArrayMaxSize,
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsISO4217CurrencyCode,
@@ -19,6 +20,7 @@ import {
   IsUUID,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 import { ListPaginationDto } from '@shared/dtos/list-pagination.dto';
 import { UserSummaryDto } from '@shared/dtos/user-summary.dto';
@@ -349,4 +351,24 @@ export class OfferResponseDto {
 
   @ApiProperty()
   updatedAt!: Date;
+}
+
+export class AcceptOfferSigningDto {
+  @ApiProperty({ description: 'Full name typed as the signature' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  fullName: string;
+
+  @ApiProperty({ description: 'Consent to sign electronically' })
+  @IsBoolean()
+  consent: boolean;
+}
+
+export class DeclineOfferSigningDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string;
 }

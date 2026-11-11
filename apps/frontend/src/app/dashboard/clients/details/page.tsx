@@ -29,6 +29,7 @@ import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { ClientFormDrawer } from '@/components/clients/client-form-drawer';
 import { ClientContactDialog } from '@/components/clients/client-contact-dialog';
+import { ClientEmailsSection } from '@/components/clients/client-emails-section';
 import {
   CLIENT_STATUS_LABEL,
   CLIENT_STATUS_TONE,
@@ -465,6 +466,7 @@ function ClientDetailsContent() {
         <div className="space-y-4 lg:col-span-2">
           <ClientJobs client={client} />
           <ClientContacts client={client} canUpdate={canUpdate} />
+          <ClientEmailsSection clientId={client.id} />
         </div>
         <div className="space-y-4">
           <SectionCard icon={Building2} title="Overview" bodyClassName="p-4">

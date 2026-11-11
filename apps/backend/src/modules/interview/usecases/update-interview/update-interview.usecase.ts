@@ -1,11 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  EventName,
+  type InterviewRescheduledEvent,
+  type InterviewUpdatedEvent,
+} from '@boilerplate/core';
+import {
   ActivityRepository,
   InterviewRepository,
   UserRepository,
 } from '@db/repositories';
 import { InterviewStatus } from '@db/enums';
 import { pickDefined } from '@shared/helpers/pick-defined';
+import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
+import { InterviewCalendarSyncPlanner } from '@modules/interview-calendar-sync/interview-calendar-sync.planner';
 import { assertInterviewers, loadInterviewEntity } from '../interview-query';
 import { recordInterviewActivity } from '../interview-activity';
 import { InterviewInviteService } from '../interview-invite.service';
@@ -20,6 +27,8 @@ export class UpdateInterview {
     private readonly activityRepository: ActivityRepository,
     private readonly interviewInviteService: InterviewInviteService,
     private readonly getInterview: GetInterview,
+    private readonly syncPlanner: InterviewCalendarSyncPlanner,
+    private readonly eventEmitter: AppEventEmitter,
   ) {}
 
   async execute(command: UpdateInterviewCommand) {
@@ -33,9 +42,13 @@ export class UpdateInterview {
       throw new BadRequestException('Cancelled interviews cannot be updated');
     }
 
-    const { notifyCandidate, scheduledAt, ...changes } = pickDefined(
-      command.payload,
-    );
+    const {
+      notifyCandidate,
+      scheduledAt,
+      autoMeetingLink,
+      meetingProvider,
+      ...changes
+    } = pickDefined(command.payload);
     if (changes.interviewerIds) {
       await assertInterviewers(
         this.userRepository,
@@ -48,7 +61,17 @@ export class UpdateInterview {
     const nextAt = scheduledAt ? new Date(scheduledAt) : null;
     const rescheduled = !!nextAt && nextAt.getTime() !== previousAt;
 
-    Object.assign(interview, changes, nextAt ? { scheduledAt: nextAt } : {});
+    const sync = await this.syncPlanner.plan(
+      organizationId,
+      { autoMeetingLink, meetingProvider, meetingUrl: changes.meetingUrl },
+      interview,
+    );
+    Object.assign(
+      interview,
+      changes,
+      nextAt ? { scheduledAt: nextAt } : {},
+      sync,
+    );
     if (rescheduled && interview.status !== InterviewStatus.SCHEDULED) {
       interview.status = InterviewStatus.SCHEDULED;
     }
@@ -65,6 +88,28 @@ export class UpdateInterview {
         ? { previousScheduledAt: new Date(previousAt).toISOString() }
         : undefined,
     });
+
+    if (rescheduled) {
+      this.eventEmitter.emit<InterviewRescheduledEvent>({
+        eventName: EventName.INTERVIEW_RESCHEDULED,
+        timestamp: new Date(),
+        organizationId,
+        triggeredBy: userId,
+        interviewId: saved.id,
+        applicationId: saved.applicationId,
+        scheduledAt: saved.scheduledAt,
+        previousScheduledAt: new Date(previousAt),
+      });
+    } else {
+      this.eventEmitter.emit<InterviewUpdatedEvent>({
+        eventName: EventName.INTERVIEW_UPDATED,
+        timestamp: new Date(),
+        organizationId,
+        triggeredBy: userId,
+        interviewId: saved.id,
+        applicationId: saved.applicationId,
+      });
+    }
 
     if (notifyCandidate) {
       this.interviewInviteService.notifyInBackground(

@@ -30,6 +30,16 @@ import {
   InterviewEntity,
   ScorecardEntity,
   OfferEntity,
+  InterviewerAvailabilityEntity,
+  UserTimeOffEntity,
+  InterviewBookingLinkEntity,
+  MailboxConnectionEntity,
+  EmailThreadEntity,
+  EmailMessageEntity,
+  CandidateCallEntity,
+  WhatsappTemplateEntity,
+  WhatsappMessageEntity,
+  JobFeedEntity,
 } from './entities';
 
 dotenv.config({ path: join(__dirname, '../../.env') });
@@ -62,6 +72,16 @@ const entities = [
   InterviewEntity,
   ScorecardEntity,
   OfferEntity,
+  InterviewerAvailabilityEntity,
+  UserTimeOffEntity,
+  InterviewBookingLinkEntity,
+  MailboxConnectionEntity,
+  EmailThreadEntity,
+  EmailMessageEntity,
+  CandidateCallEntity,
+  WhatsappTemplateEntity,
+  WhatsappMessageEntity,
+  JobFeedEntity,
 ];
 
 const isDev = process.env.NODE_ENV === 'development';

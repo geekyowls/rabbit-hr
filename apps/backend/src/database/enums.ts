@@ -492,6 +492,7 @@ export enum ActivityType {
   TASK = 'task',
   INTERVIEW = 'interview',
   OFFER = 'offer',
+  WHATSAPP = 'whatsapp',
 }
 
 export enum TaskStatus {
@@ -573,4 +574,104 @@ export enum OfferDecision {
 export enum OfferResponse {
   ACCEPTED = 'accepted',
   DECLINED = 'declined',
+}
+
+export enum CallDirection {
+  OUTBOUND = 'outbound',
+  INBOUND = 'inbound',
+}
+
+export enum CallStatus {
+  INITIATED = 'initiated',
+  COMPLETED = 'completed',
+  NO_ANSWER = 'no_answer',
+  BUSY = 'busy',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+}
+
+export enum CallDisposition {
+  CONNECTED = 'connected',
+  NO_ANSWER = 'no_answer',
+  VOICEMAIL = 'voicemail',
+  BUSY = 'busy',
+  WRONG_NUMBER = 'wrong_number',
+  INTERESTED = 'interested',
+  NOT_INTERESTED = 'not_interested',
+  CALLBACK_REQUESTED = 'callback_requested',
+}
+
+export enum WhatsappMessageStatus {
+  QUEUED = 'queued',
+  SENT = 'sent',
+  FAILED = 'failed',
+}
+
+export enum MailboxProvider {
+  GMAIL = 'gmail',
+  OUTLOOK = 'outlook',
+}
+
+export enum MailboxConnectionStatus {
+  CONNECTED = 'connected',
+  DISCONNECTED = 'disconnected',
+  EXPIRED = 'expired',
+  ERROR = 'error',
+}
+
+export enum EmailFolder {
+  INBOX = 'inbox',
+  SENT = 'sent',
+  DRAFTS = 'drafts',
+  ARCHIVE = 'archive',
+  TRASH = 'trash',
+}
+
+export enum EmailDirection {
+  INBOUND = 'inbound',
+  OUTBOUND = 'outbound',
+}
+
+export enum EmailDeliveryStatus {
+  SENT = 'sent',
+  DEMO = 'demo',
+}
+
+export enum InboxSearchIn {
+  ALL = 'all',
+  SUBJECT = 'subject',
+  FROM_TO = 'from_to',
+}
+
+export enum InboxLinkedFilter {
+  CANDIDATE = 'candidate',
+  CLIENT = 'client',
+  UNLINKED = 'unlinked',
+}
+
+export enum InterviewMeetingProvider {
+  NONE = 'none',
+  GOOGLE_MEET = 'google_meet',
+  ZOOM = 'zoom',
+  TEAMS = 'teams',
+  MANUAL = 'manual',
+}
+
+export enum CalendarSyncStatus {
+  PENDING = 'pending',
+  SYNCED = 'synced',
+  FAILED = 'failed',
+  SKIPPED = 'skipped',
+}
+
+export enum InterviewBookingMode {
+  ANY_INTERVIEWER = 'any_interviewer',
+  ALL_INTERVIEWERS = 'all_interviewers',
+}
+
+export enum InterviewBookingLinkStatus {
+  OPEN = 'open',
+  BOOKED = 'booked',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
 }

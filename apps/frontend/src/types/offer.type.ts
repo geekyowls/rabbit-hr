@@ -55,6 +55,66 @@ export interface OfferApplicationSummary {
   stage: string;
 }
 
+export type OfferSignStatus =
+  | 'not_sent'
+  | 'pending'
+  | 'signed'
+  | 'accepted'
+  | 'declined'
+  | 'expired'
+  | 'closed';
+
+export interface OfferSignature {
+  status: OfferSignStatus;
+  signUrl: string | null;
+  expiresAt: string | null;
+  signedAt: string | null;
+  signedName: string | null;
+  signedIp: string | null;
+  signedUserAgent: string | null;
+  signatureHash: string | null;
+}
+
+export interface PublicOfferSigning {
+  status: OfferSignStatus;
+  offerStatus: OfferStatus;
+  canRespond: boolean;
+  title: string;
+  salaryAmount: number | null;
+  currency: string;
+  salaryPeriod: SalaryPeriod;
+  salaryFormatted: string | null;
+  bonus: string | null;
+  equity: string | null;
+  startDate: string | null;
+  offerExpiresAt: string | null;
+  linkExpiresAt: string;
+  employmentType: EmploymentType | null;
+  location: string | null;
+  letterBody: string;
+  letterHtml: string;
+  candidate: { firstName: string; lastName: string };
+  job: { title: string; reference: string; location: string | null };
+  client: { name: string } | null;
+  company: { name: string | null; logo: string | null; website: string | null };
+  locale: string;
+  timezone: string;
+  sentAt: string | null;
+  respondedAt: string | null;
+  signedAt: string | null;
+  signedName: string | null;
+  declineReason: string | null;
+}
+
+export interface AcceptOfferSigningRequest {
+  fullName: string;
+  consent: boolean;
+}
+
+export interface DeclineOfferSigningRequest {
+  reason?: string;
+}
+
 export interface Offer {
   id: string;
   organizationId: string;
@@ -79,6 +139,14 @@ export interface Offer {
   sentAt: string | null;
   respondedAt: string | null;
   declineReason: string | null;
+  sentLetterBody: string | null;
+  signTokenExpiresAt: string | null;
+  signedAt: string | null;
+  signedName: string | null;
+  signedIp: string | null;
+  signedUserAgent: string | null;
+  signatureHash: string | null;
+  signature: OfferSignature;
   createdBy: string | null;
   creator: UserSummary | null;
   candidate: OfferCandidateSummary;

@@ -5,7 +5,12 @@ import { UserEntity } from './user.entity';
 import { CandidateEntity } from './candidate.entity';
 import { ApplicationEntity } from './application.entity';
 import { JobEntity } from './job.entity';
-import { InterviewStatus, InterviewType } from '../enums';
+import {
+  CalendarSyncStatus,
+  InterviewMeetingProvider,
+  InterviewStatus,
+  InterviewType,
+} from '../enums';
 
 @Entity('interviews')
 @Index(['organizationId', 'scheduledAt'])
@@ -46,6 +51,35 @@ export class InterviewEntity extends BaseEntity {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   meetingUrl: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: InterviewMeetingProvider,
+    default: InterviewMeetingProvider.NONE,
+  })
+  meetingProvider: InterviewMeetingProvider;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  meetingExternalId: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  calendarProvider: string | null;
+
+  @Column({ type: 'varchar', length: 1024, nullable: true })
+  externalEventId: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: CalendarSyncStatus,
+    default: CalendarSyncStatus.SKIPPED,
+  })
+  calendarSyncStatus: CalendarSyncStatus;
+
+  @Column({ type: 'text', nullable: true })
+  calendarSyncError: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  calendarSyncedAt: Date | null;
 
   @Column({ type: 'uuid', array: true, default: '{}' })
   interviewerIds: string[];

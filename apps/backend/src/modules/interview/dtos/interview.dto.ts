@@ -30,6 +30,8 @@ import { UserSummaryDto } from '@shared/dtos/user-summary.dto';
 import { TransformToBoolean } from '@shared/transformers/to-boolean';
 import { Trim } from '@shared/transformers/trim';
 import {
+  CalendarSyncStatus,
+  InterviewMeetingProvider,
   InterviewStatus,
   InterviewType,
   ScorecardRecommendation,
@@ -140,6 +142,20 @@ export class CreateInterviewDto {
   @MaxLength(500)
   @IsOptional()
   meetingUrl?: string | null;
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      'Create the meeting link with meetingProvider when that integration is connected',
+  })
+  @IsBoolean()
+  @IsOptional()
+  autoMeetingLink?: boolean;
+
+  @ApiPropertyOptional({ enum: InterviewMeetingProvider })
+  @IsEnum(InterviewMeetingProvider)
+  @IsOptional()
+  meetingProvider?: InterviewMeetingProvider;
 
   @ApiProperty({ type: [String] })
   @IsArray()
@@ -358,6 +374,27 @@ export class InterviewResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   meetingUrl!: string | null;
+
+  @ApiProperty({ enum: InterviewMeetingProvider })
+  meetingProvider!: InterviewMeetingProvider;
+
+  @ApiPropertyOptional({ nullable: true })
+  meetingExternalId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'google_calendar' })
+  calendarProvider!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  externalEventId!: string | null;
+
+  @ApiProperty({ enum: CalendarSyncStatus })
+  calendarSyncStatus!: CalendarSyncStatus;
+
+  @ApiPropertyOptional({ nullable: true })
+  calendarSyncError!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  calendarSyncedAt!: Date | null;
 
   @ApiProperty({ type: [String] })
   interviewerIds!: string[];

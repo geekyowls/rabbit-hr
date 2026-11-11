@@ -5,3 +5,4 @@ export * from '@boilerplate/shared';
 export * from './email-domain-validator';
 export * from './url-builder';
 export * from './integration-encryption';
+export * from './zoned-time';

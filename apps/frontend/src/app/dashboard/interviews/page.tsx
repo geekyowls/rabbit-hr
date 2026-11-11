@@ -7,6 +7,7 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
+  Link2,
   MapPin,
   Video,
 } from 'lucide-react';
@@ -43,7 +44,11 @@ import {
   formatDuration,
   personLabel,
 } from '@/components/interviews/interview-data';
-import { ScheduleInterviewDrawer } from '@/components/interviews/schedule-interview-drawer';
+import {
+  ScheduleInterviewDrawer,
+  type ScheduleDrawerMode,
+} from '@/components/interviews/schedule-interview-drawer';
+import { BookingLinksPanel } from '@/components/interviews/booking-links-panel';
 import { InterviewDetailDrawer } from '@/components/interviews/interview-detail-drawer';
 import type {
   Interview,
@@ -52,6 +57,7 @@ import type {
 } from '@/types/interview.type';
 
 type View = 'upcoming' | 'feedback' | 'past';
+type Tab = View | 'links';
 type Owner = 'everyone' | 'mine';
 
 const PAGE_SIZE = 25;
@@ -275,7 +281,10 @@ function InterviewsContent() {
   const canCreate = hasPermission(PERMISSIONS_ENUM.INTERVIEW_CREATE);
 
   const [now] = useState(() => new Date().toISOString());
-  const [view, setView] = useState<View>('upcoming');
+  const [tab, setTab] = useState<Tab>('upcoming');
+  const view: View = tab === 'links' ? 'upcoming' : tab;
+  const setView = (v: View) => setTab(v);
+  const [drawerMode, setDrawerMode] = useState<ScheduleDrawerMode>('schedule');
   const [owner, setOwner] = useState<Owner>('everyone');
   const [jobId, setJobId] = useState<string>(ALL);
   const [pastStatus, setPastStatus] = useState<string>(ALL);
@@ -294,6 +303,7 @@ function InterviewsContent() {
     if (!isNew && !id) return;
     if (isNew) {
       setEditing(null);
+      setDrawerMode('schedule');
       setPrefillApplicationId(searchParams.get('applicationId'));
       setFormOpen(true);
     }
@@ -375,7 +385,15 @@ function InterviewsContent() {
 
   const openSchedule = () => {
     setEditing(null);
+    setDrawerMode('schedule');
     setPrefillApplicationId(null);
+    setFormOpen(true);
+  };
+
+  const openBookingLink = () => {
+    setEditing(null);
+    setPrefillApplicationId(null);
+    setDrawerMode('link');
     setFormOpen(true);
   };
 
@@ -428,7 +446,14 @@ function InterviewsContent() {
       <FilterBar
         end={
           <>
-            <ExportButton formats={['CSV']} onExport={handleExport} />
+            {tab !== 'links' && (
+              <ExportButton formats={['CSV']} onExport={handleExport} />
+            )}
+            {canCreate && (
+              <ToolbarButton icon={Link2} onClick={openBookingLink}>
+                Send booking link
+              </ToolbarButton>
+            )}
             {canCreate && (
               <ToolbarButton
                 variant="primary"
@@ -442,8 +467,8 @@ function InterviewsContent() {
         }
       >
         <SegmentedControl
-          value={view}
-          onChange={setView}
+          value={tab}
+          onChange={setTab}
           options={[
             {
               value: 'upcoming',
@@ -451,7 +476,7 @@ function InterviewsContent() {
               icon: (
                 <CountBadge
                   value={upcomingCount.data?.total}
-                  active={view === 'upcoming'}
+                  active={tab === 'upcoming'}
                 />
               ),
             },
@@ -461,7 +486,7 @@ function InterviewsContent() {
               icon: (
                 <CountBadge
                   value={feedbackCount.data?.total}
-                  active={view === 'feedback'}
+                  active={tab === 'feedback'}
                 />
               ),
             },
@@ -471,125 +496,135 @@ function InterviewsContent() {
               icon: (
                 <CountBadge
                   value={pastCount.data?.total}
-                  active={view === 'past'}
+                  active={tab === 'past'}
                 />
               ),
             },
+            { value: 'links', label: 'Booking links' },
           ]}
         />
-        <SegmentedControl
-          value={owner}
-          onChange={setOwner}
-          options={[
-            { value: 'everyone', label: 'Everyone' },
-            { value: 'mine', label: 'Mine' },
-          ]}
-        />
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search candidate or role..."
-        />
-        <FilterDropdown
-          label="Role"
-          value={jobId}
-          options={jobOptions}
-          onChange={setJobId}
-        />
-        {view === 'past' && (
-          <FilterDropdown
-            label="Status"
-            value={pastStatus}
-            options={PAST_STATUS_OPTIONS}
-            onChange={setPastStatus}
-          />
+        {tab !== 'links' && (
+          <>
+            <SegmentedControl
+              value={owner}
+              onChange={setOwner}
+              options={[
+                { value: 'everyone', label: 'Everyone' },
+                { value: 'mine', label: 'Mine' },
+              ]}
+            />
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search candidate or role..."
+            />
+            <FilterDropdown
+              label="Role"
+              value={jobId}
+              options={jobOptions}
+              onChange={setJobId}
+            />
+            {view === 'past' && (
+              <FilterDropdown
+                label="Status"
+                value={pastStatus}
+                options={PAST_STATUS_OPTIONS}
+                onChange={setPastStatus}
+              />
+            )}
+          </>
         )}
       </FilterBar>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        {rows.length === 0 && !isFetching ? (
-          <div className="flex flex-1 items-center justify-center rounded-t-md border border-border bg-card">
-            <EmptyState
-              icon={<CalendarDays className="h-8 w-8" />}
-              title={
-                search.trim()
-                  ? 'No interviews match your search'
-                  : view === 'upcoming'
-                    ? 'No upcoming interviews'
-                    : view === 'feedback'
-                      ? 'All feedback is in'
-                      : 'No past interviews'
-              }
-              description={
-                view === 'upcoming' && !search.trim()
-                  ? 'Schedule one from here or from a candidate profile'
-                  : undefined
-              }
-              action={
-                canCreate && view === 'upcoming' && !search.trim() ? (
-                  <ToolbarButton
-                    variant="primary"
-                    icon={CalendarPlus}
-                    onClick={openSchedule}
-                  >
-                    Schedule interview
-                  </ToolbarButton>
-                ) : undefined
-              }
+      {tab === 'links' ? (
+        <BookingLinksPanel onOpenInterview={setDetailId} />
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">
+          {rows.length === 0 && !isFetching ? (
+            <div className="flex flex-1 items-center justify-center rounded-t-md border border-border bg-card">
+              <EmptyState
+                icon={<CalendarDays className="h-8 w-8" />}
+                title={
+                  search.trim()
+                    ? 'No interviews match your search'
+                    : view === 'upcoming'
+                      ? 'No upcoming interviews'
+                      : view === 'feedback'
+                        ? 'All feedback is in'
+                        : 'No past interviews'
+                }
+                description={
+                  view === 'upcoming' && !search.trim()
+                    ? 'Schedule one from here or from a candidate profile'
+                    : undefined
+                }
+                action={
+                  canCreate && view === 'upcoming' && !search.trim() ? (
+                    <ToolbarButton
+                      variant="primary"
+                      icon={CalendarPlus}
+                      onClick={openSchedule}
+                    >
+                      Schedule interview
+                    </ToolbarButton>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : (
+            <DataGrid
+              columns={columns}
+              rows={rows}
+              getRowId={(r) => r.id}
+              onRowClick={(r) => setDetailId(r.id)}
+              pinFirstColumn
+              maxHeight="100%"
+              className="flex-1"
             />
-          </div>
-        ) : (
-          <DataGrid
-            columns={columns}
-            rows={rows}
-            getRowId={(r) => r.id}
-            onRowClick={(r) => setDetailId(r.id)}
-            pinFirstColumn
-            maxHeight="100%"
-            className="flex-1"
-          />
-        )}
-        <div className="flex items-center justify-between border border-t-0 border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          <span>
-            {isFetching && !isLoading
-              ? 'Updating...'
-              : search.trim()
-                ? `${rows.length} matches on this page of ${total}`
-                : `Showing ${from}-${to} of ${total}`}
-          </span>
-          <span className="flex items-center gap-2">
-            {view === 'feedback' && (
-              <span className="mr-2 hidden sm:inline">
-                Scorecards are due once the interview ends
-              </span>
-            )}
+          )}
+          <div className="flex items-center justify-between border border-t-0 border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <span>
-              Page {page} of {totalPages}
+              {isFetching && !isLoading
+                ? 'Updating...'
+                : search.trim()
+                  ? `${rows.length} matches on this page of ${total}`
+                  : `Showing ${from}-${to} of ${total}`}
             </span>
-            <button
-              type="button"
-              aria-label="Previous page"
-              disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="flex h-6 w-6 items-center justify-center rounded border border-border bg-background hover:bg-accent disabled:opacity-40"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Next page"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="flex h-6 w-6 items-center justify-center rounded border border-border bg-background hover:bg-accent disabled:opacity-40"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </span>
+            <span className="flex items-center gap-2">
+              {view === 'feedback' && (
+                <span className="mr-2 hidden sm:inline">
+                  Scorecards are due once the interview ends
+                </span>
+              )}
+              <span>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                aria-label="Previous page"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="flex h-6 w-6 items-center justify-center rounded border border-border bg-background hover:bg-accent disabled:opacity-40"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next page"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="flex h-6 w-6 items-center justify-center rounded border border-border bg-background hover:bg-accent disabled:opacity-40"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       <ScheduleInterviewDrawer
         open={formOpen}
+        initialMode={drawerMode}
         onOpenChange={(o) => {
           setFormOpen(o);
           if (!o) {

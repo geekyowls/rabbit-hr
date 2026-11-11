@@ -95,6 +95,31 @@ export class OfferEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 500, nullable: true })
   declineReason: string | null;
 
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 64, nullable: true, select: false })
+  signToken: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  signTokenExpiresAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  sentLetterBody: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  signedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  signedName: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  signedIp: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  signedUserAgent: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  signatureHash: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
 

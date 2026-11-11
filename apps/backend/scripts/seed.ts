@@ -5,6 +5,9 @@ import AppDataSource from '../src/database/data-source';
 import { seedAts } from './seed-ats';
 import { seedAtsPhase2 } from './seed-ats-phase2';
 import { seedAtsPhase2b } from './seed-ats-phase2b';
+import { seedAtsPhase3c } from './seed-ats-phase3c';
+import { seedAtsPhase3a } from './seed-ats-phase3a';
+import { seedAtsPhase3b } from './seed-ats-phase3b';
 import {
   UserEntity,
   OrganizationEntity,
@@ -57,7 +60,8 @@ const INTEGRATIONS = [
   {
     provider: 'google_calendar',
     name: 'Google Calendar',
-    description: 'Sync events and availability with Google Calendar',
+    description:
+      'Sync interviews to Google Calendar and create Google Meet links',
     iconUrl: '/integrations/google-calendar.svg',
     category: IntegrationCategory.CALENDAR,
     authType: IntegrationAuthType.OAUTH,
@@ -66,7 +70,7 @@ const INTEGRATIONS = [
   {
     provider: 'zoom',
     name: 'Zoom',
-    description: 'Create and manage Zoom meetings',
+    description: 'Create Zoom meeting links for interviews',
     iconUrl: '/integrations/zoom.svg',
     category: IntegrationCategory.VIDEO_CONFERENCING,
     authType: IntegrationAuthType.OAUTH,
@@ -83,10 +87,11 @@ const INTEGRATIONS = [
   },
   {
     provider: 'microsoft_teams',
-    name: 'Microsoft Teams',
-    description: 'Post messages and alerts to Microsoft Teams',
+    name: 'Microsoft 365',
+    description:
+      'Sync interviews to Outlook calendar and create Microsoft Teams meeting links',
     iconUrl: '/integrations/microsoft-teams.svg',
-    category: IntegrationCategory.MESSAGING,
+    category: IntegrationCategory.CALENDAR,
     authType: IntegrationAuthType.OAUTH,
     sortOrder: 4,
   },
@@ -110,6 +115,7 @@ async function seed() {
       existing.iconUrl = integration.iconUrl;
       existing.name = integration.name;
       existing.description = integration.description;
+      existing.category = integration.category;
       await integrationRepo.save(existing);
       console.log(`Updated integration: ${integration.name}`);
       continue;
@@ -194,6 +200,9 @@ async function seed() {
       await seedAts(AppDataSource, atsContext);
       await seedAtsPhase2(AppDataSource, atsContext);
       await seedAtsPhase2b(AppDataSource, atsContext);
+      await seedAtsPhase3c(AppDataSource, atsContext);
+      await seedAtsPhase3a(AppDataSource, atsContext);
+      await seedAtsPhase3b(AppDataSource, atsContext);
 
       console.log(
         `Careers page slug: ${organization.slug} (GET /api/v1/public/careers/${organization.slug}/jobs)`,

@@ -5,6 +5,8 @@ import {
   ChevronUp,
   ChevronDown,
   Mail,
+  MessageCircle,
+  Phone,
   CalendarDays,
   MoreHorizontal,
   Sparkles,
@@ -64,10 +66,18 @@ import { PermissionGuard } from '@/components/auth/permission-guard';
 import { usePermissions } from '@/hooks/use-permissions';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import {
+  hasIntegrationCapability,
+  useCandidateCallsQuery,
   useCandidateQuery,
+  useCandidateWhatsappMessagesQuery,
   useDeleteCandidateMutation,
+  useIntegrationCapabilities,
   useUpdateCandidateMutation,
 } from '@/hooks/queries';
+import { IfIntegration } from '@/components/integrations/if-integration';
+import { useUserMailbox } from '@/components/comms/use-user-mailbox';
+import { MailboxComposeDialog } from '@/components/comms/mailbox-compose-dialog';
+import { LinkedEmailThreads } from '@/components/comms/linked-email-threads';
 import type {
   CandidateApplicationSummary,
   CandidateDetail,
@@ -98,6 +108,14 @@ import {
 import { CandidateDocumentsTab } from './candidate-documents-tab';
 import { CandidateTasksTab } from './candidate-tasks-tab';
 import { CandidateInterviewsTab } from './candidate-interviews-tab';
+import { CandidateCallsTab, CALLS_PAGE_SIZE } from './candidate-calls-tab';
+import {
+  CandidateMessagesTab,
+  MESSAGES_PAGE_SIZE,
+} from './candidate-messages-tab';
+import { CandidateCallDialog } from './candidate-call-dialog';
+import { CandidateWhatsappDialog } from './candidate-whatsapp-dialog';
+import { BookingLinkDialog } from './booking-link-dialog';
 import { ScheduleInterviewDrawer } from '@/components/interviews/schedule-interview-drawer';
 import { InterviewDetailDrawer } from '@/components/interviews/interview-detail-drawer';
 import type { Interview } from '@/types/interview.type';
@@ -261,6 +279,13 @@ function OverviewTab({
     ? flowStages.findIndex((s) => s.key === focused.stage)
     : -1;
   const role = c.currentTitle ?? focused?.jobTitle ?? 'candidate';
+  const experience = [
+    c.currentTitle,
+    c.currentEmployer,
+    c.yearsExperience !== null ? `${c.yearsExperience} yrs` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <>
@@ -293,30 +318,34 @@ function OverviewTab({
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Headline</p>
-          <p className="text-sm text-muted-foreground">
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Headline</p>
+          <p
+            className={cn(
+              'text-sm text-foreground',
+              !c.headline && 'text-muted-foreground',
+            )}
+          >
             {c.headline || 'No headline yet'}
           </p>
         </div>
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Experience</p>
-          <p className="text-sm text-muted-foreground">
-            {[
-              c.currentTitle,
-              c.currentEmployer,
-              c.yearsExperience !== null ? `${c.yearsExperience} yrs` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ') || 'Not recorded'}
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Experience</p>
+          <p
+            className={cn(
+              'text-sm text-foreground',
+              !experience && 'text-muted-foreground',
+            )}
+          >
+            {experience || 'Not recorded'}
           </p>
         </div>
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Skills</p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Skills</p>
           <Chips items={c.skills} empty="No skills added" />
         </div>
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Tags</p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Tags</p>
           <Chips items={c.tags} empty="No tags" />
         </div>
       </div>
@@ -448,6 +477,38 @@ export function CandidateDetailDrawer({
     null,
   );
   const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [callOpen, setCallOpen] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [compose, setCompose] = useState<{
+    applicationId: string | null;
+  } | null>(null);
+  const [bookingApp, setBookingApp] =
+    useState<CandidateApplicationSummary | null>(null);
+
+  const { data: capabilities } = useIntegrationCapabilities(open);
+  const callsConnected = hasIntegrationCapability(capabilities, 'calls');
+  const whatsappConnected = hasIntegrationCapability(capabilities, 'whatsapp');
+  const userMailbox = useUserMailbox();
+  const { data: callHistory } = useCandidateCallsQuery(
+    open ? candidateId : null,
+    { page: 1, limit: CALLS_PAGE_SIZE },
+  );
+  const { data: messageHistory } = useCandidateWhatsappMessagesQuery(
+    open ? candidateId : null,
+    { page: 1, limit: MESSAGES_PAGE_SIZE },
+  );
+  const showCalls = callsConnected || (callHistory?.total ?? 0) > 0;
+  const showMessages = whatsappConnected || (messageHistory?.total ?? 0) > 0;
+  const showEmails = userMailbox.connected;
+  const canSystemEmail = hasPermission(PERMISSIONS_ENUM.EMAIL_TEMPLATE_SEND);
+
+  const startEmail = (app: CandidateApplicationSummary | null) => {
+    if (userMailbox.canSend) {
+      setCompose({ applicationId: app?.id ?? null });
+      return;
+    }
+    if (app) setEmailApp(app);
+  };
 
   const openSchedule = (app: CandidateApplicationSummary) => {
     setEditingInterview(null);
@@ -560,17 +621,48 @@ export function CandidateDetailDrawer({
           {focused && <StagePill stage={focused.stage} className="ml-2" />}
           {c && (
             <span className="ml-auto flex items-center gap-1.5">
-              <PermissionGuard
-                permissions={PERMISSIONS_ENUM.EMAIL_TEMPLATE_SEND}
-              >
-                <ToolbarButton
-                  icon={Mail}
-                  disabled={!focused}
-                  title={focused ? undefined : 'Add to a job to send email'}
-                  onClick={() => focused && setEmailApp(focused)}
-                >
+              {userMailbox.canSend ? (
+                <ToolbarButton icon={Mail} onClick={() => startEmail(focused)}>
                   Email
                 </ToolbarButton>
+              ) : (
+                canSystemEmail &&
+                !userMailbox.loading && (
+                  <ToolbarButton
+                    icon={Mail}
+                    disabled={!focused}
+                    title={focused ? undefined : 'Add to a job to send email'}
+                    onClick={() => startEmail(focused)}
+                  >
+                    Email
+                  </ToolbarButton>
+                )
+              )}
+              <PermissionGuard permissions={PERMISSIONS_ENUM.CALL_CREATE}>
+                <IfIntegration capability="calls">
+                  <ToolbarButton
+                    icon={Phone}
+                    disabled={!c.phone}
+                    title={c.phone ? undefined : 'Add a phone number to call'}
+                    onClick={() => setCallOpen(true)}
+                  >
+                    Call
+                  </ToolbarButton>
+                </IfIntegration>
+              </PermissionGuard>
+              <PermissionGuard permissions={PERMISSIONS_ENUM.WHATSAPP_SEND}>
+                <IfIntegration capability="whatsapp">
+                  <ToolbarButton
+                    icon={MessageCircle}
+                    disabled={!c.phone}
+                    title={
+                      c.phone ? undefined : 'Add a phone number to message'
+                    }
+                    onClick={() => setWhatsappOpen(true)}
+                  >
+                    WhatsApp
+                  </ToolbarButton>
+                </IfIntegration>
               </PermissionGuard>
               <PermissionGuard
                 permissions={PERMISSIONS_ENUM.APPLICATION_CREATE}
@@ -806,6 +898,21 @@ export function CandidateDetailDrawer({
                       Interviews
                     </TabsTrigger>
                   </PermissionGuard>
+                  {showEmails && (
+                    <TabsTrigger value="emails" className={TAB_CLS}>
+                      Emails
+                    </TabsTrigger>
+                  )}
+                  {showMessages && (
+                    <TabsTrigger value="messages" className={TAB_CLS}>
+                      Messages
+                    </TabsTrigger>
+                  )}
+                  {showCalls && (
+                    <TabsTrigger value="calls" className={TAB_CLS}>
+                      Calls
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="documents" className={TAB_CLS}>
                     Documents
                   </TabsTrigger>
@@ -828,9 +935,10 @@ export function CandidateDetailDrawer({
                   <CandidateApplicationsTab
                     candidate={c}
                     focusedApplicationId={applicationId}
-                    onEmail={setEmailApp}
+                    onEmail={startEmail}
                     onAddToJob={() => setAddToJobOpen(true)}
                     onSchedule={openSchedule}
+                    onBookingLink={setBookingApp}
                   />
                 </TabsContent>
 
@@ -841,6 +949,78 @@ export function CandidateDetailDrawer({
                     onSchedule={openSchedule}
                   />
                 </TabsContent>
+
+                {showEmails && (
+                  <TabsContent value="emails" className="mt-0 p-5">
+                    <LinkedEmailThreads
+                      target={{ candidateId: c.id }}
+                      emptyTitle="No emails with this candidate yet"
+                      emptyDescription="Emails in your inbox to or from this candidate appear here"
+                      actions={
+                        userMailbox.canSend && (
+                          <ToolbarButton
+                            icon={Mail}
+                            onClick={() => startEmail(focused)}
+                          >
+                            New email
+                          </ToolbarButton>
+                        )
+                      }
+                    />
+                  </TabsContent>
+                )}
+
+                {showMessages && (
+                  <TabsContent value="messages" className="mt-0 p-5">
+                    <CandidateMessagesTab
+                      candidateId={c.id}
+                      actions={
+                        <PermissionGuard
+                          permissions={PERMISSIONS_ENUM.WHATSAPP_SEND}
+                        >
+                          <IfIntegration
+                            capability="whatsapp"
+                            adminHint="Connect WhatsApp in Settings"
+                          >
+                            <ToolbarButton
+                              icon={MessageCircle}
+                              disabled={!c.phone}
+                              onClick={() => setWhatsappOpen(true)}
+                            >
+                              Send WhatsApp
+                            </ToolbarButton>
+                          </IfIntegration>
+                        </PermissionGuard>
+                      }
+                    />
+                  </TabsContent>
+                )}
+
+                {showCalls && (
+                  <TabsContent value="calls" className="mt-0 p-5">
+                    <CandidateCallsTab
+                      candidateId={c.id}
+                      actions={
+                        <PermissionGuard
+                          permissions={PERMISSIONS_ENUM.CALL_CREATE}
+                        >
+                          <IfIntegration
+                            capability="calls"
+                            adminHint="Connect calling in Settings"
+                          >
+                            <ToolbarButton
+                              icon={Phone}
+                              disabled={!c.phone}
+                              onClick={() => setCallOpen(true)}
+                            >
+                              Call
+                            </ToolbarButton>
+                          </IfIntegration>
+                        </PermissionGuard>
+                      }
+                    />
+                  </TabsContent>
+                )}
 
                 <TabsContent value="documents" className="mt-0 p-0">
                   <PermissionGuard
@@ -886,6 +1066,40 @@ export function CandidateDetailDrawer({
           open={interviewId !== null}
           onOpenChange={(o) => !o && setInterviewId(null)}
           onEdit={editInterview}
+        />
+        {c && (
+          <>
+            <CandidateCallDialog
+              open={callOpen}
+              onOpenChange={setCallOpen}
+              candidate={c}
+              defaultApplicationId={focused?.id}
+            />
+            <CandidateWhatsappDialog
+              open={whatsappOpen}
+              onOpenChange={setWhatsappOpen}
+              candidate={c}
+              defaultApplicationId={focused?.id}
+            />
+            <MailboxComposeDialog
+              open={compose !== null}
+              onOpenChange={(o) => !o && setCompose(null)}
+              mailbox={userMailbox.mailbox}
+              to={{ email: c.email, name }}
+              candidateId={c.id}
+              applications={c.applications.map((a) => ({
+                id: a.id,
+                label: a.jobTitle,
+              }))}
+              defaultApplicationId={compose?.applicationId}
+            />
+          </>
+        )}
+        <BookingLinkDialog
+          open={bookingApp !== null}
+          onOpenChange={(o) => !o && setBookingApp(null)}
+          application={bookingApp}
+          candidateName={name}
         />
         <AddCandidateDrawer
           open={editOpen}

@@ -8,3 +8,5 @@ export * from './integration/messaging-integration.service';
 export * from './integration/google-calendar.service';
 export * from './integration/zoom.service';
 export * from './integration/slack.service';
+export * from './integration/gmail-api.client';
+export * from './integration/microsoft-graph.service';

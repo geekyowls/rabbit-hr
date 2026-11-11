@@ -253,8 +253,8 @@ function AtsSettingsContent() {
             />
           </Field>
           <Field
-            label="Locale"
-            hint="Controls number and currency formatting"
+            label="Number format"
+            hint="Affects numbers and currency only, interface language support comes later"
             error={errors.locale?.message}
           >
             <Controller

@@ -8,6 +8,11 @@ export type InterviewStatus =
 
 export type ScorecardRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
 
+export type InterviewMeetingProvider =
+  'none' | 'google_meet' | 'zoom' | 'teams' | 'manual';
+
+export type CalendarSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
+
 export interface InterviewCandidateSummary {
   id: string;
   firstName: string;
@@ -66,6 +71,13 @@ export interface Interview {
   timezone: string;
   location: string | null;
   meetingUrl: string | null;
+  meetingProvider: InterviewMeetingProvider;
+  meetingExternalId: string | null;
+  calendarProvider: string | null;
+  externalEventId: string | null;
+  calendarSyncStatus: CalendarSyncStatus;
+  calendarSyncError: string | null;
+  calendarSyncedAt: string | null;
   interviewerIds: string[];
   interviewers: UserSummary[];
   organizerId: string | null;
@@ -112,6 +124,8 @@ export interface CreateInterviewRequest {
   timezone?: string;
   location?: string | null;
   meetingUrl?: string | null;
+  autoMeetingLink?: boolean;
+  meetingProvider?: InterviewMeetingProvider;
   interviewerIds: string[];
   notes?: string | null;
   notifyCandidate?: boolean;

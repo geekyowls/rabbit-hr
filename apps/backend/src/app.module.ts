@@ -38,6 +38,13 @@ import { CustomFieldModule } from './modules/custom-field/custom-field.module';
 import { InterviewModule } from './modules/interview/interview.module';
 import { OfferModule } from './modules/offer/offer.module';
 import { ReportModule } from './modules/report/report.module';
+import { MailboxModule } from './modules/mailbox/mailbox.module';
+import { InboxModule } from './modules/inbox/inbox.module';
+import { IntegrationCoreModule } from './modules/integration/core/integration-core.module';
+import { InterviewBookingModule } from './modules/interview-booking/interview-booking.module';
+import { CallModule } from './modules/call/call.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { JobFeedModule } from './modules/job-feed/job-feed.module';
 
 @Module({
   imports: [
@@ -95,6 +102,13 @@ import { ReportModule } from './modules/report/report.module';
     InterviewModule,
     OfferModule,
     ReportModule,
+    MailboxModule,
+    InboxModule,
+    IntegrationCoreModule,
+    InterviewBookingModule,
+    CallModule,
+    WhatsappModule,
+    JobFeedModule,
   ],
   controllers: [AppController],
   providers: [

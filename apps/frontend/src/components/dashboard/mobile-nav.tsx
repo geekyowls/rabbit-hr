@@ -19,19 +19,41 @@ import {
   DocumentCheckIcon,
   ChartBarIcon,
   CpuChipIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/solid';
 import {
   PERMISSIONS_ENUM,
   PERMISSION_BASE,
 } from '@/constants/permissions.constants';
+import {
+  INBOX_PATH,
+  unreadLabel,
+  useInboxNav,
+} from '@/components/integrations/use-inbox-nav';
 import { ProtectedNavLink } from './protected-nav-link';
 import { BrandLockup } from './brand-lockup';
 
-const routes = [
+interface MobileRoute {
+  href: string;
+  label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  activeMatch?: (p: string) => boolean;
+  requiredPermissions?: string[];
+  inbox?: boolean;
+}
+
+const routes: MobileRoute[] = [
   {
     href: '/dashboard',
     label: 'Overview',
     icon: HomeIcon,
+  },
+  {
+    href: INBOX_PATH,
+    label: 'Inbox',
+    icon: EnvelopeIcon,
+    activeMatch: (p: string) => p.startsWith(INBOX_PATH),
+    inbox: true,
   },
   {
     href: '/dashboard/jobs',
@@ -104,6 +126,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { hasAnyPermission } = usePermissions();
+  const inbox = useInboxNav();
 
   useEffect(() => {
     setOpen(false);
@@ -132,6 +155,7 @@ export function MobileNav() {
 
           <nav className="p-3 space-y-1 pt-4">
             {routes.map((route) => {
+              if (route.inbox && !inbox.visible) return null;
               if (
                 route.requiredPermissions &&
                 !hasAnyPermission(route.requiredPermissions)
@@ -155,6 +179,11 @@ export function MobileNav() {
                 >
                   <route.icon className="mr-3 h-4 w-4 shrink-0" />
                   <span className="text-sm">{route.label}</span>
+                  {route.inbox && inbox.unread > 0 && (
+                    <span className="ml-auto rounded-full bg-white/20 px-1.5 text-[11px] font-semibold tabular-nums text-white">
+                      {unreadLabel(inbox.unread)}
+                    </span>
+                  )}
                 </ProtectedNavLink>
               );
             })}

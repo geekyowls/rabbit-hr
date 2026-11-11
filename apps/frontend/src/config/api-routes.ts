@@ -76,6 +76,7 @@ export const API_ROUTES = {
     RAZORPAY_WEBHOOK_TOKEN: '/integrations/razorpay/webhook-token',
     RAZORPAY_WEBHOOK: (token: string) =>
       `/integrations/razorpay/webhook/${token}` as const,
+    CAPABILITIES: '/integrations/capabilities',
   },
   ORGANIZATION: {
     GET: '/organization',
@@ -148,6 +149,30 @@ export const API_ROUTES = {
     BY_APPLICATION: (applicationId: string) =>
       `/applications/${applicationId}/interviews` as const,
   },
+  AVAILABILITY: {
+    ME: '/me/availability',
+    TIME_OFF: (query?: string) =>
+      query ? (`/me/time-off?${query}` as const) : ('/me/time-off' as const),
+    TIME_OFF_ITEM: (id: string) => `/me/time-off/${id}` as const,
+  },
+  INTERVIEW_BOOKING_LINKS: {
+    LIST: (query?: string) =>
+      query
+        ? (`/interview-booking-links?${query}` as const)
+        : ('/interview-booking-links' as const),
+    CREATE: '/interview-booking-links',
+    CANCEL: (id: string) => `/interview-booking-links/${id}/cancel` as const,
+  },
+  PUBLIC_INTERVIEW_BOOKING: {
+    DETAILS: (token: string) =>
+      `/public/interview-booking/${encodeURIComponent(token)}` as const,
+    SLOTS: (token: string, query: string) =>
+      `/public/interview-booking/${encodeURIComponent(token)}/slots?${query}` as const,
+    BOOK: (token: string) =>
+      `/public/interview-booking/${encodeURIComponent(token)}/book` as const,
+    CANCEL: (token: string) =>
+      `/public/interview-booking/${encodeURIComponent(token)}/cancel` as const,
+  },
   OFFERS: {
     LIST: '/offers/list',
     CREATE: '/offers',
@@ -201,6 +226,51 @@ export const API_ROUTES = {
     UPDATE: (id: string) => `/custom-fields/${id}` as const,
     DELETE: (id: string) => `/custom-fields/${id}` as const,
     REORDER: '/custom-fields/reorder',
+  },
+  CALLS: {
+    LIST: (candidateId: string, query?: string) =>
+      query
+        ? (`/candidates/${candidateId}/calls?${query}` as const)
+        : (`/candidates/${candidateId}/calls` as const),
+    INITIATE: (candidateId: string) =>
+      `/candidates/${candidateId}/calls/initiate` as const,
+    UPDATE: (id: string) => `/calls/${id}` as const,
+  },
+  WHATSAPP: {
+    PLACEHOLDERS: '/whatsapp/placeholders',
+    TEMPLATES: '/whatsapp/templates',
+    SYNC_TEMPLATES: '/whatsapp/templates/sync',
+    DELETE_TEMPLATE: (id: string) => `/whatsapp/templates/${id}` as const,
+    TEMPLATE_MAPPING: (id: string) =>
+      `/whatsapp/templates/${id}/mapping` as const,
+    PREVIEW: '/whatsapp/messages/preview',
+    SEND: '/whatsapp/messages/send',
+    CANDIDATE_MESSAGES: (candidateId: string, query?: string) =>
+      query
+        ? (`/candidates/${candidateId}/whatsapp-messages?${query}` as const)
+        : (`/candidates/${candidateId}/whatsapp-messages` as const),
+  },
+  JOB_FEED: {
+    SETTINGS: '/job-feed/settings',
+  },
+  PUBLIC_OFFER_SIGN: {
+    GET: (token: string) => `/public/offers/sign/${token}` as const,
+    ACCEPT: (token: string) => `/public/offers/sign/${token}/accept` as const,
+    DECLINE: (token: string) => `/public/offers/sign/${token}/decline` as const,
+  },
+  MAILBOXES: {
+    LIST: '/mailboxes',
+    CONNECT: (provider: string) => `/mailboxes/connect/${provider}` as const,
+    DISCONNECT: (id: string) => `/mailboxes/${id}` as const,
+    SYNC: (id: string) => `/mailboxes/${id}/sync` as const,
+  },
+  INBOX: {
+    THREADS: '/inbox/threads/list',
+    THREAD: (id: string) => `/inbox/threads/${id}` as const,
+    UPDATE_THREAD: (id: string) => `/inbox/threads/${id}` as const,
+    SEND: '/inbox/messages/send',
+    STATS: (query?: string) =>
+      query ? (`/inbox/stats?${query}` as const) : ('/inbox/stats' as const),
   },
   PUBLIC_CAREERS: {
     ORGANIZATION: (orgSlug: string) => `/public/careers/${orgSlug}` as const,

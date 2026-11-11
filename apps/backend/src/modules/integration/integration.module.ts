@@ -8,6 +8,7 @@ import { SaveCredentials } from './usecases/save-credentials/save-credentials.us
 import { HealthCheckIntegration } from './usecases/health-check-integration/health-check-integration.usecase';
 import { HandleRazorpayWebhook } from './usecases/handle-razorpay-webhook/handle-razorpay-webhook.usecase';
 import { EnsureRazorpayWebhookToken } from './usecases/ensure-razorpay-webhook-token/ensure-razorpay-webhook-token.usecase';
+import { GetIntegrationCapabilities } from './usecases/get-integration-capabilities/get-integration-capabilities.usecase';
 
 const USE_CASES = [
   ListIntegrations,
@@ -18,6 +19,7 @@ const USE_CASES = [
   HealthCheckIntegration,
   HandleRazorpayWebhook,
   EnsureRazorpayWebhookToken,
+  GetIntegrationCapabilities,
 ];
 
 @Module({

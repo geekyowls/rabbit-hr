@@ -20,6 +20,7 @@ import {
   CpuChipIcon,
   BuildingOffice2Icon,
   ClipboardDocumentCheckIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/solid';
 import {
   Tooltip,
@@ -32,6 +33,11 @@ import {
   PERMISSION_BASE,
 } from '@/constants/permissions.constants';
 import { useSidebar } from '@/contexts/sidebar-context';
+import {
+  INBOX_PATH,
+  unreadLabel,
+  useInboxNav,
+} from '@/components/integrations/use-inbox-nav';
 import { ProtectedNavLink } from './protected-nav-link';
 
 interface VersionInfo {
@@ -50,6 +56,7 @@ interface NavLeaf {
   requiredPermissions?: string[];
   devOnly?: boolean;
   hidden?: boolean;
+  inbox?: boolean;
 }
 
 const NAV_ITEMS: NavLeaf[] = [
@@ -57,6 +64,13 @@ const NAV_ITEMS: NavLeaf[] = [
     href: '/dashboard',
     label: 'Overview',
     icon: HomeIcon,
+  },
+  {
+    href: INBOX_PATH,
+    label: 'Inbox',
+    icon: EnvelopeIcon,
+    activeMatch: (p) => p.startsWith(INBOX_PATH),
+    inbox: true,
   },
   {
     href: '/dashboard/jobs',
@@ -156,9 +170,11 @@ export function DashboardNav() {
   });
 
   const collapsed = mounted ? isCollapsed : true;
+  const inbox = useInboxNav();
 
   const isLeafVisible = (leaf: NavLeaf) => {
     if (leaf.hidden) return false;
+    if (leaf.inbox && !inbox.visible) return false;
     if (leaf.devOnly && process.env.NODE_ENV !== 'development') return false;
     return (
       !leaf.requiredPermissions || hasAnyPermission(leaf.requiredPermissions)
@@ -167,6 +183,7 @@ export function DashboardNav() {
 
   const renderLeaf = (leaf: NavLeaf) => {
     const isActive = isLeafActive(leaf, pathname);
+    const badge = leaf.inbox && inbox.unread > 0 ? inbox.unread : 0;
 
     if (collapsed) {
       return (
@@ -183,9 +200,14 @@ export function DashboardNav() {
                 )}
               >
                 <leaf.icon className="h-5 w-5" />
+                {badge > 0 && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400" />
+                )}
               </ProtectedNavLink>
             </TooltipTrigger>
-            <TooltipContent side="right">{leaf.label}</TooltipContent>
+            <TooltipContent side="right">
+              {badge > 0 ? `${leaf.label} (${unreadLabel(badge)})` : leaf.label}
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
@@ -204,6 +226,11 @@ export function DashboardNav() {
       >
         <leaf.icon className="mr-3 shrink-0 h-4 w-4" />
         <span className="text-sm">{leaf.label}</span>
+        {badge > 0 && (
+          <span className="ml-auto rounded-full bg-white/20 px-1.5 text-[11px] font-semibold tabular-nums text-white">
+            {unreadLabel(badge)}
+          </span>
+        )}
       </ProtectedNavLink>
     );
   };

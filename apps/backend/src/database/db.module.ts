@@ -30,6 +30,16 @@ import {
   InterviewEntity,
   ScorecardEntity,
   OfferEntity,
+  InterviewerAvailabilityEntity,
+  UserTimeOffEntity,
+  InterviewBookingLinkEntity,
+  MailboxConnectionEntity,
+  EmailThreadEntity,
+  EmailMessageEntity,
+  CandidateCallEntity,
+  WhatsappTemplateEntity,
+  WhatsappMessageEntity,
+  JobFeedEntity,
 } from './entities';
 import {
   UserRepository,
@@ -59,6 +69,16 @@ import {
   InterviewRepository,
   ScorecardRepository,
   OfferRepository,
+  InterviewerAvailabilityRepository,
+  UserTimeOffRepository,
+  InterviewBookingLinkRepository,
+  MailboxConnectionRepository,
+  EmailThreadRepository,
+  EmailMessageRepository,
+  CandidateCallRepository,
+  WhatsappTemplateRepository,
+  WhatsappMessageRepository,
+  JobFeedRepository,
 } from './repositories';
 
 const entities = [
@@ -89,6 +109,16 @@ const entities = [
   InterviewEntity,
   ScorecardEntity,
   OfferEntity,
+  InterviewerAvailabilityEntity,
+  UserTimeOffEntity,
+  InterviewBookingLinkEntity,
+  MailboxConnectionEntity,
+  EmailThreadEntity,
+  EmailMessageEntity,
+  CandidateCallEntity,
+  WhatsappTemplateEntity,
+  WhatsappMessageEntity,
+  JobFeedEntity,
 ];
 const repositories = [
   UserRepository,
@@ -118,6 +148,16 @@ const repositories = [
   InterviewRepository,
   ScorecardRepository,
   OfferRepository,
+  InterviewerAvailabilityRepository,
+  UserTimeOffRepository,
+  InterviewBookingLinkRepository,
+  MailboxConnectionRepository,
+  EmailThreadRepository,
+  EmailMessageRepository,
+  CandidateCallRepository,
+  WhatsappTemplateRepository,
+  WhatsappMessageRepository,
+  JobFeedRepository,
 ];
 
 @Global()
