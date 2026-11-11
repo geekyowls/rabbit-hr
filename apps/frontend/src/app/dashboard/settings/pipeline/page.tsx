@@ -57,6 +57,16 @@ import {
   type PipelineStageMove,
 } from '@/types/pipeline-stage.type';
 
+const TYPE_HINT: Record<PipelineStageCategory, string> = {
+  applied: 'New applications land here',
+  screening: 'Early checks and phone screens',
+  interview: 'Scheduling an interview moves candidates here',
+  offer: 'Sending an offer moves candidates here',
+  hired: 'Accepting an offer moves candidates here and counts as a placement',
+  rejected: 'Asks for a reason and counts as a rejection',
+  withdrawn: 'The candidate pulled out',
+};
+
 const MAX_STAGES = 30;
 const REQUIRED_CATEGORIES: PipelineStageCategory[] = [
   'hired',
@@ -401,7 +411,7 @@ function PipelineSettingsContent() {
     <div className="space-y-4">
       <PageHeader
         title="Pipeline stages"
-        description="The stages every application moves through, in order"
+        description="Name each step your team sees, then pick its type so RabbitHR knows what it means"
         backHref="/dashboard/settings"
         actions={
           <div className="flex items-center gap-2">
@@ -454,125 +464,146 @@ function PipelineSettingsContent() {
           description={error.message || 'Please try again in a moment'}
         />
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-          {stages.map((stage, index) => {
-            const note = moveLabel(stage);
-            return (
-              <li
-                key={stage.uid}
-                draggable
-                onDragStart={(e) => {
-                  setDragUid(stage.uid);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  if (!dragUid) return;
-                  e.preventDefault();
-                  const from = stages.findIndex((s) => s.uid === dragUid);
-                  if (from !== index) {
-                    move(from, index);
-                  }
-                }}
-                onDragEnd={() => setDragUid(null)}
-                className={cn(
-                  'flex flex-wrap items-center gap-2 px-3 py-2',
-                  !stage.isActive && 'bg-muted/40',
-                  dragUid === stage.uid && 'opacity-60',
-                )}
-              >
-                <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
-                <span className="w-5 text-right text-xs tabular-nums text-muted-foreground">
-                  {index + 1}
-                </span>
-                <ColorPicker
-                  stage={stage}
-                  onChange={(color) => patch(stage.uid, { color })}
-                />
-                <div className="min-w-[160px] flex-1">
-                  <Input
-                    className="h-8"
-                    value={stage.name}
-                    maxLength={100}
-                    aria-label="Stage name"
-                    onChange={(e) => patch(stage.uid, { name: e.target.value })}
-                  />
-                  {note && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {note}
-                    </p>
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+            <span className="w-[4.75rem] shrink-0" />
+            <span className="min-w-[160px] flex-1">Stage name</span>
+            <span className="w-36">Type</span>
+            <span className="w-24 text-right">Applications</span>
+            <span className="w-[3.25rem] text-center">Active</span>
+            <span className="w-[5.25rem]" />
+          </div>
+          <ul className="divide-y divide-border">
+            {stages.map((stage, index) => {
+              const note = moveLabel(stage);
+              return (
+                <li
+                  key={stage.uid}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragUid(stage.uid);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    if (!dragUid) return;
+                    e.preventDefault();
+                    const from = stages.findIndex((s) => s.uid === dragUid);
+                    if (from !== index) {
+                      move(from, index);
+                    }
+                  }}
+                  onDragEnd={() => setDragUid(null)}
+                  className={cn(
+                    'flex flex-wrap items-center gap-2 px-3 py-2',
+                    !stage.isActive && 'bg-muted/40',
+                    dragUid === stage.uid && 'opacity-60',
                   )}
-                </div>
-                <Select
-                  value={stage.category}
-                  onValueChange={(v) =>
-                    patch(stage.uid, {
-                      category: v as PipelineStageCategory,
-                    })
-                  }
                 >
-                  <SelectTrigger className="h-8 w-36" aria-label="Category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PIPELINE_STAGE_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {STAGE_CATEGORY_LABEL[c]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="w-24 text-right text-xs tabular-nums text-muted-foreground">
-                  {stage.applicationCount}{' '}
-                  {stage.applicationCount === 1
-                    ? 'application'
-                    : 'applications'}
-                </span>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Switch
-                    checked={stage.isActive}
-                    onCheckedChange={(v) => toggleActive(stage, v)}
-                    aria-label="Active"
+                  <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+                  <span className="w-5 text-right text-xs tabular-nums text-muted-foreground">
+                    {index + 1}
+                  </span>
+                  <ColorPicker
+                    stage={stage}
+                    onChange={(color) => patch(stage.uid, { color })}
                   />
-                  Active
-                </label>
-                <div className="flex items-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    disabled={index === 0}
-                    onClick={() => move(index, index - 1)}
-                    aria-label="Move up"
+                  <div className="min-w-[160px] flex-1">
+                    <Input
+                      className="h-8"
+                      value={stage.name}
+                      maxLength={100}
+                      aria-label="Stage name"
+                      onChange={(e) =>
+                        patch(stage.uid, { name: e.target.value })
+                      }
+                    />
+                    {note && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {note}
+                      </p>
+                    )}
+                  </div>
+                  <Select
+                    value={stage.category}
+                    onValueChange={(v) =>
+                      patch(stage.uid, {
+                        category: v as PipelineStageCategory,
+                      })
+                    }
                   >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    disabled={index === stages.length - 1}
-                    onClick={() => move(index, index + 1)}
-                    aria-label="Move down"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-                    onClick={() => removeStage(stage)}
-                    aria-label="Remove stage"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <SelectTrigger
+                      className="h-8 w-36"
+                      aria-label="Type"
+                      title={TYPE_HINT[stage.category]}
+                    >
+                      <span>{STAGE_CATEGORY_LABEL[stage.category]}</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PIPELINE_STAGE_CATEGORIES.map((c) => (
+                        <SelectItem
+                          key={c}
+                          value={c}
+                          textValue={STAGE_CATEGORY_LABEL[c]}
+                        >
+                          <div className="flex flex-col">
+                            <span>{STAGE_CATEGORY_LABEL[c]}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {TYPE_HINT[c]}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="w-24 text-right text-sm tabular-nums text-muted-foreground">
+                    {stage.applicationCount}
+                  </span>
+                  <span className="flex w-[3.25rem] justify-center">
+                    <Switch
+                      checked={stage.isActive}
+                      onCheckedChange={(v) => toggleActive(stage, v)}
+                      aria-label="Active"
+                    />
+                  </span>
+                  <div className="flex items-center">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === 0}
+                      onClick={() => move(index, index - 1)}
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={index === stages.length - 1}
+                      onClick={() => move(index, index + 1)}
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                      onClick={() => removeStage(stage)}
+                      aria-label="Remove stage"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       <MoveDialog

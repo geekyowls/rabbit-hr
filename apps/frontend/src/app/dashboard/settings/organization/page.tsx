@@ -1,18 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@/lib/zod-resolver';
-import {
-  Building2,
-  Upload,
-  X,
-  Check,
-  FileText,
-  Shield,
-  Smartphone,
-  Receipt,
-} from 'lucide-react';
+import { Building2, Upload, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
@@ -24,71 +15,12 @@ import {
   organizationSchema,
   OrganizationFormData,
 } from '@/schemas/organization.schema';
-import {
-  Organization,
-  PDF_TEMPLATE_OPTIONS,
-  PdfTemplate,
-} from '@/types/organization.type';
+import { Organization } from '@/types/organization.type';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
-import { Switch } from '@/components/ui/switch';
-
-const PDF_TEMPLATE_PREVIEWS: Record<
-  PdfTemplate,
-  { image: string; description: string }
-> = {
-  default: {
-    image: '/pdf-templates/classic-elegant.png',
-    description: 'Clean, professional layout with traditional styling',
-  },
-  'variation-2': {
-    image: '/pdf-templates/modern-bold.png',
-    description: 'Contemporary design with bold typography',
-  },
-  'variation-3': {
-    image: '/pdf-templates/timeline-style.png',
-    description: 'Visual timeline format for meal progression',
-  },
-  'variation-4': {
-    image: '/pdf-templates/card-grid.png',
-    description: 'Card-based layout for easy meal scanning',
-  },
-  'weekly-grid': {
-    image: '/pdf-templates/card-grid.png',
-    description:
-      'Timetable view — days as columns, meals as rows. Best on landscape print.',
-  },
-  'two-column': {
-    image: '/pdf-templates/two-column.png',
-    description:
-      'Compact two-column layout that fits a full week in 4-5 pages without dropping meal detail.',
-  },
-  'plain-grid': {
-    image: '/pdf-templates/plain-grid.png',
-    description:
-      'Simple black-and-white timetable. Days as columns, meals as rows, no styling. Prints on landscape.',
-  },
-  'clinic-table': {
-    image: '/pdf-templates/clinic-table.png',
-    description:
-      'Professional spreadsheet-style tables per day with a clinical blue header. Meal, time, food, and quantity columns.',
-  },
-  'mono-minimal': {
-    image: '/pdf-templates/mono-minimal.png',
-    description:
-      'Plain black-and-white serif layout. No colour, no boxes. Reads like a printed prescription sheet.',
-  },
-  'compact-list': {
-    image: '/pdf-templates/compact-list.png',
-    description:
-      'Condensed one-line-per-meal list with a light green accent. Just time and food, fits the week in 2-3 pages.',
-  },
-};
 
 function normalizeOptionalString(value: unknown) {
   if (typeof value !== 'string') return undefined;
@@ -148,7 +80,6 @@ function OrganizationSettingsContent() {
     reset,
     setValue,
     watch,
-    control,
     formState: { errors, isSubmitting },
   } = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
@@ -159,15 +90,8 @@ function OrganizationSettingsContent() {
       email: null,
       website: null,
       address: undefined,
-      pdfTemplate: 'default',
       privacyPolicyUrl: null,
       termsAndConditionsUrl: null,
-      showGoogleLogin: true,
-      showAppleLogin: true,
-      hideDietitianName: false,
-      reEngagementEmailsEnabled: true,
-      invoicePrefix: '',
-      invoiceDefaultNotes: '',
     },
   });
 
@@ -194,16 +118,8 @@ function OrganizationSettingsContent() {
         email: data.email || '',
         website: data.website || '',
         address: data.address ?? undefined,
-        pdfTemplate: data.pdfTemplate || 'default',
         privacyPolicyUrl: data.privacyPolicyUrl || null,
         termsAndConditionsUrl: data.termsAndConditionsUrl || null,
-        showGoogleLogin: data.clientAppConfig?.showGoogleLogin ?? true,
-        showAppleLogin: data.clientAppConfig?.showAppleLogin ?? true,
-        hideDietitianName: data.clientAppConfig?.hideDietitianName ?? false,
-        reEngagementEmailsEnabled:
-          data.featureControls?.reEngagementEmailsEnabled ?? true,
-        invoicePrefix: data.invoiceSettings?.prefix || '',
-        invoiceDefaultNotes: data.invoiceSettings?.defaultNotes || '',
       });
       setLogoPreview(data.logo ?? null);
     } catch (err: unknown) {
@@ -245,7 +161,7 @@ function OrganizationSettingsContent() {
 
       setValue('logo', uploadUrlResponse.path);
       setLogoPreview(URL.createObjectURL(file));
-      toast.success('Logo uploaded successfully');
+      toast.success('Logo uploaded');
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to upload logo';
@@ -274,24 +190,15 @@ function OrganizationSettingsContent() {
         email: data.email || null,
         website: data.website || null,
         address: normalizeAddress(data.address),
-        pdfTemplate: data.pdfTemplate,
         privacyPolicyUrl: data.privacyPolicyUrl || null,
         termsAndConditionsUrl: data.termsAndConditionsUrl || null,
-        showGoogleLogin: data.showGoogleLogin,
-        showAppleLogin: data.showAppleLogin,
-        hideDietitianName: data.hideDietitianName,
-        reEngagementEmailsEnabled: data.reEngagementEmailsEnabled,
-        invoiceSettings: {
-          prefix: data.invoicePrefix || undefined,
-          defaultNotes: data.invoiceDefaultNotes || undefined,
-        },
       };
 
       await fetchApi(API_ROUTES.ORGANIZATION.UPDATE, {
         method: 'PUT',
         body: JSON.stringify(payload),
       });
-      toast.success('Organization updated successfully');
+      toast.success('Organization updated');
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to update organization';
@@ -315,7 +222,7 @@ function OrganizationSettingsContent() {
                 data-tour="org-basic-info"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="name">Organization Name *</Label>
+                  <Label htmlFor="name">Organization name</Label>
                   <Input
                     id="name"
                     {...register('name')}
@@ -370,7 +277,7 @@ function OrganizationSettingsContent() {
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Upload className="mr-2 h-4 w-4" />
-                        {isUploading ? 'Uploading...' : 'Upload Logo'}
+                        {isUploading ? 'Uploading' : 'Upload logo'}
                       </Button>
                       <p className="mt-1 text-xs text-muted-foreground">
                         PNG, JPG up to 5MB
@@ -381,9 +288,7 @@ function OrganizationSettingsContent() {
               </div>
 
               <div className="border-t pt-6" data-tour="org-contact-info">
-                <h3 className="mb-4 text-sm font-medium">
-                  Contact Information
-                </h3>
+                <h3 className="mb-4 text-sm font-medium">Contact details</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
@@ -434,7 +339,7 @@ function OrganizationSettingsContent() {
                 <h3 className="mb-4 text-sm font-medium">Address</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="street">Street Address</Label>
+                    <Label htmlFor="street">Street address</Label>
                     <Input
                       id="street"
                       {...register('address.street')}
@@ -452,7 +357,7 @@ function OrganizationSettingsContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="state">State / Province</Label>
+                    <Label htmlFor="state">State or region</Label>
                     <Input
                       id="state"
                       {...register('address.state')}
@@ -461,7 +366,7 @@ function OrganizationSettingsContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="zipCode">ZIP / Postal Code</Label>
+                    <Label htmlFor="zipCode">Postal code</Label>
                     <Input
                       id="zipCode"
                       {...register('address.zipCode')}
@@ -480,18 +385,14 @@ function OrganizationSettingsContent() {
                 </div>
               </div>
 
-              <div className="border-t pt-6" data-tour="org-privacy-terms">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
-                  <Shield className="h-4 w-4" />
-                  Client app – Privacy & Terms
-                </h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  URLs shown in the mobile app web view (Privacy Policy and
-                  Terms & Conditions)
+              <div className="border-t pt-6" data-tour="org-legal">
+                <h3 className="mb-1 text-sm font-medium">Legal links</h3>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Your privacy policy and terms of use
                 </p>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="privacyPolicyUrl">Privacy Policy URL</Label>
+                    <Label htmlFor="privacyPolicyUrl">Privacy policy URL</Label>
                     <Input
                       id="privacyPolicyUrl"
                       {...register('privacyPolicyUrl')}
@@ -504,9 +405,7 @@ function OrganizationSettingsContent() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="termsAndConditionsUrl">
-                      Terms & Conditions URL
-                    </Label>
+                    <Label htmlFor="termsAndConditionsUrl">Terms URL</Label>
                     <Input
                       id="termsAndConditionsUrl"
                       {...register('termsAndConditionsUrl')}
@@ -521,232 +420,10 @@ function OrganizationSettingsContent() {
                 </div>
               </div>
 
-              <div className="border-t pt-6" data-tour="org-client-app">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
-                  <Smartphone className="h-4 w-4" />
-                  Client App Settings
-                </h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Configure how your mobile app appears and functions for
-                  clients
-                </p>
-                <div className="space-y-4">
-                  <Controller
-                    name="hideDietitianName"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <Label
-                            htmlFor="hideDietitianName"
-                            className="text-base font-medium"
-                          >
-                            Hide Dietitian Details
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Hide your name and details on the client&apos;s
-                            profile card
-                          </p>
-                        </div>
-                        <Switch
-                          id="hideDietitianName"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </div>
-                    )}
-                  />
-                  <Controller
-                    name="showGoogleLogin"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <Label
-                            htmlFor="showGoogleLogin"
-                            className="text-base font-medium"
-                          >
-                            Google Sign-In
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Allow clients to sign in with their Google account
-                          </p>
-                        </div>
-                        <Switch
-                          id="showGoogleLogin"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </div>
-                    )}
-                  />
-                  <Controller
-                    name="showAppleLogin"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <Label
-                            htmlFor="showAppleLogin"
-                            className="text-base font-medium"
-                          >
-                            Apple Sign-In
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Allow clients to sign in with their Apple account
-                          </p>
-                        </div>
-                        <Switch
-                          id="showAppleLogin"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </div>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
-                  Workspace Notifications
-                </h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Email reminders for dietitians and admins in this org
-                </p>
-                <div className="space-y-4">
-                  <Controller
-                    name="reEngagementEmailsEnabled"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <Label
-                            htmlFor="reEngagementEmailsEnabled"
-                            className="text-base font-medium"
-                          >
-                            Re-engagement Emails
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Email users who haven&apos;t used the dashboard in 2
-                            days, at most once every 5 days.
-                          </p>
-                        </div>
-                        <Switch
-                          id="reEngagementEmailsEnabled"
-                          checked={field.value ?? true}
-                          onCheckedChange={field.onChange}
-                        />
-                      </div>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-6" data-tour="org-invoice-settings">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
-                  <Receipt className="h-4 w-4" />
-                  Invoice Settings
-                </h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Configure how invoice numbers are generated and default notes
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="invoicePrefix">Invoice Series Prefix</Label>
-                    <Input
-                      id="invoicePrefix"
-                      {...register('invoicePrefix')}
-                      placeholder="INV"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Invoices will be numbered as PREFIX-0001, PREFIX-0002,
-                      etc.
-                    </p>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="invoiceDefaultNotes">
-                      Default Invoice Notes
-                    </Label>
-                    <Textarea
-                      id="invoiceDefaultNotes"
-                      {...register('invoiceDefaultNotes')}
-                      placeholder="Footer text that appears on every new invoice..."
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t pt-6" data-tour="org-pdf-template">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
-                  <FileText className="h-4 w-4" />
-                  PDF Export Settings
-                </h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Choose the visual style for exported diet plan PDFs
-                </p>
-                <Controller
-                  name="pdfTemplate"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {PDF_TEMPLATE_OPTIONS.map((option) => {
-                        const preview = PDF_TEMPLATE_PREVIEWS[option.value];
-                        const isSelected = field.value === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => field.onChange(option.value)}
-                            className={cn(
-                              'relative flex flex-col overflow-hidden rounded-lg border-2 transition-all hover:border-primary/50',
-                              isSelected
-                                ? 'border-primary ring-2 ring-primary ring-offset-2'
-                                : 'border-muted',
-                            )}
-                          >
-                            {isSelected && (
-                              <div className="absolute right-2 top-2 z-10 rounded-full bg-primary p-1">
-                                <Check className="h-3 w-3 text-primary-foreground" />
-                              </div>
-                            )}
-                            <div className="relative aspect-[3/4] w-full bg-muted">
-                              <img
-                                src={preview.image}
-                                alt={option.label}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.nextElementSibling?.classList.remove(
-                                    'hidden',
-                                  );
-                                }}
-                              />
-                              <div className="hidden absolute inset-0 flex items-center justify-center bg-muted">
-                                <FileText className="h-12 w-12 text-muted-foreground/50" />
-                              </div>
-                            </div>
-                            <div className="p-3 text-left">
-                              <p className="font-medium text-sm">
-                                {option.label}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {preview.description}
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                />
-              </div>
-
               {canEdit && (
                 <div className="flex justify-end border-t pt-6">
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    {isSubmitting ? 'Saving' : 'Save changes'}
                   </Button>
                 </div>
               )}
