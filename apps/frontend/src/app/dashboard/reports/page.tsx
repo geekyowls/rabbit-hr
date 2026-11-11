@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Award,
   BadgeDollarSign,
+  Building2,
   ClipboardCheck,
   Filter,
   FileSignature,
@@ -24,15 +25,25 @@ import {
   NotIntegratedBadge,
   SegmentedControl,
 } from '@/components/patterns';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/lib/toast';
 import { downloadCsv } from '@/lib/export-csv';
+import type { Formatters } from '@/lib/format';
+import { useFormatters } from '@/hooks/use-formatters';
 import {
-  RANGE_FACTOR,
-  ReportScopeContext,
-  type KpiRecord,
-  type ReportProps,
-  type ReportRange,
-} from '@/components/reports/report-kit';
+  useClientsQuery,
+  useJobsQuery,
+  useReportSummaryQuery,
+  useUserNamesQuery,
+} from '@/hooks/queries';
+import {
+  SOURCE_LABEL,
+  errorMessage,
+  personName,
+  userLabel,
+} from '@/components/applications/application-meta';
+import type { LiveReportProps } from '@/components/reports/report-kit';
 import { ExecutiveSummary } from '@/components/reports/executive-summary';
 import {
   FunnelReport,
@@ -52,17 +63,28 @@ import {
   OffersReport,
   QualityReport,
 } from '@/components/reports/outcome-reports';
+import { ClientReport } from '@/components/reports/client-reports';
 import {
   CandidateExperienceReport,
   DiversityReport,
 } from '@/components/reports/compliance-reports';
+import type { ReportSummary, ReportSummaryRequest } from '@/types/report.type';
+
+type Cell = string | number | null | undefined;
+
+interface CsvSpec {
+  headers: string[];
+  rows: Cell[][];
+}
 
 interface ReportDef {
   id: string;
   label: string;
   description: string;
   icon: LucideIcon;
-  component: (props: ReportProps) => React.ReactElement;
+  live?: (props: LiveReportProps) => React.ReactElement;
+  preview?: () => React.ReactElement;
+  csv?: (data: ReportSummary, f: Formatters) => CsvSpec;
 }
 
 const GROUPS: { label: string; reports: ReportDef[] }[] = [
@@ -72,9 +94,28 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
       {
         id: 'executive',
         label: 'Executive summary',
-        description: 'Headline hiring metrics, plan attainment and risks',
+        description: 'Headline hiring metrics and weekly volume',
         icon: LayoutDashboard,
-        component: ExecutiveSummary,
+        live: ExecutiveSummary,
+        csv: (d) => ({
+          headers: ['Week starting', 'Applications', 'Hires'],
+          rows: d.applicationsOverTime.map((w) => [
+            w.weekStart,
+            w.applications,
+            w.hires,
+          ]),
+        }),
+      },
+      {
+        id: 'clients',
+        label: 'By client',
+        description: 'Applications and hires for each client',
+        icon: Building2,
+        live: ClientReport,
+        csv: (d) => ({
+          headers: ['Client', 'Applications', 'Hires'],
+          rows: d.clients.map((c) => [c.name, c.applications, c.hires]),
+        }),
       },
     ],
   },
@@ -84,23 +125,49 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
       {
         id: 'funnel',
         label: 'Funnel and conversion',
-        description: 'Stage pass-through by department and role',
+        description: 'Stage pass-through and rejection reasons',
         icon: Filter,
-        component: FunnelReport,
+        live: FunnelReport,
+        csv: (d) => ({
+          headers: ['Stage', 'Category', 'Reached', 'Conversion to next %'],
+          rows: d.funnel.map((s) => [
+            s.name,
+            s.category,
+            s.reached,
+            s.conversionToNext,
+          ]),
+        }),
       },
       {
         id: 'velocity',
         label: 'Velocity',
         description: 'Time to hire, time in stage and bottlenecks',
         icon: Timer,
-        component: VelocityReport,
+        live: VelocityReport,
+        csv: (d) => ({
+          headers: ['Stage', 'Moves', 'Median days', 'Average days'],
+          rows: [
+            [
+              'Time to hire',
+              d.timeToHire.hires,
+              d.timeToHire.medianDays,
+              d.timeToHire.averageDays,
+            ],
+            ...d.timeInStage.map((s) => [
+              s.name,
+              s.samples,
+              s.medianDays,
+              s.averageDays,
+            ]),
+          ],
+        }),
       },
       {
         id: 'job-health',
         label: 'Job health',
         description: 'Requisition aging, coverage and stale reqs',
         icon: Stethoscope,
-        component: JobHealthReport,
+        preview: JobHealthReport,
       },
     ],
   },
@@ -110,16 +177,25 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
       {
         id: 'sources',
         label: 'Source effectiveness',
-        description: 'Volume, pass rate and quality by channel',
+        description: 'Applications and hires by candidate source',
         icon: Megaphone,
-        component: SourceEffectivenessReport,
+        live: SourceEffectivenessReport,
+        csv: (d) => ({
+          headers: ['Source', 'Applications', 'Hires', 'Hire rate %'],
+          rows: d.sources.map((s) => [
+            SOURCE_LABEL[s.source] ?? s.source,
+            s.applications,
+            s.hires,
+            s.hireRate,
+          ]),
+        }),
       },
       {
         id: 'cost',
         label: 'Cost per hire',
         description: 'Spend by channel and budget vs actual',
         icon: BadgeDollarSign,
-        component: CostReport,
+        preview: CostReport,
       },
     ],
   },
@@ -129,16 +205,46 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
       {
         id: 'recruiters',
         label: 'Recruiter performance',
-        description: 'Workload, activity and outcomes per recruiter',
+        description: 'Jobs, activity and outcomes per recruiter',
         icon: Users,
-        component: RecruiterReport,
+        live: RecruiterReport,
+        csv: (d) => ({
+          headers: [
+            'Recruiter',
+            'Jobs',
+            'Applications',
+            'Interviews',
+            'Offers',
+            'Hires',
+          ],
+          rows: d.recruiters.map((r) => [
+            personName(r.recruiter) || r.recruiter.email,
+            r.jobs,
+            r.applications,
+            r.interviews,
+            r.offers,
+            r.hires,
+          ]),
+        }),
       },
       {
         id: 'interviewers',
         label: 'Interviewers',
-        description: 'Load, feedback timeliness and calibration',
+        description: 'Volume, completion, no-shows and ratings',
         icon: ClipboardCheck,
-        component: InterviewerReport,
+        live: InterviewerReport,
+        csv: (d) => ({
+          headers: ['Metric', 'Value'],
+          rows: [
+            ['Scheduled', d.interviews.scheduled],
+            ['Completed', d.interviews.completed],
+            ['Cancelled', d.interviews.cancelled],
+            ['No show', d.interviews.noShow],
+            ['No-show rate %', d.interviews.noShowRate],
+            ['Scorecards', d.interviews.scorecards],
+            ['Average rating', d.interviews.averageRating],
+          ],
+        }),
       },
     ],
   },
@@ -148,23 +254,34 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
       {
         id: 'offers',
         label: 'Offers',
-        description: 'Acceptance, decline reasons and band position',
+        description: 'Sent, accepted, declined and acceptance rate',
         icon: FileSignature,
-        component: OffersReport,
+        live: OffersReport,
+        csv: (d) => ({
+          headers: ['Metric', 'Value'],
+          rows: [
+            ['Created', d.offers.created],
+            ['Pending approval', d.offers.pendingApproval],
+            ['Sent', d.offers.sent],
+            ['Accepted', d.offers.accepted],
+            ['Declined', d.offers.declined],
+            ['Acceptance rate %', d.offers.acceptanceRate],
+          ],
+        }),
       },
       {
         id: 'quality',
         label: 'Quality of hire',
         description: 'Retention, manager rating and ramp time',
         icon: Award,
-        component: QualityReport,
+        preview: QualityReport,
       },
       {
         id: 'plan',
         label: 'Hiring plan',
         description: 'Targets vs hires by team and quarter',
         icon: Target,
-        component: HiringPlanReport,
+        preview: HiringPlanReport,
       },
     ],
   },
@@ -176,14 +293,14 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
         label: 'Diversity',
         description: 'Representation and pass-through parity',
         icon: Scale,
-        component: DiversityReport,
+        preview: DiversityReport,
       },
       {
         id: 'experience',
         label: 'Candidate experience',
         description: 'NPS, stage surveys and response SLAs',
         icon: HeartHandshake,
-        component: CandidateExperienceReport,
+        preview: CandidateExperienceReport,
       },
     ],
   },
@@ -191,107 +308,128 @@ const GROUPS: { label: string; reports: ReportDef[] }[] = [
 
 const ALL_REPORTS = GROUPS.flatMap((g) => g.reports);
 
-const DEPARTMENT_SHARE: Record<string, number> = {
-  Engineering: 0.42,
-  Product: 0.14,
-  Design: 0.11,
-  Data: 0.12,
-  Sales: 0.13,
-  People: 0.08,
+type RangePreset = '30d' | '90d' | '180d' | 'custom';
+
+const PRESET_DAYS: Record<Exclude<RangePreset, 'custom'>, number> = {
+  '30d': 30,
+  '90d': 90,
+  '180d': 180,
 };
 
-const LOCATION_SHARE: Record<string, number> = {
-  Bengaluru: 0.38,
-  London: 0.16,
-  Berlin: 0.1,
-  Austin: 0.12,
-  Singapore: 0.09,
-  Remote: 0.15,
-};
+const ALL = 'all';
 
-const RANGE_LABEL: Record<ReportRange, string> = {
-  '30d': 'Last 30 days',
-  '90d': 'Last 90 days',
-  '12m': 'Last 12 months',
-};
-
-function nudgeFor(key: string) {
-  const hash = Array.from(key).reduce(
-    (h, ch) => (h * 31 + ch.charCodeAt(0)) % 997,
-    7,
-  );
-  return 1 + ((hash % 9) - 4) / 100;
+function localDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-const DEPARTMENTS = [
-  'Engineering',
-  'Product',
-  'Design',
-  'Data',
-  'Sales',
-  'People',
-];
-const LOCATIONS = [
-  'Bengaluru',
-  'London',
-  'Berlin',
-  'Austin',
-  'Singapore',
-  'Remote',
-];
+function dayStart(key: string) {
+  return new Date(`${key}T00:00:00`);
+}
+
+function dayEnd(key: string) {
+  return new Date(`${key}T23:59:59.999`);
+}
+
+function presetRange(days: number) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  return { from: localDateKey(start), to: localDateKey(end) };
+}
+
+function previousWindow(from: Date, to: Date) {
+  const span = to.getTime() - from.getTime();
+  const prevTo = new Date(from.getTime() - 1);
+  return { from: new Date(prevTo.getTime() - span), to: prevTo };
+}
 
 export default function ReportsPage() {
+  const f = useFormatters();
   const [reportId, setReportId] = useState('executive');
-  const [range, setRange] = useState<ReportRange>('30d');
-  const [department, setDepartment] = useState('all');
-  const [location, setLocation] = useState('all');
+  const [preset, setPreset] = useState<RangePreset>('90d');
+  const [custom, setCustom] = useState(() => presetRange(90));
+  const [jobId, setJobId] = useState(ALL);
+  const [clientId, setClientId] = useState(ALL);
+  const [recruiterId, setRecruiterId] = useState(ALL);
   const report = ALL_REPORTS.find((r) => r.id === reportId) ?? ALL_REPORTS[0];
-  const Report = report.component;
-  const kpis = useRef<KpiRecord[]>([]);
+  const { data: jobsData } = useJobsQuery({ page: 1, limit: 100 });
+  const { data: clientsData } = useClientsQuery({ page: 1, limit: 100 });
+  const { data: users = [] } = useUserNamesQuery();
 
-  const scope = useMemo(
-    () => ({
-      rangeFactor: RANGE_FACTOR[range],
-      filterFactor:
-        (department === 'all' ? 1 : DEPARTMENT_SHARE[department]) *
-        (location === 'all' ? 1 : LOCATION_SHARE[location]),
-      rateNudge:
-        department === 'all' && location === 'all' && range === '30d'
-          ? 1
-          : nudgeFor(`${department}-${location}-${range}`),
-      kpis,
-    }),
-    [range, department, location],
+  const range = useMemo(
+    () => (preset === 'custom' ? custom : presetRange(PRESET_DAYS[preset])),
+    [preset, custom],
   );
+  const rangeValid = !!range.from && !!range.to && range.from <= range.to;
+
+  const filters = useMemo((): ReportSummaryRequest => {
+    const scope = {
+      ...(jobId !== ALL ? { jobId } : {}),
+      ...(clientId !== ALL ? { clientId } : {}),
+      ...(recruiterId !== ALL ? { recruiterId } : {}),
+    };
+    return rangeValid
+      ? {
+          from: dayStart(range.from).toISOString(),
+          to: dayEnd(range.to).toISOString(),
+          ...scope,
+        }
+      : scope;
+  }, [range, rangeValid, jobId, clientId, recruiterId]);
+
+  const previousFilters = useMemo((): ReportSummaryRequest => {
+    if (!filters.from || !filters.to) return filters;
+    const prev = previousWindow(new Date(filters.from), new Date(filters.to));
+    return {
+      ...filters,
+      from: prev.from.toISOString(),
+      to: prev.to.toISOString(),
+    };
+  }, [filters]);
+
+  const isLive = !!report.live;
+  const summary = useReportSummaryQuery(filters, rangeValid && isLive);
+  const previous = useReportSummaryQuery(previousFilters, rangeValid && isLive);
+
+  useEffect(() => {
+    if (summary.isError) {
+      toast.error('Could not load report', errorMessage(summary.error));
+    }
+  }, [summary.isError, summary.error]);
+
+  const rangeLabel = rangeValid
+    ? `${f.date(range.from)} to ${f.date(range.to)}`
+    : 'Pick a valid date range';
 
   const exportReport = (format: string) => {
     if (format === 'PDF') {
       window.print();
       return;
     }
-    const rows: KpiRecord[] = [
-      { label: 'Report', value: report.label },
-      { label: 'Period', value: RANGE_LABEL[range] },
-      { label: 'Department', value: department === 'all' ? 'All' : department },
-      { label: 'Location', value: location === 'all' ? 'All' : location },
-      ...kpis.current,
-    ];
-    downloadCsv(`${report.id}-report-${range}`, rows, [
-      { header: 'Metric', value: (r) => r.label },
-      {
-        header: 'Value',
-        value: (r) => (r.unit ? `${r.value} ${r.unit}` : r.value),
-      },
-      {
-        header: 'Change vs previous period',
-        value: (r) => (r.delta === undefined ? '' : `${r.delta}%`),
-      },
-    ]);
-    toast.success(
-      'Report exported',
-      `${report.label}, ${RANGE_LABEL[range].toLowerCase()}`,
+    if (!report.csv || !summary.data) return;
+    const spec = report.csv(summary.data, f);
+    downloadCsv(
+      `${report.id}-report-${range.from}-${range.to}`,
+      spec.rows,
+      spec.headers.map((header, i) => ({ header, value: (r) => r[i] })),
     );
+    toast.success('Report exported', `${report.label}, ${rangeLabel}`);
   };
+
+  const scopeLabel = [
+    jobId !== ALL && (jobsData?.data ?? []).find((j) => j.id === jobId)?.title,
+    clientId !== ALL &&
+      (clientsData?.data ?? []).find((c) => c.id === clientId)?.name,
+    recruiterId !== ALL && userLabel(users.find((u) => u.id === recruiterId)),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const Live = report.live;
+  const Preview = report.preview;
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -318,7 +456,13 @@ export default function ReportsPage() {
                   )}
                 >
                   <r.icon className="h-4 w-4 shrink-0" />
-                  {r.label}
+                  <span className="flex-1 text-left">{r.label}</span>
+                  {!r.live && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
+                      title="Preview only"
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -331,49 +475,121 @@ export default function ReportsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-semibold">{report.label}</h1>
-              <NotIntegratedBadge />
+              {!isLive && <NotIntegratedBadge />}
             </div>
             <p className="text-xs text-muted-foreground">
-              {report.description} · {RANGE_LABEL[range].toLowerCase()}
-              {department !== 'all' && ` · ${department}`}
-              {location !== 'all' && ` · ${location}`} · compared with the
-              previous period
+              {report.description}
+              {isLive && ` · ${rangeLabel}`}
+              {isLive && scopeLabel && ` · ${scopeLabel}`}
+              {isLive && ' · compared with the previous period'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <FilterDropdown
-              label="Department"
-              value={department}
-              onChange={setDepartment}
+              label="Job"
+              value={jobId}
+              onChange={setJobId}
               options={[
-                { label: 'All', value: 'all' },
-                ...DEPARTMENTS.map((d) => ({ label: d, value: d })),
+                { label: 'All', value: ALL },
+                ...(jobsData?.data ?? []).map((j) => ({
+                  label: j.title,
+                  value: j.id,
+                })),
               ]}
             />
             <FilterDropdown
-              label="Location"
-              value={location}
-              onChange={setLocation}
+              label="Client"
+              value={clientId}
+              onChange={setClientId}
               options={[
-                { label: 'All', value: 'all' },
-                ...LOCATIONS.map((l) => ({ label: l, value: l })),
+                { label: 'All', value: ALL },
+                ...(clientsData?.data ?? []).map((c) => ({
+                  label: c.name,
+                  value: c.id,
+                })),
+              ]}
+            />
+            <FilterDropdown
+              label="Recruiter"
+              value={recruiterId}
+              onChange={setRecruiterId}
+              options={[
+                { label: 'All', value: ALL },
+                ...users.map((u) => ({ label: userLabel(u), value: u.id })),
               ]}
             />
             <SegmentedControl
-              value={range}
-              onChange={setRange}
+              value={preset}
+              onChange={(v) => {
+                if (v === 'custom' && preset !== 'custom') setCustom(range);
+                setPreset(v);
+              }}
               options={[
                 { value: '30d', label: '30 days' },
                 { value: '90d', label: '90 days' },
-                { value: '12m', label: '12 months' },
+                { value: '180d', label: '180 days' },
+                { value: 'custom', label: 'Custom' },
               ]}
             />
-            <ExportButton formats={['CSV', 'PDF']} onExport={exportReport} />
+            {preset === 'custom' && (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="date"
+                  aria-label="From"
+                  className="h-8 w-36"
+                  value={custom.from}
+                  max={custom.to || undefined}
+                  onChange={(e) =>
+                    setCustom((c) => ({ ...c, from: e.target.value }))
+                  }
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  aria-label="To"
+                  className="h-8 w-36"
+                  value={custom.to}
+                  min={custom.from || undefined}
+                  onChange={(e) =>
+                    setCustom((c) => ({ ...c, to: e.target.value }))
+                  }
+                />
+              </div>
+            )}
+            <ExportButton
+              formats={report.csv ? ['CSV', 'PDF'] : ['PDF']}
+              onExport={exportReport}
+            />
           </div>
         </div>
-        <ReportScopeContext.Provider value={scope}>
-          <Report range={range} />
-        </ReportScopeContext.Provider>
+        {Preview ? (
+          <Preview />
+        ) : !rangeValid ? (
+          <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            The start date must be on or before the end date
+          </p>
+        ) : Live && summary.data ? (
+          <div className={cn(summary.isFetching && 'opacity-70')}>
+            <Live
+              data={summary.data}
+              previous={previous.data}
+              filters={filters}
+            />
+          </div>
+        ) : summary.isError ? (
+          <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Could not load this report
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-72 w-full" />
+          </div>
+        )}
       </div>
     </div>
   );

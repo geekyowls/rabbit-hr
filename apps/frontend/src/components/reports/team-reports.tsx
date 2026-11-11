@@ -16,203 +16,170 @@ import {
   BarWithValue,
   Grid,
   KpiGrid,
+  EmptyReport,
+  GRAY,
+  PreviewCard,
+  RED,
   ReportTable,
+  SplitBar,
+  changePct,
+  pointsChange,
+  rateLabel,
+  ratio,
   thresholdColor,
   toneText,
+  type LiveReportProps,
 } from './report-kit';
+import { useFormatters } from '@/hooks/use-formatters';
+import { personName } from '@/components/applications/application-meta';
 
-interface Recruiter {
-  name: string;
-  openReqs: number;
-  moved: number;
-  screens: number;
-  hires: number;
-  timeToFill: number;
-  offerAccept: number;
-  responseHours: number;
-}
+export function RecruiterReport({ data, previous }: LiveReportProps) {
+  const f = useFormatters();
+  const rows = data.recruiters.map((r) => ({
+    ...r,
+    name: personName(r.recruiter) || r.recruiter.email,
+  }));
+  const count = rows.length;
+  const avg = (key: 'hires' | 'applications' | 'jobs') =>
+    count
+      ? Math.round((rows.reduce((s, r) => s + r[key], 0) / count) * 10) / 10
+      : null;
+  const prevCount = previous?.recruiters.length ?? 0;
+  const prevHires = prevCount
+    ? Math.round(
+        ((previous?.recruiters ?? []).reduce((s, r) => s + r.hires, 0) /
+          prevCount) *
+          10,
+      ) / 10
+    : null;
 
-const RECRUITERS: Recruiter[] = [
-  {
-    name: 'Kavya Iyer',
-    openReqs: 6,
-    moved: 214,
-    screens: 61,
-    hires: 5,
-    timeToFill: 31,
-    offerAccept: 100,
-    responseHours: 9,
-  },
-  {
-    name: 'Arjun Nair',
-    openReqs: 5,
-    moved: 188,
-    screens: 54,
-    hires: 3,
-    timeToFill: 28,
-    offerAccept: 75,
-    responseHours: 14,
-  },
-  {
-    name: 'Rahul Menon',
-    openReqs: 4,
-    moved: 142,
-    screens: 47,
-    hires: 2,
-    timeToFill: 36,
-    offerAccept: 100,
-    responseHours: 22,
-  },
-  {
-    name: 'Olivia Brown',
-    openReqs: 3,
-    moved: 121,
-    screens: 38,
-    hires: 1,
-    timeToFill: 41,
-    offerAccept: 50,
-    responseHours: 31,
-  },
-];
-
-const ACTIVITY = [
-  { name: 'Kavya', moved: 214, screens: 61, outreach: 138 },
-  { name: 'Arjun', moved: 188, screens: 54, outreach: 162 },
-  { name: 'Rahul', moved: 142, screens: 47, outreach: 96 },
-  { name: 'Olivia', moved: 121, screens: 38, outreach: 74 },
-];
-
-export function RecruiterReport() {
   return (
     <div className="space-y-4">
       <KpiGrid>
+        <TrendStat label="Recruiters" value={f.number(count)} className="p-4" />
         <TrendStat
-          label="Reqs per recruiter"
-          value="4.5"
-          delta={12.5}
-          invertDelta
+          label="Jobs per recruiter"
+          value={avg('jobs') ?? '-'}
+          className="p-4"
+        />
+        <TrendStat
+          label="Applications per recruiter"
+          value={avg('applications') ?? '-'}
           className="p-4"
         />
         <TrendStat
           label="Hires per recruiter"
-          value="2.8"
-          delta={16.7}
-          className="p-4"
-        />
-        <TrendStat
-          label="Candidates moved"
-          value="665"
-          delta={9.4}
-          className="p-4"
-        />
-        <TrendStat
-          label="Median response time"
-          value="16"
-          unit="hours"
-          delta={-11.1}
-          invertDelta
+          value={avg('hires') ?? '-'}
+          delta={changePct(avg('hires'), prevHires)}
           className="p-4"
         />
       </KpiGrid>
       <SectionCard
         title="Recruiter leaderboard"
-        subtitle="Last 90 days"
+        subtitle="Jobs where the recruiter or owner is assigned"
         bodyClassName="p-0"
       >
-        <ReportTable
-          rows={RECRUITERS}
-          getKey={(r) => r.name}
-          columns={[
-            {
-              key: 'name',
-              header: 'Recruiter',
-              render: (r) => (
-                <span className="inline-flex items-center gap-2 font-medium">
-                  <InitialsAvatar
-                    name={r.name}
-                    className="h-6 w-6 text-[10px]"
-                  />
-                  {r.name}
-                </span>
-              ),
-            },
-            {
-              key: 'reqs',
-              header: 'Open reqs',
-              align: 'right',
-              render: (r) => r.openReqs,
-            },
-            {
-              key: 'moved',
-              header: 'Candidates moved',
-              align: 'right',
-              render: (r) => r.moved,
-            },
-            {
-              key: 'screens',
-              header: 'Screens',
-              align: 'right',
-              render: (r) => r.screens,
-            },
-            {
-              key: 'hires',
-              header: 'Hires',
-              align: 'right',
-              render: (r) => <span className="font-semibold">{r.hires}</span>,
-            },
-            {
-              key: 'ttf',
-              header: 'Time to fill',
-              align: 'right',
-              render: (r) => (
-                <span className={toneText(r.timeToFill, 32, 38, false)}>
-                  {r.timeToFill} d
-                </span>
-              ),
-            },
-            {
-              key: 'accept',
-              header: 'Offer accept',
-              align: 'right',
-              render: (r) => (
-                <BarWithValue
-                  value={r.offerAccept}
-                  color={thresholdColor(r.offerAccept, 85, 70)}
-                />
-              ),
-            },
-            {
-              key: 'resp',
-              header: 'Response time',
-              align: 'right',
-              render: (r) => (
-                <span className={toneText(r.responseHours, 16, 24, false)}>
-                  {r.responseHours} h
-                </span>
-              ),
-            },
-          ]}
-        />
+        {rows.length === 0 ? (
+          <EmptyReport text="No recruiter activity in this period" />
+        ) : (
+          <ReportTable
+            rows={rows}
+            getKey={(r) => r.recruiter.id}
+            columns={[
+              {
+                key: 'name',
+                header: 'Recruiter',
+                render: (r) => (
+                  <span className="inline-flex items-center gap-2 font-medium">
+                    <InitialsAvatar
+                      name={r.name}
+                      className="h-6 w-6 text-[10px]"
+                    />
+                    {r.name}
+                  </span>
+                ),
+              },
+              {
+                key: 'jobs',
+                header: 'Jobs',
+                align: 'right',
+                render: (r) => f.number(r.jobs),
+              },
+              {
+                key: 'applications',
+                header: 'Applications',
+                align: 'right',
+                render: (r) => f.number(r.applications),
+              },
+              {
+                key: 'interviews',
+                header: 'Interviews',
+                align: 'right',
+                render: (r) => f.number(r.interviews),
+              },
+              {
+                key: 'offers',
+                header: 'Offers',
+                align: 'right',
+                render: (r) => f.number(r.offers),
+              },
+              {
+                key: 'hires',
+                header: 'Hires',
+                align: 'right',
+                render: (r) => (
+                  <span className="font-semibold">{f.number(r.hires)}</span>
+                ),
+              },
+              {
+                key: 'rate',
+                header: 'Hire rate',
+                align: 'right',
+                render: (r) => {
+                  const rate = ratio(r.hires, r.applications);
+                  return rate == null ? (
+                    '-'
+                  ) : (
+                    <BarWithValue
+                      value={rate}
+                      max={Math.max(10, rate)}
+                      color={thresholdColor(rate, 5, 2)}
+                    />
+                  );
+                },
+              },
+            ]}
+          />
+        )}
       </SectionCard>
       <Grid className="xl:grid-cols-2">
         <SectionCard
           title="Activity by recruiter"
-          subtitle="Outreach, screens and stage moves"
+          subtitle="Interviews, offers and hires"
           bodyClassName="p-4"
         >
-          <BarSeriesChart
-            data={ACTIVITY}
-            xKey="name"
-            height={240}
-            showLegend
-            series={[
-              { key: 'outreach', label: 'Outreach', color: BRAND_LIGHT },
-              { key: 'moved', label: 'Stage moves', color: BRAND },
-              { key: 'screens', label: 'Screens', color: BLUE },
-            ]}
-          />
+          {rows.length === 0 ? (
+            <EmptyReport text="No recruiter activity in this period" />
+          ) : (
+            <BarSeriesChart
+              data={rows.map((r) => ({
+                name: r.name.split(' ')[0],
+                interviews: r.interviews,
+                offers: r.offers,
+                hires: r.hires,
+              }))}
+              xKey="name"
+              height={240}
+              showLegend
+              series={[
+                { key: 'interviews', label: 'Interviews', color: BRAND_LIGHT },
+                { key: 'offers', label: 'Offers', color: BLUE },
+                { key: 'hires', label: 'Hires', color: BRAND },
+              ]}
+            />
+          )}
         </SectionCard>
-        <SectionCard
+        <PreviewCard
           title="Workload balance"
           subtitle="Active candidates per recruiter by stage"
           bodyClassName="p-4"
@@ -226,7 +193,7 @@ export function RecruiterReport() {
               { label: 'Olivia', values: [29, 12, 6, 3, 0] },
             ]}
           />
-        </SectionCard>
+        </PreviewCard>
       </Grid>
     </div>
   );
@@ -319,40 +286,85 @@ const INTERVIEWERS: Interviewer[] = [
   },
 ];
 
-export function InterviewerReport() {
+export function InterviewerReport({ data, previous }: LiveReportProps) {
+  const f = useFormatters();
+  const iv = data.interviews;
+  const outcomes = [
+    { key: 'completed', label: 'Completed', value: iv.completed, color: BRAND },
+    {
+      key: 'scheduled',
+      label: 'Still scheduled',
+      value: Math.max(
+        0,
+        iv.scheduled - iv.completed - iv.cancelled - iv.noShow,
+      ),
+      color: BRAND_LIGHT,
+    },
+    { key: 'cancelled', label: 'Cancelled', value: iv.cancelled, color: GRAY },
+    { key: 'noShow', label: 'No show', value: iv.noShow, color: RED },
+  ];
   return (
     <div className="space-y-4">
       <KpiGrid>
         <TrendStat
-          label="Interviews held"
-          value="142"
-          delta={9.6}
+          label="Interviews scheduled"
+          value={f.number(iv.scheduled)}
+          delta={changePct(iv.scheduled, previous?.interviews.scheduled)}
           className="p-4"
         />
         <TrendStat
-          label="Interviewer hours"
-          value="168"
-          delta={7.1}
+          label="Completed"
+          value={f.number(iv.completed)}
+          delta={changePct(iv.completed, previous?.interviews.completed)}
           className="p-4"
         />
         <TrendStat
-          label="Feedback on time"
-          value="86"
-          unit="%"
-          delta={3.2}
-          className="p-4"
-        />
-        <TrendStat
-          label="Avg time to submit"
-          value="15"
-          unit="hours"
-          delta={-9.0}
+          label="No-show rate"
+          value={rateLabel(iv.noShowRate)}
+          delta={pointsChange(iv.noShowRate, previous?.interviews.noShowRate)}
           invertDelta
           className="p-4"
         />
+        <TrendStat
+          label="Average rating"
+          value={iv.averageRating ?? '-'}
+          unit={
+            iv.averageRating == null
+              ? undefined
+              : `of 5, ${f.number(iv.scorecards)} scorecards`
+          }
+          className="p-4"
+        />
       </KpiGrid>
+      <SectionCard
+        title="Interview outcomes"
+        subtitle="Interviews scheduled in this period"
+        bodyClassName="space-y-3 p-4"
+      >
+        {iv.scheduled === 0 ? (
+          <EmptyReport text="No interviews in this period" />
+        ) : (
+          <>
+            <SplitBar parts={outcomes} />
+            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+              {outcomes.map((o) => (
+                <span key={o.key} className="inline-flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 rounded-sm"
+                    style={{ backgroundColor: o.color }}
+                  />
+                  {o.label}
+                  <span className="font-medium tabular-nums text-foreground">
+                    {f.number(o.value)}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </SectionCard>
       <Grid className="xl:grid-cols-2">
-        <SectionCard
+        <PreviewCard
           title="Interview load"
           subtitle="Interviews per person, last 90 days"
           bodyClassName="p-4"
@@ -367,8 +379,8 @@ export function InterviewerReport() {
             height={260}
             series={[{ key: 'interviews', label: 'Interviews', color: BRAND }]}
           />
-        </SectionCard>
-        <SectionCard
+        </PreviewCard>
+        <PreviewCard
           title="Pass rate calibration"
           subtitle={`Difference from team average of ${TEAM_AVG_PASS}%`}
           bodyClassName="space-y-2.5 p-4"
@@ -397,9 +409,9 @@ export function InterviewerReport() {
               </div>
             );
           })}
-        </SectionCard>
+        </PreviewCard>
       </Grid>
-      <SectionCard
+      <PreviewCard
         title="Interviewer scorecards"
         subtitle="Feedback SLA is 24 hours"
         bodyClassName="p-0"
@@ -475,7 +487,7 @@ export function InterviewerReport() {
             },
           ]}
         />
-      </SectionCard>
+      </PreviewCard>
     </div>
   );
 }

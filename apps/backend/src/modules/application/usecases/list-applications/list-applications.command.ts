@@ -4,9 +4,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
 } from 'class-validator';
 import { BasePaginatedCommand } from '@boilerplate/core';
-import { ApplicationStage } from '@db/enums';
+import { PipelineStageCategory } from '@db/enums';
+import { STAGE_KEY_PATTERN } from '@modules/pipeline-stage/dtos/pipeline-stage.dto';
 
 export class ListApplicationsCommand extends BasePaginatedCommand {
   @IsUUID()
@@ -21,9 +23,14 @@ export class ListApplicationsCommand extends BasePaginatedCommand {
   @IsOptional()
   candidateId?: string;
 
-  @IsEnum(ApplicationStage)
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
   @IsOptional()
-  stage?: ApplicationStage;
+  stage?: string;
+
+  @IsEnum(PipelineStageCategory)
+  @IsOptional()
+  stageCategory?: PipelineStageCategory;
 
   @IsString()
   @IsOptional()

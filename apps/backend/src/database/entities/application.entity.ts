@@ -4,7 +4,7 @@ import { OrganizationEntity } from './organization.entity';
 import { UserEntity } from './user.entity';
 import { CandidateEntity } from './candidate.entity';
 import { JobEntity } from './job.entity';
-import { ApplicationStage, CandidateSource } from '../enums';
+import { CandidateSource } from '../enums';
 
 export interface ApplicationAnswer {
   questionId: string;
@@ -27,12 +27,8 @@ export class ApplicationEntity extends BaseEntity {
   @Column({ type: 'uuid' })
   jobId: string;
 
-  @Column({
-    type: 'enum',
-    enum: ApplicationStage,
-    default: ApplicationStage.APPLIED,
-  })
-  stage: ApplicationStage;
+  @Column({ type: 'varchar', length: 64, default: 'applied' })
+  stage: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   rejectionReason: string | null;

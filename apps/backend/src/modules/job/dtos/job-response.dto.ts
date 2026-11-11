@@ -1,11 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  ApplicationStage,
-  EmploymentType,
-  JobStatus,
-  RateUnit,
-  WorkMode,
-} from '@db/enums';
+import { EmploymentType, JobStatus, RateUnit, WorkMode } from '@db/enums';
 import { UserSummaryDto } from '@shared/dtos/user-summary.dto';
 import { ScreeningQuestionDto } from './create-job.dto';
 
@@ -102,6 +96,34 @@ export class JobResponseDto {
   @ApiPropertyOptional({ type: UserSummaryDto, nullable: true })
   owner!: UserSummaryDto | null;
 
+  @ApiPropertyOptional({ nullable: true, example: 'Engineering' })
+  department!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hiringManagerId!: string | null;
+
+  @ApiPropertyOptional({ type: UserSummaryDto, nullable: true })
+  hiringManager!: UserSummaryDto | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  recruiterId!: string | null;
+
+  @ApiPropertyOptional({ type: UserSummaryDto, nullable: true })
+  recruiter!: UserSummaryDto | null;
+
+  @ApiProperty({ type: [String] })
+  hiringTeamIds!: string[];
+
+  @ApiProperty({ type: [UserSummaryDto] })
+  hiringTeam!: UserSummaryDto[];
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    example: { cost_centre: 'CC-104' },
+  })
+  customFields!: Record<string, unknown>;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -114,9 +136,8 @@ export class JobListItemDto extends JobResponseDto {
   applicationCount!: number;
 
   @ApiProperty({
-    example: Object.fromEntries(
-      Object.values(ApplicationStage).map((stage) => [stage, 0]),
-    ),
+    description: 'Application counts keyed by stage key',
+    example: { applied: 4, screening: 2 },
   })
-  stageCounts!: Record<ApplicationStage, number>;
+  stageCounts!: Record<string, number>;
 }

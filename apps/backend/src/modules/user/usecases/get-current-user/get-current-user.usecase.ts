@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository, OrganizationConfigRepository } from '@db/repositories';
 import { UserStatus, OrganizationConfigType } from '@db/enums';
+import { resolveAtsSettings } from '@db/entities';
 import { buildUrl, getFeatureControl } from '@boilerplate/core';
 
 const DEFAULT_CLIENT_TAGS = [
@@ -213,6 +214,7 @@ export class GetCurrentUser {
         canUseDemoScreens,
         coBrandingEnabled,
         coBrandingOrder,
+        atsSettings: resolveAtsSettings(user.organization.atsSettings),
       },
       roleId: user.roleId,
       role: user.role ? { id: user.role.id, name: user.role.name } : null,

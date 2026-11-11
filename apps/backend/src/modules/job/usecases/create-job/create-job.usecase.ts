@@ -4,11 +4,14 @@ import {
   JobRepository,
   UserRepository,
 } from '@db/repositories';
-import { JobStatus } from '@db/enums';
+import { CustomFieldEntityType, JobStatus } from '@db/enums';
 import { pickDefined } from '@shared/helpers/pick-defined';
+import { AtsSettingsService } from '@shared/services/ats-settings.service';
+import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
 import {
   assertJobReferences,
   normalizeScreeningQuestions,
+  uniqueIds,
 } from '../job-validation';
 import { GetJob } from '../get-job/get-job.usecase';
 import { CreateJobCommand } from './create-job.command';
@@ -20,17 +23,28 @@ export class CreateJob {
     private readonly clientRepository: ClientRepository,
     private readonly userRepository: UserRepository,
     private readonly getJob: GetJob,
+    private readonly atsSettingsService: AtsSettingsService,
+    private readonly customFieldValidator: CustomFieldValidator,
   ) {}
 
   async execute(command: CreateJobCommand) {
-    const { payload } = command;
+    const { customFields, hiringTeamIds, ...payload } = pickDefined(
+      command.payload,
+    );
     await assertJobReferences(
       this.clientRepository,
       this.userRepository,
       command.organizationId,
-      payload.clientId,
-      payload.ownerId,
+      { ...payload, hiringTeamIds },
     );
+    const [settings, customFieldValues] = await Promise.all([
+      this.atsSettingsService.get(command.organizationId),
+      this.customFieldValidator.validate(
+        command.organizationId,
+        CustomFieldEntityType.JOB,
+        customFields,
+      ),
+    ]);
 
     const status = payload.status ?? JobStatus.DRAFT;
     const reference = await this.jobRepository.nextReference(
@@ -39,7 +53,10 @@ export class CreateJob {
 
     const job = await this.jobRepository.save(
       this.jobRepository.create({
-        ...pickDefined(payload),
+        ...payload,
+        currency: payload.currency ?? settings.defaultCurrency,
+        hiringTeamIds: uniqueIds(hiringTeamIds ?? []),
+        customFields: customFieldValues,
         screeningQuestions: normalizeScreeningQuestions(
           payload.screeningQuestions ?? [],
         ),

@@ -20,17 +20,6 @@ export function getTaskDueState(
   return 'upcoming';
 }
 
-export function formatTaskDue(dueAt: string | null) {
-  if (!dueAt) return '';
-  const date = new Date(dueAt);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
 export function userDisplayName(user: UserSummary | null | undefined) {
   if (!user) return '';
   const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();

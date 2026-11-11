@@ -69,6 +69,7 @@ export class CandidateController {
         source: dto.source,
         jobId: dto.jobId,
         stage: dto.stage,
+        stageCategory: dto.stageCategory,
         rightToWork: dto.rightToWork,
         ownerId: dto.ownerId,
       }),

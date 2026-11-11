@@ -1,5 +1,6 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
 import { useEffect, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod/v4';
@@ -67,7 +68,6 @@ import {
   VERIFICATION_LABEL,
   VERIFICATION_TONE,
   errorMessage,
-  shortDate,
   uploadDocumentFile,
 } from '@/components/applications/application-meta';
 import { DocxViewer } from './docx-viewer';
@@ -382,6 +382,7 @@ export function CandidateDocumentsTab({
 }: {
   candidateId: string;
 }) {
+  const fmt = useFormatters();
   const { data: documents = [], isLoading } =
     useCandidateDocumentsQuery(candidateId);
   const downloadUrl = useDocumentDownloadUrlMutation();
@@ -495,7 +496,7 @@ export function CandidateDocumentsTab({
                     )}
                   >
                     {isExpired(doc.expiresAt) ? 'Expired' : 'Expires'}{' '}
-                    {shortDate(doc.expiresAt)}
+                    {fmt.date(doc.expiresAt)}
                   </span>
                 )}
               </span>
@@ -522,9 +523,9 @@ export function CandidateDocumentsTab({
                   {selected.sizeBytes
                     ? ` · ${formatBytes(selected.sizeBytes, 1)}`
                     : ''}
-                  {` · added ${shortDate(selected.createdAt)}`}
+                  {` · added ${fmt.date(selected.createdAt)}`}
                   {selected.verifiedAt &&
-                    ` · ${VERIFICATION_LABEL[selected.verificationStatus].toLowerCase()} ${shortDate(selected.verifiedAt)}`}
+                    ` · ${VERIFICATION_LABEL[selected.verificationStatus].toLowerCase()} ${fmt.date(selected.verifiedAt)}`}
                 </p>
               </div>
               <div className="flex items-center gap-1">

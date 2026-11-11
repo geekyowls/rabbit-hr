@@ -1,15 +1,15 @@
 'use client';
 
-import { Building2, CalendarDays, MapPin, Users } from 'lucide-react';
+import { Building2, CalendarDays, Layers, MapPin, Users } from 'lucide-react';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
-import { NotIntegratedBadge, StatusPill } from '@/components/patterns';
+import { StatusPill } from '@/components/patterns';
 import type { JobDetail } from '@/types/job.type';
 import type { StageCounts } from '@/types/application.type';
 import {
   daysSince,
   userLabel,
 } from '@/components/applications/application-meta';
-import { STAGES, STAGE_INDEX } from './pipeline-data';
+import type { StageDef } from './pipeline-data';
 
 const WORK_MODE_LABEL: Record<JobDetail['workMode'], string> = {
   onsite: 'Onsite',
@@ -25,22 +25,13 @@ const JOB_STATUS_LABEL: Record<JobDetail['status'], string> = {
   filled: 'Filled',
 };
 
-function Person({
-  label,
-  name,
-  badge,
-}: {
-  label: string;
-  name: string;
-  badge?: boolean;
-}) {
+function Person({ label, name }: { label: string; name: string }) {
   return (
     <div className="flex items-center gap-1.5">
       <InitialsAvatar name={name} className="h-5 w-5 text-[9px]" />
       <div className="leading-tight">
-        <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
           {label}
-          {badge && <NotIntegratedBadge className="px-1 py-0 text-[9px]" />}
         </p>
         <p className="text-xs font-medium">{name}</p>
       </div>
@@ -50,21 +41,24 @@ function Person({
 
 export function JobSummary({
   job,
+  stages,
   counts,
+  closed,
   jobCount,
 }: {
   job: JobDetail | null;
+  stages: StageDef[];
   counts: StageCounts;
+  closed: number;
   jobCount: number;
 }) {
-  const inStage = STAGES.map((s) => counts[s.id] ?? 0);
-  const reached = STAGES.map((s) =>
-    STAGES.filter((t) => (STAGE_INDEX[t.id] ?? 0) >= (STAGE_INDEX[s.id] ?? 0))
-      .map((t) => counts[t.id] ?? 0)
-      .reduce((a, b) => a + b, 0),
+  const inStage = stages.map((s) => counts[s.id] ?? 0);
+  const reached = stages.map((_, i) =>
+    inStage.slice(i).reduce((a, b) => a + b, 0),
   );
-  const placed = counts.placed ?? 0;
-  const closed = (counts.rejected ?? 0) + (counts.withdrawn ?? 0);
+  const placed = stages
+    .filter((s) => s.category === 'hired')
+    .reduce((n, s) => n + (counts[s.id] ?? 0), 0);
 
   return (
     <div className="flex flex-wrap items-stretch gap-x-6 gap-y-3 rounded-lg border border-border bg-card px-4 py-3">
@@ -86,6 +80,12 @@ export function JobSummary({
                 <span className="inline-flex items-center gap-1">
                   <Building2 className="h-3 w-3" />
                   {job.client.name}
+                </span>
+              )}
+              {job.department && (
+                <span className="inline-flex items-center gap-1">
+                  <Layers className="h-3 w-3" />
+                  {job.department}
                 </span>
               )}
               <span className="inline-flex items-center gap-1">
@@ -123,16 +123,19 @@ export function JobSummary({
 
       {job && (
         <div className="flex items-center gap-4 border-l border-border pl-6">
-          <Person label="Hiring manager" name="Rohit Sharma" badge />
+          <Person
+            label="Hiring manager"
+            name={userLabel(job.hiringManager) || 'Unassigned'}
+          />
           <Person
             label="Recruiter"
-            name={userLabel(job.owner) || 'Unassigned'}
+            name={userLabel(job.recruiter ?? job.owner) || 'Unassigned'}
           />
         </div>
       )}
 
       <div className="ml-auto flex min-w-[420px] flex-1 items-stretch overflow-hidden rounded-md border border-border">
-        {STAGES.map((s, i) => {
+        {stages.map((s, i) => {
           const conv =
             i > 0 && reached[i - 1] > 0
               ? Math.round((reached[i] / reached[i - 1]) * 100)

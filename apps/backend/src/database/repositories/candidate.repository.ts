@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { CandidateEntity } from '../entities';
-import { ApplicationStage } from '../enums';
 
 export interface CandidateLatestApplication {
   id: string;
   jobId: string;
   jobTitle: string;
-  stage: ApplicationStage;
+  stage: string;
   stageChangedAt: Date;
 }
 
@@ -40,7 +39,7 @@ export class CandidateRepository extends Repository<CandidateEntity> {
       id: string;
       jobId: string;
       jobTitle: string;
-      stage: ApplicationStage;
+      stage: string;
       stageChangedAt: Date;
     }> = await this.query(
       `SELECT DISTINCT ON (a."candidateId")

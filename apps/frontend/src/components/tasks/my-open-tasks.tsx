@@ -1,5 +1,6 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
 import Link from 'next/link';
 import { Check, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,12 +8,7 @@ import { toast } from '@/lib/toast';
 import { useCompleteTaskMutation } from '@/hooks/queries';
 import { EmptyState } from '@/components/patterns';
 import type { Task } from '@/types/task.type';
-import {
-  TASK_DUE_CLASS,
-  formatTaskDue,
-  getTaskDueState,
-  taskLinkLabel,
-} from './task-utils';
+import { TASK_DUE_CLASS, getTaskDueState, taskLinkLabel } from './task-utils';
 
 export function MyOpenTasks({
   tasks,
@@ -21,6 +17,7 @@ export function MyOpenTasks({
   tasks: Task[];
   canComplete: boolean;
 }) {
+  const fmt = useFormatters();
   const completeTask = useCompleteTaskMutation();
 
   const handleComplete = async (task: Task) => {
@@ -49,7 +46,7 @@ export function MyOpenTasks({
     <ul className="divide-y divide-border">
       {tasks.map((task) => {
         const state = getTaskDueState(task);
-        const due = formatTaskDue(task.dueAt);
+        const due = fmt.date(task.dueAt);
         const link = taskLinkLabel(task);
         const pending =
           completeTask.isPending && completeTask.variables === task.id;

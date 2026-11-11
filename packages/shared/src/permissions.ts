@@ -79,7 +79,29 @@ export enum PERMISSIONS_ENUM {
   EMAIL_TEMPLATE_MANAGE = 'email-template:manage',
   EMAIL_TEMPLATE_SEND = 'email-template:send',
 
+  INTERVIEW_LIST_READ = 'interview:list:read',
+  INTERVIEW_READ = 'interview:read',
+  INTERVIEW_CREATE = 'interview:create',
+  INTERVIEW_UPDATE = 'interview:update',
+  INTERVIEW_DELETE = 'interview:delete',
+  INTERVIEW_SCORECARD_SUBMIT = 'interview:scorecard:submit',
+  INTERVIEW_MANAGE = 'interview:manage',
+
+  OFFER_LIST_READ = 'offer:list:read',
+  OFFER_READ = 'offer:read',
+  OFFER_CREATE = 'offer:create',
+  OFFER_UPDATE = 'offer:update',
+  OFFER_APPROVE = 'offer:approve',
+  OFFER_SEND = 'offer:send',
+  OFFER_DELETE = 'offer:delete',
+
+  REPORT_READ = 'report:read',
+
   ATS_DASHBOARD_READ = 'ats-dashboard:read',
+
+  ATS_SETTINGS_MANAGE = 'ats-settings:manage',
+  PIPELINE_STAGE_MANAGE = 'pipeline-stage:manage',
+  CUSTOM_FIELD_MANAGE = 'custom-field:manage',
 }
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS_ENUM);
@@ -257,8 +279,44 @@ export const PERMISSION_GROUPS: Record<
       PERMISSIONS_ENUM.EMAIL_TEMPLATE_SEND,
     ],
   },
+  interviews: {
+    label: 'Interviews',
+    permissions: [
+      PERMISSIONS_ENUM.INTERVIEW_LIST_READ,
+      PERMISSIONS_ENUM.INTERVIEW_READ,
+      PERMISSIONS_ENUM.INTERVIEW_CREATE,
+      PERMISSIONS_ENUM.INTERVIEW_UPDATE,
+      PERMISSIONS_ENUM.INTERVIEW_DELETE,
+      PERMISSIONS_ENUM.INTERVIEW_SCORECARD_SUBMIT,
+      PERMISSIONS_ENUM.INTERVIEW_MANAGE,
+    ],
+  },
+  offers: {
+    label: 'Offers',
+    permissions: [
+      PERMISSIONS_ENUM.OFFER_LIST_READ,
+      PERMISSIONS_ENUM.OFFER_READ,
+      PERMISSIONS_ENUM.OFFER_CREATE,
+      PERMISSIONS_ENUM.OFFER_UPDATE,
+      PERMISSIONS_ENUM.OFFER_APPROVE,
+      PERMISSIONS_ENUM.OFFER_SEND,
+      PERMISSIONS_ENUM.OFFER_DELETE,
+    ],
+  },
+  reports: {
+    label: 'Reports',
+    permissions: [PERMISSIONS_ENUM.REPORT_READ],
+  },
   atsDashboard: {
     label: 'ATS Dashboard',
     permissions: [PERMISSIONS_ENUM.ATS_DASHBOARD_READ],
+  },
+  atsConfiguration: {
+    label: 'ATS Configuration',
+    permissions: [
+      PERMISSIONS_ENUM.ATS_SETTINGS_MANAGE,
+      PERMISSIONS_ENUM.PIPELINE_STAGE_MANAGE,
+      PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE,
+    ],
   },
 };

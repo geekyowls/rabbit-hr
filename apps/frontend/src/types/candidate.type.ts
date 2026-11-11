@@ -1,5 +1,7 @@
 import type { UserSummary } from './common.type';
 import type { ApplicationStage } from './application.type';
+import type { CustomFieldValues } from './custom-field.type';
+import type { PipelineStageCategory } from './pipeline-stage.type';
 
 export type CandidateSource =
   | 'careers_page'
@@ -64,6 +66,7 @@ export interface Candidate {
   ownerId: string | null;
   owner: UserSummary | null;
   rating: number | null;
+  customFields: CustomFieldValues;
   createdAt: string;
   updatedAt: string;
 }
@@ -108,6 +111,7 @@ export interface ListCandidatesRequest {
   source?: CandidateSource;
   jobId?: string;
   stage?: ApplicationStage;
+  stageCategory?: PipelineStageCategory;
   rightToWork?: RightToWork;
   ownerId?: string;
 }
@@ -134,6 +138,7 @@ export interface CreateCandidateRequest {
   gdprConsentAt?: string | null;
   ownerId?: string | null;
   rating?: number | null;
+  customFields?: CustomFieldValues;
 }
 
 export type UpdateCandidateRequest = Partial<CreateCandidateRequest>;

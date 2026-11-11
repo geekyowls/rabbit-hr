@@ -6,16 +6,10 @@ import {
   JobRepository,
   TaskRepository,
 } from '@db/repositories';
-import {
-  APPLICATION_STAGE_ORDER,
-  ApplicationStage,
-  INACTIVE_APPLICATION_STAGES,
-  JobStatus,
-  TaskStatus,
-} from '@db/enums';
+import { JobStatus, PipelineStageCategory, TaskStatus } from '@db/enums';
+import { PipelineStageService } from '@shared/services/pipeline-stage.service';
 import { buildActivityQuery } from '@modules/activity/usecases/activity-query';
 import { buildTaskQuery } from '@modules/task/usecases/task-query';
-import { emptyStageCounts } from '@db/repositories/job.repository';
 import { GetAtsDashboardCommand } from './get-ats-dashboard.command';
 
 const TOP_CLIENTS = 8;
@@ -38,6 +32,7 @@ export class GetAtsDashboard {
     private readonly applicationRepository: ApplicationRepository,
     private readonly activityRepository: ActivityRepository,
     private readonly taskRepository: TaskRepository,
+    private readonly pipelineStageService: PipelineStageService,
   ) {}
 
   async execute(command: GetAtsDashboardCommand) {
@@ -49,6 +44,11 @@ export class GetAtsDashboard {
       now.getMonth(),
       now.getDate() - (TREND_DAYS - 1),
     );
+
+    const stages = await this.pipelineStageService.getStages(organizationId);
+    const hiredKeys = stages
+      .filter((s) => s.category === PipelineStageCategory.HIRED)
+      .map((s) => s.key);
 
     const [
       openJobs,
@@ -64,9 +64,7 @@ export class GetAtsDashboard {
         where: { organizationId, status: JobStatus.PUBLISHED },
       }),
       this.candidateRepository.count({ where: { organizationId } }),
-      this.applicationRepository.query<
-        Array<{ stage: ApplicationStage; count: string }>
-      >(
+      this.applicationRepository.query<Array<{ stage: string; count: string }>>(
         `SELECT stage, COUNT(*) AS count FROM applications WHERE "organizationId" = $1 GROUP BY stage`,
         [organizationId],
       ),
@@ -75,9 +73,7 @@ export class GetAtsDashboard {
         .where('application.organizationId = :organizationId', {
           organizationId,
         })
-        .andWhere('application.stage = :stage', {
-          stage: ApplicationStage.PLACED,
-        })
+        .andWhere('application.stage = ANY(:hiredKeys)', { hiredKeys })
         .andWhere('application.stageChangedAt >= :startOfMonth', {
           startOfMonth,
         })
@@ -114,13 +110,22 @@ export class GetAtsDashboard {
         .getMany(),
     ]);
 
-    const stageCounts = emptyStageCounts();
-    for (const row of stageRows) {
-      stageCounts[row.stage] = Number(row.count);
-    }
-    const activeApplications = APPLICATION_STAGE_ORDER.filter(
-      (stage) => !INACTIVE_APPLICATION_STAGES.includes(stage),
-    ).reduce((sum, stage) => sum + stageCounts[stage], 0);
+    const stageCounts = new Map(
+      stageRows.map((row) => [row.stage, Number(row.count)]),
+    );
+    const countFor = (key: string) => stageCounts.get(key) ?? 0;
+    const sumWhere = (
+      predicate: (category: PipelineStageCategory) => boolean,
+    ) =>
+      stages
+        .filter((s) => predicate(s.category))
+        .reduce((sum, s) => sum + countFor(s.key), 0);
+    const activeApplications = sumWhere(
+      (category) => !this.pipelineStageService.isClosedCategory(category),
+    );
+    const interviews = sumWhere(
+      (category) => category === PipelineStageCategory.INTERVIEW,
+    );
 
     const dailyCounts = new Map(
       dailyRows.map((row) => [row.date, Number(row.count)]),
@@ -138,12 +143,17 @@ export class GetAtsDashboard {
         candidates,
         activeApplications,
         placementsThisMonth,
-        interviews: stageCounts[ApplicationStage.INTERVIEW],
+        interviews,
       },
-      funnel: APPLICATION_STAGE_ORDER.map((stage) => ({
-        stage,
-        count: stageCounts[stage],
-      })),
+      funnel: stages
+        .filter((s) => s.isActive)
+        .map((s) => ({
+          stage: s.key,
+          name: s.name,
+          category: s.category,
+          color: s.color,
+          count: countFor(s.key),
+        })),
       applicationsByClient: clientRows.map((row) => ({
         clientId: row.clientId,
         clientName: row.clientName,

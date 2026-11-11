@@ -21,3 +21,8 @@ export * from './activity.entity';
 export * from './task.entity';
 export * from './candidate-document.entity';
 export * from './email-template.entity';
+export * from './pipeline-stage.entity';
+export * from './custom-field-definition.entity';
+export * from './interview.entity';
+export * from './scorecard.entity';
+export * from './offer.entity';

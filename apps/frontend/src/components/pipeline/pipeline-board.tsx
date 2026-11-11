@@ -16,21 +16,23 @@ import type {
 } from '@/types/application.type';
 import { PipelineCard } from './pipeline-card';
 import {
-  STAGES,
+  columnCards,
   daysInStage,
+  flowStageDefs,
   nextStage,
   slaState,
   type PipelineCandidate,
 } from './pipeline-data';
 
-const REJECT_TARGET = 'rejected';
+const REJECT_TARGET = 'rejected-drop-target';
+const SKELETON_COLUMNS = [0, 1, 2, 3, 4];
 
 export function PipelineBoardSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-x-auto pb-1">
-      {STAGES.map((s) => (
+      {SKELETON_COLUMNS.map((s) => (
         <div
-          key={s.id}
+          key={s}
           className="flex w-[264px] shrink-0 flex-col gap-2 rounded-lg border border-border bg-zinc-50 p-2 dark:bg-zinc-900/60"
         >
           <Skeleton className="h-8 w-full" />
@@ -86,18 +88,20 @@ export function PipelineBoard({
     },
   });
 
+  const stages = flowStageDefs(board);
+
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-x-auto pb-1">
-      {STAGES.map((stage) => {
+      {stages.map((stage) => {
         const column = board.stages.find((s) => s.stage === stage.id);
-        const items = (column?.cards ?? []).filter(filter);
+        const items = (column ? columnCards(column) : []).filter(filter);
         const total = column?.count ?? 0;
         const avgDays = items.length
           ? items.reduce((s, c) => s + daysInStage(c), 0) / items.length
           : 0;
         const overdue = items.filter((c) => slaState(c) === 'over').length;
         const isOver = overStage === stage.id && dragId !== null;
-        const next = nextStage(stage.id);
+        const next = nextStage(stages, stage.id);
         return (
           <div
             key={stage.id}
@@ -142,7 +146,7 @@ export function PipelineBoard({
                 )}
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {stage.id === 'placed'
+                {stage.category === 'hired'
                   ? 'Placed this cycle'
                   : items.length
                     ? `Avg ${avgDays.toFixed(1)}d in stage · target ${stage.slaDays}d`

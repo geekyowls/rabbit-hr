@@ -137,6 +137,36 @@ export const API_ROUTES = {
     COMPLETE: (id: string) => `/tasks/${id}/complete` as const,
     DELETE: (id: string) => `/tasks/${id}` as const,
   },
+  INTERVIEWS: {
+    LIST: '/interviews/list',
+    CREATE: '/interviews',
+    GET: (id: string) => `/interviews/${id}` as const,
+    UPDATE: (id: string) => `/interviews/${id}` as const,
+    UPDATE_STATUS: (id: string) => `/interviews/${id}/status` as const,
+    DELETE: (id: string) => `/interviews/${id}` as const,
+    SUBMIT_SCORECARD: (id: string) => `/interviews/${id}/scorecards` as const,
+    BY_APPLICATION: (applicationId: string) =>
+      `/applications/${applicationId}/interviews` as const,
+  },
+  OFFERS: {
+    LIST: '/offers/list',
+    CREATE: '/offers',
+    GET: (id: string) => `/offers/${id}` as const,
+    UPDATE: (id: string) => `/offers/${id}` as const,
+    SUBMIT: (id: string) => `/offers/${id}/submit` as const,
+    APPROVE: (id: string) => `/offers/${id}/approve` as const,
+    REJECT: (id: string) => `/offers/${id}/reject` as const,
+    SEND: (id: string) => `/offers/${id}/send` as const,
+    RESPOND: (id: string) => `/offers/${id}/respond` as const,
+    WITHDRAW: (id: string) => `/offers/${id}/withdraw` as const,
+    DELETE: (id: string) => `/offers/${id}` as const,
+  },
+  REPORTS: {
+    SUMMARY: (query?: string) =>
+      query
+        ? (`/reports/summary?${query}` as const)
+        : ('/reports/summary' as const),
+  },
   DOCUMENTS: {
     VERIFY: (id: string) => `/documents/${id}/verify` as const,
     DOWNLOAD_URL: (id: string) => `/documents/${id}/download-url` as const,
@@ -153,6 +183,24 @@ export const API_ROUTES = {
   },
   ATS: {
     DASHBOARD: '/ats/dashboard',
+  },
+  ATS_SETTINGS: {
+    GET: '/ats-settings',
+    UPDATE: '/ats-settings',
+  },
+  PIPELINE_STAGES: {
+    LIST: '/pipeline-stages',
+    REPLACE: '/pipeline-stages',
+  },
+  CUSTOM_FIELDS: {
+    LIST: (query?: string) =>
+      query
+        ? (`/custom-fields?${query}` as const)
+        : ('/custom-fields' as const),
+    CREATE: '/custom-fields',
+    UPDATE: (id: string) => `/custom-fields/${id}` as const,
+    DELETE: (id: string) => `/custom-fields/${id}` as const,
+    REORDER: '/custom-fields/reorder',
   },
   PUBLIC_CAREERS: {
     ORGANIZATION: (orgSlug: string) => `/public/careers/${orgSlug}` as const,

@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  Matches,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -11,11 +12,11 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 import { ListPaginationDto } from '@shared/dtos/list-pagination.dto';
 import { TransformToBoolean } from '@shared/transformers/to-boolean';
-import { ApplicationStage, CandidateSource } from '@db/enums';
+import { CandidateSource, PipelineStageCategory } from '@db/enums';
+import { STAGE_KEY_PATTERN } from '@modules/pipeline-stage/dtos/pipeline-stage.dto';
 
 export class ListApplicationsDto extends ListPaginationDto {
   @ApiPropertyOptional()
@@ -33,10 +34,16 @@ export class ListApplicationsDto extends ListPaginationDto {
   @IsOptional()
   candidateId?: string;
 
-  @ApiPropertyOptional({ enum: ApplicationStage })
-  @IsEnum(ApplicationStage)
+  @ApiPropertyOptional({ example: 'screening', description: 'Stage key' })
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
   @IsOptional()
-  stage?: ApplicationStage;
+  stage?: string;
+
+  @ApiPropertyOptional({ enum: PipelineStageCategory })
+  @IsEnum(PipelineStageCategory)
+  @IsOptional()
+  stageCategory?: PipelineStageCategory;
 
   @ApiPropertyOptional({ description: 'Candidate name, email or job title' })
   @IsString()
@@ -89,10 +96,14 @@ export class CreateApplicationDto {
   @IsUUID()
   jobId!: string;
 
-  @ApiPropertyOptional({ enum: ApplicationStage })
-  @IsEnum(ApplicationStage)
+  @ApiPropertyOptional({
+    example: 'applied',
+    description: 'Stage key, defaults to the first applied stage',
+  })
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
   @IsOptional()
-  stage?: ApplicationStage;
+  stage?: string;
 
   @ApiPropertyOptional({ enum: CandidateSource })
   @IsEnum(CandidateSource)
@@ -106,17 +117,18 @@ export class CreateApplicationDto {
 }
 
 export class UpdateApplicationStageDto {
-  @ApiProperty({ enum: ApplicationStage })
-  @IsEnum(ApplicationStage)
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'interview', description: 'Stage key' })
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
+  stage!: string;
 
-  @ApiPropertyOptional({ description: 'Required when stage is rejected' })
-  @ValidateIf(
-    (o: UpdateApplicationStageDto) => o.stage === ApplicationStage.REJECTED,
-  )
+  @ApiPropertyOptional({
+    description: 'Required when the target stage is in the rejected category',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
+  @IsOptional()
   rejectionReason?: string;
 }
 

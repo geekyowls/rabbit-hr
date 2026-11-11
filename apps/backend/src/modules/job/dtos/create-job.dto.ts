@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -8,6 +9,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -17,6 +19,8 @@ import {
 } from 'class-validator';
 import { Trim } from '@shared/transformers/trim';
 import { EmploymentType, JobStatus, RateUnit, WorkMode } from '@db/enums';
+
+export const MAX_HIRING_TEAM = 50;
 
 export class ScreeningQuestionDto {
   @ApiPropertyOptional({ example: 'q1' })
@@ -104,7 +108,10 @@ export class CreateJobDto {
   @IsOptional()
   rateUnit?: RateUnit | null;
 
-  @ApiPropertyOptional({ example: 'GBP', default: 'GBP' })
+  @ApiPropertyOptional({
+    example: 'USD',
+    description: 'Defaults to the organization default currency',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(3)
@@ -149,4 +156,37 @@ export class CreateJobDto {
   @IsString({ each: true })
   @IsOptional()
   requiredDocuments?: string[];
+
+  @ApiPropertyOptional({ example: 'Engineering' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  @Trim()
+  department?: string | null;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  hiringManagerId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  recruiterId?: string | null;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(MAX_HIRING_TEAM)
+  @IsUUID('all', { each: true })
+  @IsOptional()
+  hiringTeamIds?: string[];
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    description: 'Values keyed by custom field key',
+  })
+  @IsObject()
+  @IsOptional()
+  customFields?: Record<string, unknown>;
 }

@@ -25,6 +25,11 @@ import {
   TaskEntity,
   CandidateDocumentEntity,
   EmailTemplateEntity,
+  PipelineStageEntity,
+  CustomFieldDefinitionEntity,
+  InterviewEntity,
+  ScorecardEntity,
+  OfferEntity,
 } from './entities';
 
 dotenv.config({ path: join(__dirname, '../../.env') });
@@ -52,6 +57,11 @@ const entities = [
   TaskEntity,
   CandidateDocumentEntity,
   EmailTemplateEntity,
+  PipelineStageEntity,
+  CustomFieldDefinitionEntity,
+  InterviewEntity,
+  ScorecardEntity,
+  OfferEntity,
 ];
 
 const isDev = process.env.NODE_ENV === 'development';

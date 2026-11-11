@@ -1,7 +1,15 @@
 import type { UserSummary } from './common.type';
 
 export type ActivityType =
-  'note' | 'stage_change' | 'email' | 'call' | 'created' | 'document' | 'task';
+  | 'note'
+  | 'stage_change'
+  | 'email'
+  | 'call'
+  | 'created'
+  | 'document'
+  | 'task'
+  | 'interview'
+  | 'offer';
 
 export type ManualActivityType = Extract<
   ActivityType,

@@ -17,10 +17,12 @@ import {
 } from '@db/entities';
 import {
   ActivityType,
-  ApplicationStage,
   CandidateSource,
+  CustomFieldEntityType,
   DocumentType,
 } from '@db/enums';
+import { PipelineStageService } from '@shared/services/pipeline-stage.service';
+import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
 import {
   buildOpenJobsQuery,
   CAREERS_JOB_DETAIL_SELECT,
@@ -41,6 +43,8 @@ export class ApplyToJob {
     private readonly organizationRepository: OrganizationRepository,
     private readonly jobRepository: JobRepository,
     private readonly activityRepository: ActivityRepository,
+    private readonly pipelineStageService: PipelineStageService,
+    private readonly customFieldValidator: CustomFieldValidator,
   ) {}
 
   async execute(command: ApplyToJobCommand) {
@@ -90,6 +94,14 @@ export class ApplyToJob {
 
     const now = new Date();
     const email = payload.email.toLowerCase();
+    const initialStage =
+      await this.pipelineStageService.getInitialStage(organizationId);
+    const submittedCustomFields = await this.customFieldValidator.validate(
+      organizationId,
+      CustomFieldEntityType.CANDIDATE,
+      payload.customFields,
+      { careersOnly: true },
+    );
 
     await this.dataSource.transaction(async (manager) => {
       const candidates = manager.getRepository(CandidateEntity);
@@ -113,6 +125,10 @@ export class ApplyToJob {
         candidate.location = payload.location ?? candidate.location;
         candidate.linkedinUrl = payload.linkedinUrl ?? candidate.linkedinUrl;
         candidate.gdprConsentAt = now;
+        candidate.customFields = {
+          ...candidate.customFields,
+          ...submittedCustomFields,
+        };
         if (payload.cvFileKey) {
           candidate.cvFileKey = payload.cvFileKey;
           candidate.cvFileName = payload.cvFileName ?? null;
@@ -132,6 +148,7 @@ export class ApplyToJob {
             cvFileName: payload.cvFileName ?? null,
             source: CandidateSource.CAREERS_PAGE,
             gdprConsentAt: now,
+            customFields: submittedCustomFields,
             ownerId: job.ownerId,
           }),
         );
@@ -142,7 +159,7 @@ export class ApplyToJob {
           organizationId,
           candidateId: candidate.id,
           jobId: job.id,
-          stage: ApplicationStage.APPLIED,
+          stage: initialStage.key,
           source: CandidateSource.CAREERS_PAGE,
           answers,
           appliedAt: now,

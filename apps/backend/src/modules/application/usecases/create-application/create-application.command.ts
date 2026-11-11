@@ -1,6 +1,7 @@
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 import { OrganizationCommand } from '@shared/commands/organization.command';
-import { ApplicationStage, CandidateSource } from '@db/enums';
+import { CandidateSource } from '@db/enums';
+import { STAGE_KEY_PATTERN } from '@modules/pipeline-stage/dtos/pipeline-stage.dto';
 
 export class CreateApplicationCommand extends OrganizationCommand {
   @IsUUID()
@@ -9,9 +10,10 @@ export class CreateApplicationCommand extends OrganizationCommand {
   @IsUUID()
   readonly jobId: string;
 
-  @IsEnum(ApplicationStage)
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
   @IsOptional()
-  readonly stage?: ApplicationStage;
+  readonly stage?: string;
 
   @IsEnum(CandidateSource)
   @IsOptional()

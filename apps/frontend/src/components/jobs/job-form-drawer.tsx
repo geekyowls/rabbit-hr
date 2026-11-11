@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useResetOnKey } from '@/hooks/use-reset-on-key';
 import {
   useForm,
   useFieldArray,
@@ -11,7 +12,22 @@ import {
 import { Plus, Trash2 } from 'lucide-react';
 import { z } from 'zod/v4';
 import { zodResolver } from '@/lib/zod-resolver';
-import { DetailDrawer, NotIntegratedBadge } from '@/components/patterns';
+import { DetailDrawer } from '@/components/patterns';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { SearchableSelect } from '@/components/common/searchable-select';
+import { CustomFieldsForm } from '@/components/custom-fields/custom-fields-form';
+import {
+  buildCustomFieldsSchema,
+  mergeCustomFieldDefaults,
+  toCustomFieldFormValues,
+  toCustomFieldPayload,
+  type CustomFieldFormValues,
+  type CustomFieldLike,
+} from '@/components/custom-fields/custom-field-utils';
+import { userLabel } from '@/components/applications/application-meta';
+import { useOrganizationAtsSettings } from '@/hooks/queries/use-ats-settings-query';
+import { currencyOptions, currencySymbol } from '@/lib/format';
+import type { AtsSettings } from '@/types/ats-settings.type';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,7 +43,9 @@ import {
 import {
   useClientsQuery,
   useCreateJobMutation,
+  useCustomFieldsQuery,
   useUpdateJobMutation,
+  useUserNamesQuery,
 } from '@/hooks/queries';
 import { toast } from '@/lib/toast';
 import {
@@ -36,6 +54,7 @@ import {
   WORK_MODES,
   type CreateJobRequest,
   type JobDetail,
+  type RateUnit,
 } from '@/types/job.type';
 import {
   EMPLOYMENT_TYPE_LABEL,
@@ -44,76 +63,65 @@ import {
   errorMessage,
 } from './job-utils';
 
-export const JOB_DEPARTMENTS = [
-  'Engineering',
-  'Design',
-  'Data',
-  'Product',
-  'Marketing',
-  'Sales',
-  'People',
-];
-export const JOB_PEOPLE = [
-  'Rohit Sharma',
-  'Ana Martins',
-  'Neha Reddy',
-  'Vikram Joshi',
-  'Olivia Brown',
-  'Arjun Nair',
-  'Emma Wilson',
-];
-
 const NONE = 'none';
 const amount = z
   .string()
   .trim()
   .regex(/^(\d+(\.\d{1,2})?)?$/, 'Enter an amount');
 
-const schema = z
-  .object({
-    title: z.string().trim().min(1, 'Title is required').max(200, 'Too long'),
-    clientId: z.string(),
-    employmentType: z.enum(EMPLOYMENT_TYPES),
-    workMode: z.enum(WORK_MODES),
-    location: z.string().trim().max(200, 'Too long'),
-    openings: z.string().regex(/^[1-9]\d*$/, 'Enter a number'),
-    rateUnit: z.enum(RATE_UNITS),
-    salaryMin: amount,
-    salaryMax: amount,
-    payRate: amount,
-    chargeRate: amount,
-    closingDate: z.string(),
-    status: z.enum(['draft', 'published']),
-    description: z.string(),
-    requirements: z.string(),
-    skills: z.string(),
-    requiredDocuments: z.string(),
-    screeningQuestions: z.array(
-      z.object({
-        id: z.string().optional(),
-        question: z
-          .string()
-          .trim()
-          .min(1, 'Enter a question')
-          .max(500, 'Too long'),
-        required: z.boolean(),
-      }),
-    ),
-    department: z.string(),
-    hiringManager: z.string(),
-    recruiter: z.string(),
-  })
-  .refine(
-    (v) =>
-      !v.salaryMin ||
-      !v.salaryMax ||
-      Number(v.salaryMin) <= Number(v.salaryMax),
-    { path: ['salaryMax'], message: 'Must be at least the minimum' },
-  );
+const baseSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(200, 'Too long'),
+  clientId: z.string(),
+  employmentType: z.enum(EMPLOYMENT_TYPES),
+  workMode: z.enum(WORK_MODES),
+  location: z.string().trim().max(200, 'Too long'),
+  openings: z.string().regex(/^[1-9]\d*$/, 'Enter a number'),
+  rateUnit: z.enum(RATE_UNITS),
+  salaryMin: amount,
+  salaryMax: amount,
+  payRate: amount,
+  chargeRate: amount,
+  closingDate: z.string(),
+  status: z.enum(['draft', 'published']),
+  description: z.string(),
+  requirements: z.string(),
+  skills: z.string(),
+  requiredDocuments: z.string(),
+  screeningQuestions: z.array(
+    z.object({
+      id: z.string().optional(),
+      question: z
+        .string()
+        .trim()
+        .min(1, 'Enter a question')
+        .max(500, 'Too long'),
+      required: z.boolean(),
+    }),
+  ),
+  currency: z.string().regex(/^[A-Z]{3}$/, 'Choose a currency'),
+  department: z.string().trim().max(100, 'Too long'),
+  hiringManagerId: z.string(),
+  recruiterId: z.string(),
+  hiringTeamIds: z.array(z.string()),
+});
 
-export type JobFormValues = z.infer<typeof schema>;
+function buildSchema(customFields: CustomFieldLike[]) {
+  return baseSchema
+    .extend({ customFields: buildCustomFieldsSchema(customFields) })
+    .refine(
+      (v) =>
+        !v.salaryMin ||
+        !v.salaryMax ||
+        Number(v.salaryMin) <= Number(v.salaryMax),
+      { path: ['salaryMax'], message: 'Must be at least the minimum' },
+    );
+}
 
-export const JOB_FORM_DEFAULTS: JobFormValues = {
+export type JobFormValues = z.infer<typeof baseSchema> & {
+  customFields: CustomFieldFormValues;
+};
+
+const JOB_FORM_DEFAULTS: JobFormValues = {
   title: '',
   clientId: NONE,
   employmentType: 'permanent',
@@ -132,15 +140,43 @@ export const JOB_FORM_DEFAULTS: JobFormValues = {
   skills: '',
   requiredDocuments: '',
   screeningQuestions: [],
+  currency: '',
   department: '',
-  hiringManager: '',
-  recruiter: '',
+  hiringManagerId: NONE,
+  recruiterId: NONE,
+  hiringTeamIds: [],
+  customFields: {},
 };
+
+function defaultRateUnit(settings: AtsSettings): RateUnit {
+  const period = settings.salaryPeriodDefault;
+  return (RATE_UNITS as string[]).includes(period)
+    ? (period as RateUnit)
+    : 'year';
+}
+
+function newJobValues(
+  settings: AtsSettings,
+  customFields: CustomFieldLike[],
+  clientId: string,
+): JobFormValues {
+  return {
+    ...JOB_FORM_DEFAULTS,
+    clientId,
+    currency: settings.defaultCurrency,
+    rateUnit: defaultRateUnit(settings),
+    customFields: toCustomFieldFormValues(customFields),
+  };
+}
 
 const str = (v: number | string | null | undefined) =>
   v === null || v === undefined ? '' : String(v);
 
-function toFormValues(job: JobDetail): JobFormValues {
+function toFormValues(
+  job: JobDetail,
+  settings: AtsSettings,
+  customFields: CustomFieldLike[],
+): JobFormValues {
   return {
     ...JOB_FORM_DEFAULTS,
     title: job.title,
@@ -162,6 +198,12 @@ function toFormValues(job: JobDetail): JobFormValues {
     skills: job.skills.join(', '),
     requiredDocuments: job.requiredDocuments.join(', '),
     screeningQuestions: job.screeningQuestions.map((q) => ({ ...q })),
+    currency: job.currency || settings.defaultCurrency,
+    department: job.department ?? '',
+    hiringManagerId: job.hiringManagerId ?? NONE,
+    recruiterId: job.recruiterId ?? NONE,
+    hiringTeamIds: job.hiringTeamIds ?? [],
+    customFields: toCustomFieldFormValues(customFields, job.customFields),
   };
 }
 
@@ -172,7 +214,13 @@ const toList = (v: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-function toRequest(values: JobFormValues, isEdit: boolean): CreateJobRequest {
+const optionalId = (v: string) => (v === NONE ? null : v);
+
+function toRequest(
+  values: JobFormValues,
+  isEdit: boolean,
+  customFields: CustomFieldLike[],
+): CreateJobRequest {
   const isPermanent = values.employmentType === 'permanent';
   return {
     title: values.title,
@@ -182,7 +230,7 @@ function toRequest(values: JobFormValues, isEdit: boolean): CreateJobRequest {
     location: values.location || null,
     openings: Number(values.openings),
     rateUnit: values.rateUnit,
-    currency: 'GBP',
+    currency: values.currency,
     salaryMin: isPermanent ? toNumber(values.salaryMin) : null,
     salaryMax: isPermanent ? toNumber(values.salaryMax) : null,
     payRate: isPermanent ? null : toNumber(values.payRate),
@@ -193,6 +241,11 @@ function toRequest(values: JobFormValues, isEdit: boolean): CreateJobRequest {
     skills: toList(values.skills),
     requiredDocuments: toList(values.requiredDocuments),
     screeningQuestions: values.screeningQuestions,
+    department: values.department.trim() || null,
+    hiringManagerId: optionalId(values.hiringManagerId),
+    recruiterId: optionalId(values.recruiterId),
+    hiringTeamIds: values.hiringTeamIds,
+    customFields: toCustomFieldPayload(customFields, values.customFields),
     ...(isEdit ? {} : { status: values.status }),
   };
 }
@@ -200,22 +253,17 @@ function toRequest(values: JobFormValues, isEdit: boolean): CreateJobRequest {
 function Field({
   label,
   error,
-  badge,
   children,
 }: {
   label: string;
   error?: string;
-  badge?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5">
-        <Label className="text-xs font-medium text-muted-foreground">
-          {label}
-        </Label>
-        {badge && <NotIntegratedBadge />}
-      </div>
+      <Label className="text-xs font-medium text-muted-foreground">
+        {label}
+      </Label>
       {children}
       {error && (
         <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
@@ -260,7 +308,79 @@ function SelectField({
   );
 }
 
-const opts = (list: string[]) => list.map((v) => ({ label: v, value: v }));
+const OTHER = '__other__';
+
+function DepartmentField({
+  control,
+  departments,
+}: {
+  control: Control<JobFormValues>;
+  departments: string[];
+}) {
+  const [custom, setCustom] = useState(false);
+  return (
+    <Controller
+      name="department"
+      control={control}
+      render={({ field }) => {
+        const known = !field.value || departments.includes(field.value);
+        if (departments.length === 0 || custom || !known) {
+          return (
+            <div className="flex gap-1.5">
+              <Input
+                className="h-9"
+                placeholder="Department"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+              {departments.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  onClick={() => {
+                    setCustom(false);
+                    field.onChange('');
+                  }}
+                >
+                  List
+                </Button>
+              )}
+            </div>
+          );
+        }
+        return (
+          <Select
+            value={field.value || NONE}
+            onValueChange={(v) => {
+              if (v === OTHER) {
+                setCustom(true);
+                field.onChange('');
+                return;
+              }
+              field.onChange(v === NONE ? '' : v);
+            }}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>No department</SelectItem>
+              {departments.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+              <SelectItem value={OTHER}>Other</SelectItem>
+            </SelectContent>
+          </Select>
+        );
+      }}
+    />
+  );
+}
 
 export function JobFormDrawer({
   open,
@@ -276,6 +396,14 @@ export function JobFormDrawer({
   onSaved?: (job: JobDetail) => void;
 }) {
   const isEdit = !!job;
+  const settings = useOrganizationAtsSettings();
+  const { data: fieldDefs } = useCustomFieldsQuery(
+    { entity: 'job', activeOnly: true },
+    open,
+  );
+  const customFields = useMemo(() => fieldDefs ?? [], [fieldDefs]);
+  const schema = useMemo(() => buildSchema(customFields), [customFields]);
+  const { data: users = [] } = useUserNamesQuery(open);
   const createJob = useCreateJobMutation();
   const updateJob = useUpdateJobMutation();
   const { data: clientsData } = useClientsQuery(
@@ -289,6 +417,8 @@ export function JobFormDrawer({
     control,
     reset,
     watch,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<JobFormValues>({
     resolver: zodResolver(schema),
@@ -297,16 +427,35 @@ export function JobFormDrawer({
 
   const questions = useFieldArray({ control, name: 'screeningQuestions' });
   const employmentType = watch('employmentType');
+  const currency = watch('currency') || settings.defaultCurrency;
   const isPermanent = employmentType === 'permanent';
+  const symbol = currencySymbol(currency, settings.locale);
+
+  useResetOnKey(
+    open ? `${job?.id ?? 'new'}:${defaultClientId ?? ''}` : null,
+    () =>
+      reset(
+        job
+          ? toFormValues(job, settings, customFields)
+          : newJobValues(settings, customFields, defaultClientId ?? NONE),
+      ),
+  );
 
   useEffect(() => {
     if (!open) return;
-    reset(
-      job
-        ? toFormValues(job)
-        : { ...JOB_FORM_DEFAULTS, clientId: defaultClientId ?? NONE },
+    const merged = mergeCustomFieldDefaults(
+      customFields,
+      getValues('customFields'),
+      job?.customFields,
     );
-  }, [open, job, defaultClientId, reset]);
+    if (merged) setValue('customFields', merged);
+  }, [open, customFields, job, getValues, setValue]);
+
+  const userOptions = users.map((u) => ({
+    label: userLabel(u),
+    value: u.id,
+  }));
+  const personOptions = [{ label: 'Unassigned', value: NONE }, ...userOptions];
 
   const clientOptions = [
     { label: 'No client', value: NONE },
@@ -319,7 +468,7 @@ export function JobFormDrawer({
 
   const submit = handleSubmit(async (values) => {
     try {
-      const data = toRequest(values, isEdit);
+      const data = toRequest(values, isEdit, customFields);
       const saved = job
         ? await updateJob.mutateAsync({ id: job.id, data })
         : await createJob.mutateAsync(data);
@@ -373,18 +522,16 @@ export function JobFormDrawer({
                 placeholder="Select client"
               />
             </Field>
-            <Field label="Department" badge>
-              <SelectField
-                name="department"
+            <Field label="Department" error={errors.department?.message}>
+              <DepartmentField
                 control={control}
-                options={opts(JOB_DEPARTMENTS)}
-                placeholder="Select department"
+                departments={settings.departments}
               />
             </Field>
             <Field label="Location" error={errors.location?.message}>
               <Input
                 className="h-9"
-                placeholder="Manchester"
+                placeholder="City or region"
                 {...register('location')}
               />
             </Field>
@@ -419,37 +566,73 @@ export function JobFormDrawer({
         </section>
 
         <section className="space-y-3">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-sm font-semibold">Hiring team</h3>
-            <NotIntegratedBadge />
-          </div>
+          <h3 className="text-sm font-semibold">Hiring team</h3>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Hiring manager">
               <SelectField
-                name="hiringManager"
+                name="hiringManagerId"
                 control={control}
-                options={opts(JOB_PEOPLE)}
+                options={personOptions}
                 placeholder="Select person"
               />
             </Field>
             <Field label="Recruiter">
               <SelectField
-                name="recruiter"
+                name="recruiterId"
                 control={control}
-                options={opts(JOB_PEOPLE)}
+                options={personOptions}
                 placeholder="Select person"
               />
             </Field>
           </div>
+          <Field label="Hiring team">
+            <Controller
+              name="hiringTeamIds"
+              control={control}
+              render={({ field }) => (
+                <MultiSelect
+                  options={userOptions}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Add team members"
+                />
+              )}
+            />
+          </Field>
         </section>
 
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Compensation and status</h3>
           <div className="grid grid-cols-2 gap-3">
+            <Field label="Currency" error={errors.currency?.message}>
+              <Controller
+                name="currency"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={currencyOptions(field.value)}
+                    placeholder="Select currency"
+                    searchPlaceholder="Search currency"
+                  />
+                )}
+              />
+            </Field>
+            <Field label="Rate unit">
+              <SelectField
+                name="rateUnit"
+                control={control}
+                options={RATE_UNITS.map((u) => ({
+                  label: RATE_UNIT_LABEL[u],
+                  value: u,
+                }))}
+              />
+            </Field>
             {isPermanent ? (
               <>
                 <Field
-                  label="Salary from (£)"
+                  label={`Salary from (${symbol})`}
                   error={errors.salaryMin?.message}
                 >
                   <Input
@@ -459,7 +642,10 @@ export function JobFormDrawer({
                     {...register('salaryMin')}
                   />
                 </Field>
-                <Field label="Salary to (£)" error={errors.salaryMax?.message}>
+                <Field
+                  label={`Salary to (${symbol})`}
+                  error={errors.salaryMax?.message}
+                >
                   <Input
                     className="h-9"
                     inputMode="decimal"
@@ -470,7 +656,10 @@ export function JobFormDrawer({
               </>
             ) : (
               <>
-                <Field label="Pay rate (£)" error={errors.payRate?.message}>
+                <Field
+                  label={`Pay rate (${symbol})`}
+                  error={errors.payRate?.message}
+                >
                   <Input
                     className="h-9"
                     inputMode="decimal"
@@ -479,7 +668,7 @@ export function JobFormDrawer({
                   />
                 </Field>
                 <Field
-                  label="Charge rate (£)"
+                  label={`Charge rate (${symbol})`}
                   error={errors.chargeRate?.message}
                 >
                   <Input
@@ -491,16 +680,6 @@ export function JobFormDrawer({
                 </Field>
               </>
             )}
-            <Field label="Rate unit">
-              <SelectField
-                name="rateUnit"
-                control={control}
-                options={RATE_UNITS.map((u) => ({
-                  label: RATE_UNIT_LABEL[u],
-                  value: u,
-                }))}
-              />
-            </Field>
             <Field label="Closing date">
               <Input type="date" className="h-9" {...register('closingDate')} />
             </Field>
@@ -518,6 +697,13 @@ export function JobFormDrawer({
             </Field>
           )}
         </section>
+
+        {customFields.length > 0 && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold">Additional details</h3>
+            <CustomFieldsForm fields={customFields} control={control} />
+          </section>
+        )}
 
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Description</h3>
@@ -545,7 +731,7 @@ export function JobFormDrawer({
           <Field label="Required documents, comma separated">
             <Input
               className="h-9"
-              placeholder="Right to work, CV, DBS certificate"
+              placeholder="Right to work, CV, Background check"
               {...register('requiredDocuments')}
             />
           </Field>
@@ -581,7 +767,7 @@ export function JobFormDrawer({
                 <div className="flex-1">
                   <Input
                     className="h-9"
-                    placeholder="Do you hold a valid UK driving licence?"
+                    placeholder="Do you hold a valid driving licence?"
                     {...register(`screeningQuestions.${index}.question`)}
                   />
                   {errors.screeningQuestions?.[index]?.question?.message && (

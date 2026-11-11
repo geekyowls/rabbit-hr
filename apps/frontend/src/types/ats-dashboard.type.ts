@@ -1,5 +1,6 @@
 import type { Activity } from './activity.type';
 import type { ApplicationStage } from './application.type';
+import type { PipelineStageCategory } from './pipeline-stage.type';
 import type { Task } from './task.type';
 
 export interface AtsDashboardTotals {
@@ -12,6 +13,9 @@ export interface AtsDashboardTotals {
 
 export interface StageCount {
   stage: ApplicationStage;
+  name: string;
+  category: PipelineStageCategory;
+  color: string;
   count: number;
 }
 

@@ -15,9 +15,8 @@ import {
 } from '../src/database/entities';
 import {
   ActivityType,
-  APPLICATION_STAGE_ORDER,
-  ApplicationStage,
   CandidateSource,
+  DEFAULT_PIPELINE_STAGES,
   ClientStatus,
   DocumentType,
   DocumentVerificationStatus,
@@ -37,7 +36,7 @@ export interface SeedAtsContext {
   adminRoleId: string;
 }
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -74,7 +73,7 @@ const between = (from: Date, to: Date) =>
 const toDateString = (date: Date) => date.toISOString().slice(0, 10);
 const phone = () => `+44 7${int(100, 999)} ${int(100000, 999999)}`;
 
-const RECRUITERS = [
+export const RECRUITERS = [
   {
     firstName: 'Hannah',
     lastName: 'Whitfield',
@@ -770,22 +769,32 @@ function jobRequirements(seed: JobSeed): string {
     .join('\n');
 }
 
-const STAGE_WEIGHTS: Array<[ApplicationStage, number]> = [
-  [ApplicationStage.APPLIED, 60],
-  [ApplicationStage.SCREENING, 42],
-  [ApplicationStage.INTERVIEW, 28],
-  [ApplicationStage.OFFER, 12],
-  [ApplicationStage.PLACED, 14],
-  [ApplicationStage.REJECTED, 34],
-  [ApplicationStage.WITHDRAWN, 10],
+const STAGE = {
+  APPLIED: 'applied',
+  SCREENING: 'screening',
+  INTERVIEW: 'interview',
+  OFFER: 'offer',
+  PLACED: 'placed',
+  REJECTED: 'rejected',
+  WITHDRAWN: 'withdrawn',
+} as const;
+
+const STAGE_WEIGHTS: Array<[string, number]> = [
+  [STAGE.APPLIED, 60],
+  [STAGE.SCREENING, 42],
+  [STAGE.INTERVIEW, 28],
+  [STAGE.OFFER, 12],
+  [STAGE.PLACED, 14],
+  [STAGE.REJECTED, 34],
+  [STAGE.WITHDRAWN, 10],
 ];
 
-const FUNNEL = [
-  ApplicationStage.APPLIED,
-  ApplicationStage.SCREENING,
-  ApplicationStage.INTERVIEW,
-  ApplicationStage.OFFER,
-  ApplicationStage.PLACED,
+const FUNNEL: string[] = [
+  STAGE.APPLIED,
+  STAGE.SCREENING,
+  STAGE.INTERVIEW,
+  STAGE.OFFER,
+  STAGE.PLACED,
 ];
 
 const EMAIL_TEMPLATES: Array<DeepPartial<EmailTemplateEntity>> = [
@@ -1065,8 +1074,8 @@ export async function seedAts(
   );
 
   const openJobs = jobs.filter((j) => j.status !== JobStatus.DRAFT);
-  const stagePool: ApplicationStage[] = STAGE_WEIGHTS.flatMap(
-    ([stage, weight]) => Array<ApplicationStage>(weight).fill(stage),
+  const stagePool: string[] = STAGE_WEIGHTS.flatMap(([stage, weight]) =>
+    Array<string>(weight).fill(stage),
   );
   const pairs = new Set<string>();
   const applicationRows: Array<DeepPartial<ApplicationEntity>> = [];
@@ -1088,14 +1097,10 @@ export async function seedAts(
     if (pairs.has(`${candidate.id}:${job.id}`)) continue;
     pairs.add(`${candidate.id}:${job.id}`);
 
-    const appliedAt = daysAgo(
-      int(stage === ApplicationStage.APPLIED ? 0 : 6, 60),
-    );
+    const appliedAt = daysAgo(int(stage === STAGE.APPLIED ? 0 : 6, 60));
     let stageChangedAt =
-      stage === ApplicationStage.APPLIED
-        ? appliedAt
-        : between(appliedAt, new Date(NOW));
-    if (stage === ApplicationStage.PLACED && placedThisMonth < 4) {
+      stage === STAGE.APPLIED ? appliedAt : between(appliedAt, new Date(NOW));
+    if (stage === STAGE.PLACED && placedThisMonth < 4) {
       stageChangedAt = between(
         new Date(Math.max(startOfMonth.getTime(), appliedAt.getTime())),
         new Date(NOW),
@@ -1108,14 +1113,12 @@ export async function seedAts(
       jobId: job.id,
       stage,
       rejectionReason:
-        stage === ApplicationStage.REJECTED ? pick(REJECTION_REASONS) : null,
+        stage === STAGE.REJECTED ? pick(REJECTION_REASONS) : null,
       rating: chance(0.55) ? int(0, 5) : null,
       shortlisted:
-        [
-          ApplicationStage.INTERVIEW,
-          ApplicationStage.OFFER,
-          ApplicationStage.PLACED,
-        ].includes(stage) || chance(0.15),
+        ([STAGE.INTERVIEW, STAGE.OFFER, STAGE.PLACED] as string[]).includes(
+          stage,
+        ) || chance(0.15),
       source: candidate.source,
       answers: job.screeningQuestions.map((q, qi) => ({
         questionId: q.id,
@@ -1174,7 +1177,7 @@ export async function seedAts(
       createdAt: app.appliedAt,
     });
     const target = app.stage;
-    const path: ApplicationStage[] = FUNNEL.includes(target)
+    const path: string[] = FUNNEL.includes(target)
       ? FUNNEL.slice(0, FUNNEL.indexOf(target) + 1)
       : [...FUNNEL.slice(0, int(1, 3)), target];
     let previousAt = app.appliedAt;
@@ -1187,8 +1190,7 @@ export async function seedAts(
         ...base,
         type: ActivityType.STAGE_CHANGE,
         title: `${candidate.firstName} ${candidate.lastName} moved to ${path[s]}`,
-        body:
-          path[s] === ApplicationStage.REJECTED ? app.rejectionReason : null,
+        body: path[s] === STAGE.REJECTED ? app.rejectionReason : null,
         metadata: { from: path[s - 1], to: path[s] },
         actorId: app.ownerId,
         createdAt: at,
@@ -1366,8 +1368,8 @@ export async function seedAts(
     ),
   );
 
-  const stageSummary = APPLICATION_STAGE_ORDER.map(
-    (stage) =>
+  const stageSummary = DEFAULT_PIPELINE_STAGES.map(
+    ({ key: stage }) =>
       `${stage}=${applications.filter((a) => a.stage === stage).length}`,
   ).join(', ');
   console.log(

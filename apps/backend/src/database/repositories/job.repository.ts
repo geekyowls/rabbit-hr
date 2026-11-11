@@ -1,19 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { JobEntity } from '../entities';
-import { APPLICATION_STAGE_ORDER, ApplicationStage } from '../enums';
 
-export type StageCounts = Record<ApplicationStage, number>;
+export type StageCounts = Record<string, number>;
 
 export interface JobApplicationStats {
   applicationCount: number;
   stageCounts: StageCounts;
-}
-
-export function emptyStageCounts(): StageCounts {
-  return Object.fromEntries(
-    APPLICATION_STAGE_ORDER.map((stage) => [stage, 0]),
-  ) as StageCounts;
 }
 
 const JOB_REFERENCE_PREFIX = 'JOB-';
@@ -40,16 +33,13 @@ export class JobRepository extends Repository<JobEntity> {
     jobIds: string[],
   ): Promise<Map<string, JobApplicationStats>> {
     const stats = new Map<string, JobApplicationStats>(
-      jobIds.map((id) => [
-        id,
-        { applicationCount: 0, stageCounts: emptyStageCounts() },
-      ]),
+      jobIds.map((id) => [id, { applicationCount: 0, stageCounts: {} }]),
     );
     if (jobIds.length === 0) return stats;
 
     const rows: Array<{
       jobId: string;
-      stage: ApplicationStage;
+      stage: string;
       count: string;
     }> = await this.query(
       `SELECT "jobId", stage, COUNT(*) AS count

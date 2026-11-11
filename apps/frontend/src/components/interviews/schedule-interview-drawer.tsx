@@ -1,16 +1,26 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
-import { Check, Clock } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { zodResolver } from '@/lib/zod-resolver';
 import { cn } from '@/lib/utils';
-import { DetailDrawer, SegmentedControl } from '@/components/patterns';
+import { toast } from '@/lib/toast';
+import { timeZoneOptions } from '@/lib/format';
+import { useFormatters } from '@/hooks/use-formatters';
+import { useResetOnKey } from '@/hooks/use-reset-on-key';
+import {
+  useCreateInterviewMutation,
+  useUpdateInterviewMutation,
+  useUserNamesQuery,
+} from '@/hooks/queries';
+import { DetailDrawer } from '@/components/patterns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import {
   Select,
@@ -19,46 +29,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { errorMessage } from '@/components/applications/application-meta';
+import type {
+  Interview,
+  InterviewDetail,
+  InterviewType,
+} from '@/types/interview.type';
+import { ApplicationPicker } from './application-picker';
 import {
-  CANDIDATES,
   DURATIONS,
-  INTERVIEWERS,
   INTERVIEW_TYPES,
-  formatDay,
-  type Interview,
+  INTERVIEW_TYPE_LABEL,
+  candidateLabel,
+  formatDuration,
+  isoToZoned,
+  personLabel,
+  zonedToIso,
 } from './interview-data';
 
+const MAX_INTERVIEWERS = 10;
+const URL_PATTERN = /^https?:\/\/\S+$/i;
+
 const schema = z.object({
-  candidate: z.string().min(1, 'Select a candidate'),
-  role: z.string().min(1, 'Role is required'),
-  stage: z.string().min(1, 'Select an interview type'),
+  applicationId: z.string().min(1, 'Select an application'),
+  title: z.string().trim().max(200, 'Keep the title under 200 characters'),
+  type: z.enum(INTERVIEW_TYPES as [InterviewType, ...InterviewType[]]),
   date: z.string().min(1, 'Pick a date'),
   time: z.string().min(1, 'Pick a time'),
-  duration: z.string().min(1),
-  format: z.enum(['Video', 'Onsite']),
-  panel: z.array(z.string()).min(1, 'Add at least one interviewer'),
-  notes: z.string().optional(),
+  durationMinutes: z.number().int().min(5).max(1440),
+  timezone: z.string().min(1, 'Pick a timezone'),
+  location: z
+    .string()
+    .trim()
+    .max(300, 'Keep the location under 300 characters'),
+  meetingUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine(
+      (v) => !v || URL_PATTERN.test(v),
+      'Enter a full link starting with https://',
+    ),
+  interviewerIds: z
+    .array(z.string())
+    .min(1, 'Add at least one interviewer')
+    .max(MAX_INTERVIEWERS, `Up to ${MAX_INTERVIEWERS} interviewers`),
+  notes: z.string(),
+  moveToInterviewStage: z.boolean(),
+  notifyCandidate: z.boolean(),
 });
 
-export type ScheduleValues = z.infer<typeof schema>;
-
-const DEFAULTS: ScheduleValues = {
-  candidate: '',
-  role: '',
-  stage: 'Phone screen',
-  date: '',
-  time: '',
-  duration: '45 min',
-  format: 'Video',
-  panel: [],
-  notes: '',
-};
-
-const SUGGESTED_SLOTS = [
-  { date: '2026-10-13', time: '11:00' },
-  { date: '2026-10-14', time: '14:30' },
-  { date: '2026-10-15', time: '09:30' },
-];
+type ScheduleValues = z.infer<typeof schema>;
 
 function Field({
   label,
@@ -80,69 +101,165 @@ function Field({
   );
 }
 
-function toValues(interview: Interview): ScheduleValues {
+function CheckRow({
+  id,
+  label,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(v) => onChange(v === true)}
+      />
+      <Label htmlFor={id} className="cursor-pointer text-sm font-normal">
+        {label}
+      </Label>
+    </div>
+  );
+}
+
+function blankValues(applicationId: string, timezone: string): ScheduleValues {
   return {
-    candidate: interview.candidate,
-    role: interview.role,
-    stage: interview.stage,
-    date: interview.isoDate,
-    time: interview.time,
-    duration: interview.duration,
-    format: interview.format,
-    panel: interview.panel,
+    applicationId,
+    title: '',
+    type: 'video',
+    date: '',
+    time: '',
+    durationMinutes: 45,
+    timezone,
+    location: '',
+    meetingUrl: '',
+    interviewerIds: [],
+    notes: '',
+    moveToInterviewStage: true,
+    notifyCandidate: true,
+  };
+}
+
+function toValues(interview: Interview): ScheduleValues {
+  const { date, time } = isoToZoned(interview.scheduledAt, interview.timezone);
+  return {
+    applicationId: interview.applicationId,
+    title: interview.title,
+    type: interview.type,
+    date,
+    time,
+    durationMinutes: interview.durationMinutes,
+    timezone: interview.timezone,
+    location: interview.location ?? '',
+    meetingUrl: interview.meetingUrl ?? '',
+    interviewerIds: interview.interviewerIds,
     notes: interview.notes ?? '',
+    moveToInterviewStage: false,
+    notifyCandidate: false,
   };
 }
 
 export function ScheduleInterviewDrawer({
   open,
   onOpenChange,
-  initial,
-  onSubmit,
+  interview,
+  applicationId,
+  onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initial: Interview | null;
-  onSubmit: (values: ScheduleValues) => void;
+  interview?: Interview | null;
+  applicationId?: string | null;
+  onSaved?: (interview: InterviewDetail) => void;
 }) {
+  const fmt = useFormatters();
+  const orgTimezone = fmt.settings.timezone;
+  const editing = interview ?? null;
+  const { data: users = [] } = useUserNamesQuery(open);
+  const createInterview = useCreateInterviewMutation();
+  const updateInterview = useUpdateInterviewMutation();
+
   const {
     register,
     handleSubmit,
     control,
     reset,
-    setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<ScheduleValues>({
     resolver: zodResolver(schema),
-    defaultValues: DEFAULTS,
+    defaultValues: blankValues(applicationId ?? '', orgTimezone),
   });
 
-  useEffect(() => {
-    if (open) reset(initial ? toValues(initial) : DEFAULTS);
-  }, [open, initial, reset]);
+  useResetOnKey(
+    open ? `${editing?.id ?? 'new'}:${applicationId ?? ''}` : null,
+    () =>
+      reset(
+        editing
+          ? toValues(editing)
+          : blankValues(applicationId ?? '', orgTimezone),
+      ),
+  );
 
-  const candidateOptions = useMemo(() => {
-    if (initial && !CANDIDATES.some((c) => c.name === initial.candidate)) {
-      return [{ name: initial.candidate, role: initial.role }, ...CANDIDATES];
-    }
-    return CANDIDATES;
-  }, [initial]);
-
-  const date = watch('date');
-  const time = watch('time');
+  const zones = useMemo(() => {
+    const list = timeZoneOptions();
+    return list.includes(orgTimezone) ? list : [orgTimezone, ...list];
+  }, [orgTimezone]);
 
   const submit = handleSubmit(async (values) => {
-    await new Promise((r) => setTimeout(r, 300));
-    onSubmit(values);
-    onOpenChange(false);
+    const scheduledAt = zonedToIso(values.date, values.time, values.timezone);
+    const common = {
+      type: values.type,
+      scheduledAt,
+      durationMinutes: values.durationMinutes,
+      timezone: values.timezone,
+      location: values.location || null,
+      meetingUrl: values.meetingUrl || null,
+      interviewerIds: values.interviewerIds,
+      notes: values.notes.trim() || null,
+      notifyCandidate: values.notifyCandidate,
+    };
+    try {
+      const saved = editing
+        ? await updateInterview.mutateAsync({
+            id: editing.id,
+            data: {
+              ...common,
+              title: values.title || INTERVIEW_TYPE_LABEL[values.type],
+            },
+          })
+        : await createInterview.mutateAsync({
+            ...common,
+            applicationId: values.applicationId,
+            ...(values.title && { title: values.title }),
+            moveToInterviewStage: values.moveToInterviewStage,
+          });
+      toast.success(
+        editing ? 'Interview updated' : 'Interview scheduled',
+        `${candidateLabel(saved)}, ${fmt.dateLong(saved.scheduledAt)} ${fmt.time(saved.scheduledAt)}`,
+      );
+      onSaved?.(saved);
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        editing ? 'Could not update interview' : 'Could not schedule interview',
+        errorMessage(err),
+      );
+    }
   });
 
   return (
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={initial ? `Reschedule ${initial.candidate}` : 'Schedule interview'}
+      title={
+        editing
+          ? `Edit interview with ${candidateLabel(editing)}`
+          : 'Schedule interview'
+      }
       footer={
         <div className="flex items-center justify-end gap-2">
           <Button
@@ -155,9 +272,9 @@ export function ScheduleInterviewDrawer({
           <Button size="sm" onClick={submit} disabled={isSubmitting}>
             {isSubmitting
               ? 'Saving'
-              : initial
-                ? 'Update interview'
-                : 'Schedule and send invites'}
+              : editing
+                ? 'Save changes'
+                : 'Schedule interview'}
           </Button>
         </div>
       }
@@ -165,28 +282,33 @@ export function ScheduleInterviewDrawer({
       <form className="space-y-6" onSubmit={submit}>
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Candidate</h3>
+          <Field label="Application" error={errors.applicationId?.message}>
+            <Controller
+              name="applicationId"
+              control={control}
+              render={({ field }) => (
+                <ApplicationPicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={!!editing}
+                />
+              )}
+            />
+          </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Candidate" error={errors.candidate?.message}>
+            <Field label="Interview type">
               <Controller
-                name="candidate"
+                name="type"
                 control={control}
                 render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(v) => {
-                      field.onChange(v);
-                      const match = candidateOptions.find((c) => c.name === v);
-                      if (match)
-                        setValue('role', match.role, { shouldValidate: true });
-                    }}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select candidate" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {candidateOptions.map((c) => (
-                        <SelectItem key={c.name} value={c.name}>
-                          {c.name}
+                      {INTERVIEW_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {INTERVIEW_TYPE_LABEL[t]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -194,32 +316,64 @@ export function ScheduleInterviewDrawer({
                 )}
               />
             </Field>
-            <Field label="Role" error={errors.role?.message}>
+            <Field label="Title" error={errors.title?.message}>
               <Input
-                className="h-9 bg-muted/40"
-                readOnly
-                placeholder="Filled from candidate"
-                {...register('role')}
+                className="h-9"
+                placeholder="Defaults to the interview type"
+                {...register('title')}
               />
             </Field>
           </div>
-          <Field label="Interview type" error={errors.stage?.message}>
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold">When</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Date" error={errors.date?.message}>
+              <Input type="date" className="h-9" {...register('date')} />
+            </Field>
+            <Field label="Time" error={errors.time?.message}>
+              <Input type="time" className="h-9" {...register('time')} />
+            </Field>
+            <Field label="Duration">
+              <Controller
+                name="durationMinutes"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={String(field.value)}
+                    onValueChange={(v) => field.onChange(Number(v))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Set([...DURATIONS, field.value]))
+                        .sort((a, b) => a - b)
+                        .map((d) => (
+                          <SelectItem key={d} value={String(d)}>
+                            {formatDuration(d)}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          </div>
+          <Field label="Timezone" error={errors.timezone?.message}>
             <Controller
-              name="stage"
+              name="timezone"
               control={control}
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Array.from(
-                      new Set(
-                        [...INTERVIEW_TYPES, field.value].filter(Boolean),
-                      ),
-                    ).map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
+                  <SelectContent className="max-h-72">
+                    {zones.map((z) => (
+                      <SelectItem key={z} value={z}>
+                        {z.replace(/_/g, ' ')}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -230,100 +384,49 @@ export function ScheduleInterviewDrawer({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">When</h3>
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Suggested slots, whole panel free
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTED_SLOTS.map((slot) => {
-                const active = date === slot.date && time === slot.time;
-                return (
-                  <button
-                    key={`${slot.date}-${slot.time}`}
-                    type="button"
-                    onClick={() => {
-                      setValue('date', slot.date, { shouldValidate: true });
-                      setValue('time', slot.time, { shouldValidate: true });
-                    }}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                      active
-                        ? 'border-[#3F6650] bg-[#EDF1EE] text-[#3F6650] dark:bg-[#3F6650]/25 dark:text-[#8FBFA1]'
-                        : 'border-border hover:bg-muted',
-                    )}
-                  >
-                    <Clock className="h-3 w-3" />
-                    {formatDay(slot.date)} · {slot.time}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Date" error={errors.date?.message}>
-              <Input type="date" className="h-9" {...register('date')} />
+          <h3 className="text-sm font-semibold">Where</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Location" error={errors.location?.message}>
+              <Input
+                className="h-9"
+                placeholder="Office address or room"
+                {...register('location')}
+              />
             </Field>
-            <Field label="Time" error={errors.time?.message}>
-              <Input type="time" className="h-9" {...register('time')} />
-            </Field>
-            <Field label="Duration">
-              <Controller
-                name="duration"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DURATIONS.map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+            <Field label="Meeting link" error={errors.meetingUrl?.message}>
+              <Input
+                className="h-9"
+                placeholder="https://"
+                {...register('meetingUrl')}
               />
             </Field>
           </div>
-          <Field label="Format">
-            <Controller
-              name="format"
-              control={control}
-              render={({ field }) => (
-                <SegmentedControl
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={[
-                    { value: 'Video', label: 'Google Meet' },
-                    { value: 'Onsite', label: 'Office' },
-                  ]}
-                />
-              )}
-            />
-          </Field>
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">Panel</h3>
+          <h3 className="text-sm font-semibold">Interviewers</h3>
           <Controller
-            name="panel"
+            name="interviewerIds"
             control={control}
             render={({ field }) => (
               <div className="flex flex-wrap gap-1.5">
-                {INTERVIEWERS.map((name) => {
-                  const selected = field.value.includes(name);
+                {users.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Loading team members
+                  </p>
+                )}
+                {users.map((user) => {
+                  const name = personLabel(user);
+                  const selected = field.value.includes(user.id);
                   return (
                     <button
-                      key={name}
+                      key={user.id}
                       type="button"
                       onClick={() =>
                         field.onChange(
                           selected
-                            ? field.value.filter((n) => n !== name)
-                            : [...field.value, name],
+                            ? field.value.filter((id) => id !== user.id)
+                            : [...field.value, user.id],
                         )
                       }
                       className={cn(
@@ -345,8 +448,10 @@ export function ScheduleInterviewDrawer({
               </div>
             )}
           />
-          {errors.panel?.message && (
-            <p className="text-xs text-red-500">{errors.panel.message}</p>
+          {errors.interviewerIds?.message && (
+            <p className="text-xs text-red-500">
+              {errors.interviewerIds.message}
+            </p>
           )}
         </section>
 
@@ -356,6 +461,39 @@ export function ScheduleInterviewDrawer({
             rows={3}
             placeholder="Focus areas, links to the take-home, anything the panel should know"
             {...register('notes')}
+          />
+        </section>
+
+        <section className="space-y-2.5">
+          {!editing && (
+            <Controller
+              name="moveToInterviewStage"
+              control={control}
+              render={({ field }) => (
+                <CheckRow
+                  id="move-to-interview-stage"
+                  label="Move candidate to interview stage"
+                  checked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          )}
+          <Controller
+            name="notifyCandidate"
+            control={control}
+            render={({ field }) => (
+              <CheckRow
+                id="notify-candidate"
+                label={
+                  editing
+                    ? 'Email the candidate about the change'
+                    : 'Email the candidate'
+                }
+                checked={field.value}
+                onChange={field.onChange}
+              />
+            )}
           />
         </section>
       </form>

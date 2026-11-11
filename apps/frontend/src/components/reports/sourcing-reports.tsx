@@ -23,82 +23,26 @@ import {
   ReportTable,
   TEAL,
   VIOLET,
+  EmptyReport,
+  PreviewCard,
+  rateLabel,
+  ratio,
   fmt,
   thresholdColor,
+  type LiveReportProps,
 } from './report-kit';
+import { useFormatters } from '@/hooks/use-formatters';
+import { SOURCE_LABEL } from '@/components/applications/application-meta';
 
-interface SourceRow {
-  source: string;
-  color: string;
-  applicants: number;
-  screenPass: number;
-  onsite: number;
-  hires: number;
-  quality: number;
-  timeToHire: number;
-}
-
-const SOURCES: SourceRow[] = [
-  {
-    source: 'LinkedIn',
-    color: BRAND,
-    applicants: 412,
-    screenPass: 34,
-    onsite: 22,
-    hires: 4,
-    quality: 3.9,
-    timeToHire: 29,
-  },
-  {
-    source: 'Employee referrals',
-    color: BRAND_LIGHT,
-    applicants: 238,
-    screenPass: 52,
-    onsite: 24,
-    hires: 5,
-    quality: 4.4,
-    timeToHire: 21,
-  },
-  {
-    source: 'Careers page',
-    color: BLUE,
-    applicants: 206,
-    screenPass: 28,
-    onsite: 11,
-    hires: 1,
-    quality: 3.6,
-    timeToHire: 31,
-  },
-  {
-    source: 'Agencies',
-    color: AMBER,
-    applicants: 130,
-    screenPass: 41,
-    onsite: 12,
-    hires: 1,
-    quality: 3.8,
-    timeToHire: 24,
-  },
-  {
-    source: 'Job boards',
-    color: VIOLET,
-    applicants: 98,
-    screenPass: 17,
-    onsite: 3,
-    hires: 0,
-    quality: 3.1,
-    timeToHire: 0,
-  },
-  {
-    source: 'Talent rediscovery',
-    color: TEAL,
-    applicants: 37,
-    screenPass: 46,
-    onsite: 2,
-    hires: 0,
-    quality: 4.1,
-    timeToHire: 0,
-  },
+const SOURCE_COLORS = [
+  BRAND,
+  BRAND_LIGHT,
+  BLUE,
+  AMBER,
+  VIOLET,
+  TEAL,
+  RED,
+  GRAY,
 ];
 
 const SOURCE_TREND = MONTHS.map((month, i) => ({
@@ -109,57 +53,87 @@ const SOURCE_TREND = MONTHS.map((month, i) => ({
   agency: [41, 44, 46, 48, 51, 50, 52, 55, 57, 58, 60, 62][i],
 }));
 
-export function SourceEffectivenessReport() {
-  const total = SOURCES.reduce((s, r) => s + r.applicants, 0);
+export function SourceEffectivenessReport({ data }: LiveReportProps) {
+  const f = useFormatters();
+  const rows = data.sources
+    .filter((s) => s.applications > 0 || s.hires > 0)
+    .map((s, i) => ({
+      ...s,
+      label: SOURCE_LABEL[s.source] ?? s.source,
+      color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+    }));
+  const total = rows.reduce((sum, r) => sum + r.applications, 0);
+  const totalHires = rows.reduce((sum, r) => sum + r.hires, 0);
+  const topHires = [...rows].sort((a, b) => b.hires - a.hires)[0];
+  const bestRate = [...rows]
+    .filter((r) => r.hireRate != null)
+    .sort((a, b) => (b.hireRate ?? 0) - (a.hireRate ?? 0))[0];
+  const referral = rows.find((r) => r.source === 'referral');
+
   return (
     <div className="space-y-4">
       <KpiGrid>
-        <TrendStat label="Active sources" value="6" className="p-4" />
         <TrendStat
-          label="Referral share of hires"
-          value="45"
-          unit="%"
-          delta={9.0}
+          label="Active sources"
+          value={f.number(rows.length)}
           className="p-4"
         />
-        <TrendStat label="Best pass rate" value="Referrals" className="p-4" />
         <TrendStat
-          label="Inbound vs outbound"
-          value="68 / 32"
-          delta={-3.4}
+          label="Top source of hires"
+          value={topHires && topHires.hires > 0 ? topHires.label : '-'}
+          unit={
+            topHires && topHires.hires > 0
+              ? `${f.number(topHires.hires)} hires`
+              : undefined
+          }
+          className="p-4"
+        />
+        <TrendStat
+          label="Best hire rate"
+          value={bestRate ? bestRate.label : '-'}
+          unit={bestRate ? rateLabel(bestRate.hireRate) : undefined}
+          className="p-4"
+        />
+        <TrendStat
+          label="Referral share of hires"
+          value={rateLabel(ratio(referral?.hires ?? 0, totalHires))}
           className="p-4"
         />
       </KpiGrid>
       <Grid>
         <SectionCard
           title="Applicant mix"
-          subtitle="Share of applicants, last 90 days"
+          subtitle="Share of applications in this period"
           bodyClassName="p-4"
         >
-          <div className="flex items-center gap-5">
-            <DonutChart
-              data={SOURCES.map((s) => ({
-                key: s.source,
-                label: s.source,
-                value: s.applicants,
-                color: s.color,
-              }))}
-              size={150}
-              centerValue={fmt(total)}
-              centerLabel="Applicants"
-            />
-            <div className="min-w-0 flex-1">
-              <LegendDots
-                items={SOURCES.map((s) => ({
+          {total === 0 ? (
+            <EmptyReport text="No applications in this period" />
+          ) : (
+            <div className="flex items-center gap-5">
+              <DonutChart
+                data={rows.map((s) => ({
+                  key: s.source,
+                  label: s.label,
+                  value: s.applications,
                   color: s.color,
-                  label: s.source,
-                  value: `${Math.round((s.applicants / total) * 100)}%`,
                 }))}
+                size={150}
+                centerValue={f.number(total)}
+                centerLabel="Applications"
               />
+              <div className="min-w-0 flex-1">
+                <LegendDots
+                  items={rows.map((s) => ({
+                    color: s.color,
+                    label: s.label,
+                    value: `${Math.round((s.applications / total) * 100)}%`,
+                  }))}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </SectionCard>
-        <SectionCard
+        <PreviewCard
           title="Applicants by source"
           subtitle="Monthly, trailing 12 months"
           className="xl:col-span-2"
@@ -176,87 +150,78 @@ export function SourceEffectivenessReport() {
               { key: 'agency', label: 'Agencies', color: AMBER },
             ]}
           />
-        </SectionCard>
+        </PreviewCard>
       </Grid>
       <SectionCard
-        title="Source quality"
-        subtitle="Quality is the average onsite scorecard rating out of 5"
+        title="Source of hire"
+        subtitle="Applications and hires by candidate source"
         bodyClassName="p-0"
       >
-        <ReportTable
-          rows={SOURCES}
-          getKey={(r) => r.source}
-          columns={[
-            {
-              key: 'source',
-              header: 'Source',
-              render: (r) => (
-                <span className="inline-flex items-center gap-2 font-medium">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: r.color }}
-                  />
-                  {r.source}
-                </span>
-              ),
-            },
-            {
-              key: 'applicants',
-              header: 'Applicants',
-              align: 'right',
-              render: (r) => r.applicants,
-            },
-            {
-              key: 'pass',
-              header: 'Screen pass',
-              align: 'right',
-              render: (r) => (
-                <BarWithValue
-                  value={r.screenPass}
-                  color={thresholdColor(r.screenPass, 40, 28)}
-                />
-              ),
-            },
-            {
-              key: 'onsite',
-              header: 'Reached onsite',
-              align: 'right',
-              render: (r) => r.onsite,
-            },
-            {
-              key: 'hires',
-              header: 'Hires',
-              align: 'right',
-              render: (r) => r.hires,
-            },
-            {
-              key: 'yield',
-              header: 'Applicants per hire',
-              align: 'right',
-              render: (r) =>
-                r.hires ? Math.round(r.applicants / r.hires) : '-',
-            },
-            {
-              key: 'quality',
-              header: 'Quality',
-              align: 'right',
-              render: (r) => (
-                <BarWithValue
-                  value={r.quality}
-                  max={5}
-                  suffix=""
-                  color={thresholdColor(r.quality, 4, 3.5)}
-                />
-              ),
-            },
-            {
-              key: 'tth',
-              header: 'Time to hire',
-              align: 'right',
-              render: (r) => (r.timeToHire ? `${r.timeToHire} d` : '-'),
-            },
-          ]}
-        />
+        {rows.length === 0 ? (
+          <EmptyReport text="No applications in this period" />
+        ) : (
+          <ReportTable
+            rows={rows}
+            getKey={(r) => r.source}
+            columns={[
+              {
+                key: 'source',
+                header: 'Source',
+                render: (r) => (
+                  <span className="inline-flex items-center gap-2 font-medium">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: r.color }}
+                    />
+                    {r.label}
+                  </span>
+                ),
+              },
+              {
+                key: 'applications',
+                header: 'Applications',
+                align: 'right',
+                render: (r) => f.number(r.applications),
+              },
+              {
+                key: 'share',
+                header: 'Share',
+                align: 'right',
+                render: (r) => rateLabel(ratio(r.applications, total)),
+              },
+              {
+                key: 'hires',
+                header: 'Hires',
+                align: 'right',
+                render: (r) => f.number(r.hires),
+              },
+              {
+                key: 'yield',
+                header: 'Applications per hire',
+                align: 'right',
+                render: (r) =>
+                  r.hires
+                    ? f.number(Math.round(r.applications / r.hires))
+                    : '-',
+              },
+              {
+                key: 'rate',
+                header: 'Hire rate',
+                align: 'right',
+                render: (r) =>
+                  r.hireRate == null ? (
+                    '-'
+                  ) : (
+                    <BarWithValue
+                      value={r.hireRate}
+                      max={Math.max(10, r.hireRate)}
+                      color={thresholdColor(r.hireRate, 5, 2)}
+                    />
+                  ),
+              },
+            ]}
+          />
+        )}
       </SectionCard>
     </div>
   );

@@ -25,9 +25,24 @@ import {
   ReportTable,
   SplitBar,
   VIOLET,
+  EmptyReport,
+  PreviewCard,
+  changePct,
+  pointsChange,
+  rateLabel,
   thresholdColor,
   toneText,
+  type LiveReportProps,
 } from './report-kit';
+import Link from 'next/link';
+import { useFormatters } from '@/hooks/use-formatters';
+import { useOffersQuery } from '@/hooks/queries';
+import {
+  OFFER_STATUS_LABEL,
+  OFFER_STATUS_TONE,
+  candidateName,
+  offerSalary,
+} from '@/components/offers/offer-meta';
 
 const ACCEPT_TREND = MONTHS.map((month, i) => ({
   month,
@@ -43,92 +58,61 @@ const DECLINES = [
   { key: 'role', label: 'Role scope', value: 1, color: GRAY },
 ];
 
-const BAND_POSITION = [
-  { level: 'L3', below: 1, p25: 3, p50: 5, p75: 2 },
-  { level: 'L4', below: 2, p25: 4, p50: 6, p75: 3 },
-  { level: 'L5', below: 1, p25: 3, p50: 4, p75: 4 },
-  { level: 'L6', below: 0, p25: 1, p50: 2, p75: 2 },
-];
+export function OffersReport({ data, previous, filters }: LiveReportProps) {
+  const f = useFormatters();
+  const o = data.offers;
+  const { data: recent, isLoading } = useOffersQuery({
+    page: 1,
+    limit: 8,
+    ...(filters.jobId ? { jobId: filters.jobId } : {}),
+    ...(filters.clientId ? { clientId: filters.clientId } : {}),
+  });
+  const outcomes = [
+    { key: 'accepted', label: 'Accepted', value: o.accepted, color: BRAND },
+    { key: 'declined', label: 'Declined', value: o.declined, color: RED },
+    {
+      key: 'open',
+      label: 'Awaiting response',
+      value: Math.max(0, o.sent - o.accepted - o.declined),
+      color: BLUE,
+    },
+  ];
+  const decided = o.accepted + o.declined;
 
-const RECENT_OFFERS = [
-  {
-    candidate: 'Meera Pillai',
-    role: 'Frontend Engineer',
-    level: 'L4',
-    band: 'P55',
-    days: 2,
-    status: 'Accepted',
-  },
-  {
-    candidate: 'Rohan Gupta',
-    role: 'Product Manager, Growth',
-    level: 'L5',
-    band: 'P62',
-    days: 4,
-    status: 'Accepted',
-  },
-  {
-    candidate: 'James Walker',
-    role: 'Sales Executive',
-    level: 'L3',
-    band: 'P38',
-    days: 6,
-    status: 'Declined',
-  },
-  {
-    candidate: 'Priya Nair',
-    role: 'HR Business Partner',
-    level: 'L4',
-    band: 'P50',
-    days: 1,
-    status: 'Accepted',
-  },
-  {
-    candidate: 'Lukas Schmidt',
-    role: 'DevOps Engineer',
-    level: 'L4',
-    band: 'P58',
-    days: 3,
-    status: 'Pending',
-  },
-];
-
-export function OffersReport() {
   return (
     <div className="space-y-4">
       <KpiGrid>
         <TrendStat
-          label="Offers extended"
-          value="21"
-          delta={16.7}
+          label="Offers sent"
+          value={f.number(o.sent)}
+          delta={changePct(o.sent, previous?.offers.sent)}
           className="p-4"
         />
         <TrendStat
           label="Acceptance rate"
-          value="86"
-          unit="%"
-          delta={4.1}
-          points={ACCEPT_TREND.map((a) => a.accept)}
+          value={rateLabel(o.acceptanceRate)}
+          delta={pointsChange(
+            o.acceptanceRate,
+            previous?.offers.acceptanceRate,
+          )}
           className="p-4"
         />
         <TrendStat
-          label="Time to accept"
-          value="3.2"
-          unit="days"
-          delta={-11.1}
-          invertDelta
+          label="Accepted"
+          value={f.number(o.accepted)}
+          unit={`of ${f.number(decided)} decided`}
           className="p-4"
         />
         <TrendStat
-          label="Offers above band P75"
-          value="2"
-          delta={-33.3}
+          label="Declined"
+          value={f.number(o.declined)}
+          delta={changePct(o.declined, previous?.offers.declined)}
           invertDelta
           className="p-4"
         />
       </KpiGrid>
       <Grid>
-        <SectionCard
+        <PreviewCard
           title="Offer acceptance trend"
           subtitle="Percent, against 85% target"
           className="xl:col-span-2"
@@ -145,10 +129,39 @@ export function OffersReport() {
               { key: 'target', label: 'Target', color: GRAY },
             ]}
           />
-        </SectionCard>
+        </PreviewCard>
         <SectionCard
+          title="Offer outcomes"
+          subtitle={`${f.number(o.created)} drafted, ${f.number(o.pendingApproval)} awaiting approval`}
+          bodyClassName="p-4"
+        >
+          {o.sent === 0 ? (
+            <EmptyReport text="No offers sent in this period" />
+          ) : (
+            <div className="flex items-center gap-4">
+              <DonutChart
+                data={outcomes}
+                size={130}
+                centerValue={f.number(o.sent)}
+                centerLabel="Sent"
+              />
+              <div className="min-w-0 flex-1">
+                <LegendDots
+                  items={outcomes.map((d) => ({
+                    color: d.color,
+                    label: d.label,
+                    value: f.number(d.value),
+                  }))}
+                />
+              </div>
+            </div>
+          )}
+        </SectionCard>
+      </Grid>
+      <Grid className="xl:grid-cols-2">
+        <PreviewCard
           title="Decline reasons"
-          subtitle="17 declines, last 12 months"
+          subtitle="Grouped reasons from declined offers"
           bodyClassName="p-4"
         >
           <div className="flex items-center gap-4">
@@ -168,73 +181,60 @@ export function OffersReport() {
               />
             </div>
           </div>
-        </SectionCard>
-      </Grid>
-      <Grid className="xl:grid-cols-2">
+        </PreviewCard>
         <SectionCard
-          title="Offer position in band"
-          subtitle="Count of offers by level and band quartile"
-          bodyClassName="p-4"
+          title="Recent offers"
+          subtitle="Latest updated, not limited to the period"
+          bodyClassName="p-0"
+          actions={
+            <Link
+              href="/dashboard/offers"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              All offers
+            </Link>
+          }
         >
-          <BarSeriesChart
-            data={BAND_POSITION}
-            xKey="level"
-            stacked
-            showLegend
-            height={230}
-            series={[
-              { key: 'below', label: 'Below P25', color: RED },
-              { key: 'p25', label: 'P25 to P50', color: BRAND_LIGHT },
-              { key: 'p50', label: 'P50 to P75', color: BRAND },
-              { key: 'p75', label: 'Above P75', color: AMBER },
-            ]}
-          />
-        </SectionCard>
-        <SectionCard title="Recent offers" bodyClassName="p-0">
-          <ReportTable
-            rows={RECENT_OFFERS}
-            getKey={(r) => r.candidate}
-            columns={[
-              {
-                key: 'candidate',
-                header: 'Candidate',
-                render: (r) => (
-                  <span className="font-medium">{r.candidate}</span>
-                ),
-              },
-              { key: 'level', header: 'Level', render: (r) => r.level },
-              {
-                key: 'band',
-                header: 'Band',
-                align: 'right',
-                render: (r) => r.band,
-              },
-              {
-                key: 'days',
-                header: 'Days to decide',
-                align: 'right',
-                render: (r) => r.days,
-              },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (r) => (
-                  <StatusPill
-                    tone={
-                      r.status === 'Accepted'
-                        ? 'success'
-                        : r.status === 'Declined'
-                          ? 'danger'
-                          : 'warning'
-                    }
-                    dot
-                  >
-                    {r.status}
-                  </StatusPill>
-                ),
-              },
-            ]}
-          />
+          {isLoading ? (
+            <EmptyReport text="Loading offers" />
+          ) : (recent?.data ?? []).length === 0 ? (
+            <EmptyReport text="No offers yet" />
+          ) : (
+            <ReportTable
+              rows={recent?.data ?? []}
+              getKey={(r) => r.id}
+              columns={[
+                {
+                  key: 'candidate',
+                  header: 'Candidate',
+                  render: (r) => (
+                    <Link
+                      href={`/dashboard/offers?id=${r.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {candidateName(r)}
+                    </Link>
+                  ),
+                },
+                { key: 'job', header: 'Job', render: (r) => r.job.title },
+                {
+                  key: 'salary',
+                  header: 'Salary',
+                  align: 'right',
+                  render: (r) => offerSalary(r, f),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  render: (r) => (
+                    <StatusPill tone={OFFER_STATUS_TONE[r.status]} dot>
+                      {OFFER_STATUS_LABEL[r.status]}
+                    </StatusPill>
+                  ),
+                },
+              ]}
+            />
+          )}
         </SectionCard>
       </Grid>
     </div>

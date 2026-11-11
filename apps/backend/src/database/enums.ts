@@ -385,31 +385,102 @@ export enum RightToWork {
   WORK_VISA = 'work_visa',
 }
 
-export enum ApplicationStage {
+export enum PipelineStageCategory {
   APPLIED = 'applied',
   SCREENING = 'screening',
   INTERVIEW = 'interview',
   OFFER = 'offer',
-  PLACED = 'placed',
+  HIRED = 'hired',
   REJECTED = 'rejected',
   WITHDRAWN = 'withdrawn',
 }
 
-export const APPLICATION_STAGE_ORDER: ApplicationStage[] = [
-  ApplicationStage.APPLIED,
-  ApplicationStage.SCREENING,
-  ApplicationStage.INTERVIEW,
-  ApplicationStage.OFFER,
-  ApplicationStage.PLACED,
-  ApplicationStage.REJECTED,
-  ApplicationStage.WITHDRAWN,
+export const CLOSED_PIPELINE_STAGE_CATEGORIES: PipelineStageCategory[] = [
+  PipelineStageCategory.HIRED,
+  PipelineStageCategory.REJECTED,
+  PipelineStageCategory.WITHDRAWN,
 ];
 
-export const INACTIVE_APPLICATION_STAGES: ApplicationStage[] = [
-  ApplicationStage.PLACED,
-  ApplicationStage.REJECTED,
-  ApplicationStage.WITHDRAWN,
+export interface DefaultPipelineStage {
+  key: string;
+  name: string;
+  category: PipelineStageCategory;
+  color: string;
+}
+
+export const DEFAULT_PIPELINE_STAGES: DefaultPipelineStage[] = [
+  {
+    key: 'applied',
+    name: 'Applied',
+    category: PipelineStageCategory.APPLIED,
+    color: 'slate',
+  },
+  {
+    key: 'screening',
+    name: 'Screening',
+    category: PipelineStageCategory.SCREENING,
+    color: 'blue',
+  },
+  {
+    key: 'interview',
+    name: 'Interview',
+    category: PipelineStageCategory.INTERVIEW,
+    color: 'violet',
+  },
+  {
+    key: 'offer',
+    name: 'Offer',
+    category: PipelineStageCategory.OFFER,
+    color: 'amber',
+  },
+  {
+    key: 'placed',
+    name: 'Placed',
+    category: PipelineStageCategory.HIRED,
+    color: 'emerald',
+  },
+  {
+    key: 'rejected',
+    name: 'Rejected',
+    category: PipelineStageCategory.REJECTED,
+    color: 'rose',
+  },
+  {
+    key: 'withdrawn',
+    name: 'Withdrawn',
+    category: PipelineStageCategory.WITHDRAWN,
+    color: 'zinc',
+  },
 ];
+
+export enum CustomFieldEntityType {
+  CANDIDATE = 'candidate',
+  JOB = 'job',
+}
+
+export enum CustomFieldType {
+  TEXT = 'text',
+  TEXTAREA = 'textarea',
+  NUMBER = 'number',
+  DATE = 'date',
+  SELECT = 'select',
+  MULTISELECT = 'multiselect',
+  BOOLEAN = 'boolean',
+  URL = 'url',
+}
+
+export enum SalaryPeriod {
+  YEAR = 'year',
+  MONTH = 'month',
+  DAY = 'day',
+  HOUR = 'hour',
+}
+
+export enum AtsDateFormat {
+  DMY = 'DD/MM/YYYY',
+  MDY = 'MM/DD/YYYY',
+  ISO = 'YYYY-MM-DD',
+}
 
 export enum ActivityType {
   NOTE = 'note',
@@ -419,6 +490,8 @@ export enum ActivityType {
   CREATED = 'created',
   DOCUMENT = 'document',
   TASK = 'task',
+  INTERVIEW = 'interview',
+  OFFER = 'offer',
 }
 
 export enum TaskStatus {
@@ -454,4 +527,50 @@ export enum EmailTemplateCategory {
   OFFER = 'offer',
   INTERVIEW = 'interview',
   GENERAL = 'general',
+}
+
+export enum InterviewType {
+  PHONE = 'phone',
+  VIDEO = 'video',
+  ONSITE = 'onsite',
+  TECHNICAL = 'technical',
+  PANEL = 'panel',
+  ASSESSMENT = 'assessment',
+  OTHER = 'other',
+}
+
+export enum InterviewStatus {
+  SCHEDULED = 'scheduled',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  NO_SHOW = 'no_show',
+}
+
+export enum ScorecardRecommendation {
+  STRONG_YES = 'strong_yes',
+  YES = 'yes',
+  NO = 'no',
+  STRONG_NO = 'strong_no',
+}
+
+export enum OfferStatus {
+  DRAFT = 'draft',
+  PENDING_APPROVAL = 'pending_approval',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  SENT = 'sent',
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
+  WITHDRAWN = 'withdrawn',
+  EXPIRED = 'expired',
+}
+
+export enum OfferDecision {
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export enum OfferResponse {
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
 }

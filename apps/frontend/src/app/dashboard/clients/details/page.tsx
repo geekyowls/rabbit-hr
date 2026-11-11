@@ -43,8 +43,9 @@ import {
   JOB_STATUS_LABEL,
   JOB_STATUS_TONE,
   errorMessage,
-  formatPay,
 } from '@/components/jobs/job-utils';
+import { useFormatters } from '@/hooks/use-formatters';
+import { useOrganizationAtsSettings } from '@/hooks/queries/use-ats-settings-query';
 import {
   useClientQuery,
   useDeleteClientContactMutation,
@@ -81,6 +82,7 @@ function InfoGrid({ items }: { items: [string, React.ReactNode][] }) {
 function ClientJobs({ client }: { client: ClientDetail }) {
   const [page, setPage] = useState(1);
   const [jobFormOpen, setJobFormOpen] = useState(false);
+  const fmt = useFormatters();
   const { data, isLoading } = useJobsQuery({
     page,
     limit: JOBS_LIMIT,
@@ -130,7 +132,7 @@ function ClientJobs({ client }: { client: ClientDetail }) {
                         j.reference,
                         j.location,
                         EMPLOYMENT_TYPE_LABEL[j.employmentType],
-                        formatPay(j),
+                        fmt.pay(j),
                       ]
                         .filter(Boolean)
                         .join(' · ')}
@@ -327,6 +329,7 @@ function ClientDetailsContent() {
   const deleteClient = useDeleteClientMutation();
   const [formOpen, setFormOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const atsSettings = useOrganizationAtsSettings();
 
   useBreadcrumb([
     { label: 'Clients', href: '/dashboard/clients' },
@@ -393,6 +396,7 @@ function ClientDetailsContent() {
   };
 
   const billing = client.billing ?? {};
+  const orgCurrency = atsSettings.defaultCurrency;
   const owner = client.owner
     ? [client.owner.firstName, client.owner.lastName]
         .filter(Boolean)
@@ -498,7 +502,7 @@ function ClientDetailsContent() {
                 ['Email', billing.email],
                 ['Phone', billing.phone],
                 ['Payment terms', billing.paymentTerms],
-                ['Currency', billing.currency || 'GBP'],
+                ['Currency', billing.currency || orgCurrency],
                 [
                   'Brand colour',
                   client.brandColor && (

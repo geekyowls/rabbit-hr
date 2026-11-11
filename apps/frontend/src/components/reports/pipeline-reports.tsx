@@ -3,7 +3,6 @@
 import {
   BarSeriesChart,
   FunnelChart,
-  HeatmapGrid,
   LineSeriesChart,
   RankedBarList,
   SectionCard,
@@ -22,11 +21,21 @@ import {
   Grid,
   KpiGrid,
   MONTHS,
+  EmptyReport,
+  PreviewCard,
   RED,
   ReportTable,
+  changePct,
+  daysLabel,
+  flowFunnel,
+  rateLabel,
+  ratio,
   thresholdColor,
   toneText,
+  type LiveReportProps,
 } from './report-kit';
+import { useFormatters } from '@/hooks/use-formatters';
+import { STAGE_CATEGORY_LABEL } from '@/components/applications/application-meta';
 
 const STAGE_BY_DEPT = [
   { dept: 'Engineering', screen: 148, phone: 71, onsite: 34, offer: 8 },
@@ -37,125 +46,59 @@ const STAGE_BY_DEPT = [
   { dept: 'People', screen: 18, phone: 8, onsite: 3, offer: 0 },
 ];
 
-const ROLE_CONVERSION = [
-  {
-    role: 'Senior Backend Engineer',
-    applied: 164,
-    screen: 34,
-    phone: 52,
-    onsite: 38,
-    offer: 25,
-  },
-  {
-    role: 'Frontend Engineer',
-    applied: 142,
-    screen: 41,
-    phone: 48,
-    onsite: 42,
-    offer: 33,
-  },
-  {
-    role: 'Product Designer',
-    applied: 118,
-    screen: 26,
-    phone: 39,
-    onsite: 27,
-    offer: 33,
-  },
-  {
-    role: 'Product Manager, Growth',
-    applied: 143,
-    screen: 28,
-    phone: 37,
-    onsite: 40,
-    offer: 33,
-  },
-  {
-    role: 'Data Analyst',
-    applied: 87,
-    screen: 30,
-    phone: 38,
-    onsite: 20,
-    offer: 0,
-  },
-  {
-    role: 'DevOps Engineer',
-    applied: 41,
-    screen: 34,
-    phone: 43,
-    onsite: 50,
-    offer: 0,
-  },
-  {
-    role: 'Sales Executive',
-    applied: 96,
-    screen: 41,
-    phone: 56,
-    onsite: 27,
-    offer: 50,
-  },
-];
+export function FunnelReport({ data }: LiveReportProps) {
+  const f = useFormatters();
+  const funnel = flowFunnel(data);
+  const firstStage = data.funnel[0];
+  const offerStage = data.funnel.find((s) => s.category === 'offer');
+  const rejections = data.rejectionReasons.reduce((sum, r) => sum + r.count, 0);
+  const reasons = data.rejectionReasons.map((r, i) => ({
+    label: r.reason,
+    value: r.count,
+    color: REASON_COLORS[i % REASON_COLORS.length],
+  }));
 
-const DROP_REASONS = [
-  { label: 'Skills gap', value: 312 },
-  { label: 'Experience level', value: 188 },
-  { label: 'Withdrew', value: 97, color: AMBER },
-  { label: 'Location or visa', value: 64, color: BLUE },
-  { label: 'Compensation', value: 51, color: RED },
-  { label: 'No response', value: 43, color: GRAY },
-];
-
-export function FunnelReport() {
   return (
     <div className="space-y-4">
       <KpiGrid>
         <TrendStat
           label="Application to hire"
-          value="1.0"
-          unit="%"
-          delta={0.2}
+          value={rateLabel(ratio(data.totals.hires, data.totals.applications))}
           className="p-4"
         />
         <TrendStat
-          label="Screen pass rate"
-          value="38"
-          unit="%"
-          delta={2.4}
+          label={
+            firstStage
+              ? `${firstStage.name} pass rate`
+              : 'First stage pass rate'
+          }
+          value={rateLabel(firstStage?.conversionToNext)}
           className="p-4"
         />
         <TrendStat
-          label="Onsite to offer"
-          value="20"
-          unit="%"
-          delta={-1.8}
+          label="Offer to hire"
+          value={rateLabel(offerStage?.conversionToNext)}
           className="p-4"
         />
         <TrendStat
-          label="Candidate withdrawals"
-          value="97"
-          delta={12.8}
-          invertDelta
+          label="Rejections"
+          value={f.number(rejections)}
           className="p-4"
         />
       </KpiGrid>
       <Grid className="xl:grid-cols-2">
         <SectionCard
           title="Stage pass-through"
-          subtitle="All roles, conversion from previous stage"
+          subtitle="Applications that reached each stage, conversion from previous stage"
           bodyClassName="p-4"
         >
-          <FunnelChart
-            stages={[
-              { label: 'Applied', value: 1084 },
-              { label: 'Screened', value: 412 },
-              { label: 'Phone screen', value: 186 },
-              { label: 'Onsite', value: 74 },
-              { label: 'Offer', value: 15 },
-              { label: 'Hired', value: 11 },
-            ]}
-          />
+          {funnel.length === 0 ? (
+            <EmptyReport text="No pipeline stages configured" />
+          ) : (
+            <FunnelChart stages={funnel} />
+          )}
         </SectionCard>
-        <SectionCard
+        <PreviewCard
           title="Active pipeline by department"
           subtitle="Candidates currently in each stage"
           bodyClassName="p-4"
@@ -173,88 +116,69 @@ export function FunnelReport() {
               { key: 'offer', label: 'Offer', color: AMBER },
             ]}
           />
-        </SectionCard>
+        </PreviewCard>
       </Grid>
       <Grid>
         <SectionCard
-          title="Conversion by role"
-          subtitle="Pass-through rate at each stage"
+          title="Conversion by stage"
+          subtitle="Your pipeline stages in order"
           className="xl:col-span-2"
           bodyClassName="p-0"
         >
           <ReportTable
-            rows={ROLE_CONVERSION}
-            getKey={(r) => r.role}
+            rows={data.funnel}
+            getKey={(r) => r.stage}
             columns={[
               {
-                key: 'role',
-                header: 'Role',
-                render: (r) => <span className="font-medium">{r.role}</span>,
+                key: 'stage',
+                header: 'Stage',
+                render: (r) => <span className="font-medium">{r.name}</span>,
               },
               {
-                key: 'applied',
-                header: 'Applied',
-                align: 'right',
-                render: (r) => r.applied,
+                key: 'category',
+                header: 'Category',
+                render: (r) => STAGE_CATEGORY_LABEL[r.category],
               },
               {
-                key: 'screen',
-                header: 'Screen',
+                key: 'reached',
+                header: 'Reached',
                 align: 'right',
-                render: (r) => (
-                  <BarWithValue
-                    value={r.screen}
-                    color={thresholdColor(r.screen, 35, 28)}
-                  />
-                ),
+                render: (r) => f.number(r.reached),
               },
               {
-                key: 'phone',
-                header: 'Phone',
+                key: 'conversion',
+                header: 'To next stage',
                 align: 'right',
-                render: (r) => (
-                  <BarWithValue
-                    value={r.phone}
-                    color={thresholdColor(r.phone, 40, 35)}
-                  />
-                ),
-              },
-              {
-                key: 'onsite',
-                header: 'Onsite',
-                align: 'right',
-                render: (r) => (
-                  <BarWithValue
-                    value={r.onsite}
-                    color={thresholdColor(r.onsite, 35, 25)}
-                  />
-                ),
-              },
-              {
-                key: 'offer',
-                header: 'Offer',
-                align: 'right',
-                render: (r) => (
-                  <BarWithValue
-                    value={r.offer}
-                    color={thresholdColor(r.offer, 25, 15)}
-                  />
-                ),
+                render: (r) =>
+                  r.conversionToNext == null ? (
+                    '-'
+                  ) : (
+                    <BarWithValue
+                      value={r.conversionToNext}
+                      color={thresholdColor(r.conversionToNext, 40, 25)}
+                    />
+                  ),
               },
             ]}
           />
         </SectionCard>
         <SectionCard
-          title="Drop-off reasons"
-          subtitle="Rejected or withdrawn, last 90 days"
+          title="Rejection reasons"
+          subtitle={`${f.number(rejections)} rejected applications`}
           bodyClassName="p-4"
         >
-          <RankedBarList items={DROP_REASONS} />
+          {reasons.length === 0 ? (
+            <EmptyReport text="No rejections in this period" />
+          ) : (
+            <RankedBarList items={reasons} />
+          )}
         </SectionCard>
       </Grid>
     </div>
   );
 }
+
+const REASON_COLORS = [BRAND, BRAND_LIGHT, AMBER, BLUE, RED, GRAY];
 
 const VELOCITY = MONTHS.map((month, i) => ({
   month,
@@ -262,16 +186,6 @@ const VELOCITY = MONTHS.map((month, i) => ({
   timeToFill: [43, 42, 41, 40, 40, 38, 37, 37, 36, 35, 34, 33][i],
   target: 30,
 }));
-
-const STAGE_DAYS = [
-  { label: 'Application review', value: 3.1 },
-  { label: 'Recruiter screen', value: 2.8 },
-  { label: 'Phone screen', value: 4.6 },
-  { label: 'Technical', value: 6.2, color: AMBER },
-  { label: 'Onsite', value: 7.8, color: RED },
-  { label: 'Offer approval', value: 2.4 },
-  { label: 'Offer to accept', value: 3.2 },
-];
 
 const DEPT_VELOCITY = [
   { dept: 'Engineering', review: 3, screen: 5, onsite: 9, offer: 6 },
@@ -281,47 +195,58 @@ const DEPT_VELOCITY = [
   { dept: 'Sales', review: 2, screen: 3, onsite: 4, offer: 3 },
 ];
 
-export function VelocityReport() {
+export function VelocityReport({ data, previous }: LiveReportProps) {
+  const f = useFormatters();
+  const timed = data.timeInStage.filter((s) => s.medianDays != null);
+  const slowest = [...timed].sort(
+    (a, b) => (b.medianDays ?? 0) - (a.medianDays ?? 0),
+  )[0];
+  const stageDays = timed.map((s) => ({
+    label: s.name,
+    value: s.medianDays ?? 0,
+    color:
+      (s.medianDays ?? 0) > 7 ? RED : (s.medianDays ?? 0) > 4 ? AMBER : BRAND,
+  }));
+
   return (
     <div className="space-y-4">
       <KpiGrid>
         <TrendStat
           label="Time to hire"
-          value="26"
-          unit="days"
-          delta={-3.7}
-          invertDelta
-          points={VELOCITY.map((v) => v.timeToHire)}
-          className="p-4"
-        />
-        <TrendStat
-          label="Time to fill"
-          value="33"
-          unit="days"
-          delta={-5.1}
-          invertDelta
-          points={VELOCITY.map((v) => v.timeToFill)}
-          className="p-4"
-        />
-        <TrendStat
-          label="Time to first contact"
-          value="1.8"
-          unit="days"
-          delta={-22}
+          value={data.timeToHire.medianDays ?? '-'}
+          unit={data.timeToHire.medianDays == null ? undefined : 'days median'}
+          delta={changePct(
+            data.timeToHire.medianDays,
+            previous?.timeToHire.medianDays,
+          )}
           invertDelta
           className="p-4"
         />
         <TrendStat
-          label="Offer turnaround"
-          value="2.4"
-          unit="days"
-          delta={-12}
+          label="Average time to hire"
+          value={data.timeToHire.averageDays ?? '-'}
+          unit={data.timeToHire.averageDays == null ? undefined : 'days'}
+          delta={changePct(
+            data.timeToHire.averageDays,
+            previous?.timeToHire.averageDays,
+          )}
           invertDelta
+          className="p-4"
+        />
+        <TrendStat
+          label="Hires measured"
+          value={f.number(data.timeToHire.hires)}
+          className="p-4"
+        />
+        <TrendStat
+          label="Slowest stage"
+          value={slowest?.name ?? '-'}
+          unit={slowest ? `${slowest.medianDays} days median` : undefined}
           className="p-4"
         />
       </KpiGrid>
       <Grid>
-        <SectionCard
+        <PreviewCard
           title="Time to hire vs time to fill"
           subtitle="Days, trailing 12 months, 30 day target"
           className="xl:col-span-2"
@@ -338,17 +263,60 @@ export function VelocityReport() {
               { key: 'target', label: 'Target', color: GRAY },
             ]}
           />
-        </SectionCard>
+        </PreviewCard>
         <SectionCard
-          title="Average days in stage"
+          title="Median days in stage"
           subtitle="Bottlenecks in amber and red"
           bodyClassName="p-4"
         >
-          <RankedBarList items={STAGE_DAYS} formatValue={(v) => `${v} d`} />
+          {stageDays.length === 0 ? (
+            <EmptyReport text="No stage moves in this period" />
+          ) : (
+            <RankedBarList items={stageDays} formatValue={(v) => `${v} d`} />
+          )}
         </SectionCard>
       </Grid>
       <Grid className="xl:grid-cols-2">
         <SectionCard
+          title="Time in stage"
+          subtitle="Measured from stage entry to exit"
+          bodyClassName="p-0"
+        >
+          <ReportTable
+            rows={data.timeInStage}
+            getKey={(r) => r.stage}
+            columns={[
+              {
+                key: 'stage',
+                header: 'Stage',
+                render: (r) => <span className="font-medium">{r.name}</span>,
+              },
+              {
+                key: 'samples',
+                header: 'Moves',
+                align: 'right',
+                render: (r) => f.number(r.samples),
+              },
+              {
+                key: 'median',
+                header: 'Median',
+                align: 'right',
+                render: (r) => (
+                  <span className={toneText(r.medianDays ?? 0, 4, 7, false)}>
+                    {daysLabel(r.medianDays)}
+                  </span>
+                ),
+              },
+              {
+                key: 'average',
+                header: 'Average',
+                align: 'right',
+                render: (r) => daysLabel(r.averageDays),
+              },
+            ]}
+          />
+        </SectionCard>
+        <PreviewCard
           title="Stage duration by department"
           subtitle="Median days, stacked"
           bodyClassName="p-4"
@@ -367,36 +335,7 @@ export function VelocityReport() {
               { key: 'offer', label: 'Offer', color: AMBER },
             ]}
           />
-        </SectionCard>
-        <SectionCard
-          title="Stage exits by week"
-          subtitle="Candidates moved out of each stage"
-          bodyClassName="p-4"
-        >
-          <HeatmapGrid
-            columns={[
-              'W33',
-              'W34',
-              'W35',
-              'W36',
-              'W37',
-              'W38',
-              'W39',
-              'W40',
-              'W41',
-            ]}
-            rows={[
-              {
-                label: 'Review',
-                values: [96, 104, 88, 112, 118, 97, 121, 126, 131],
-              },
-              { label: 'Screen', values: [41, 44, 38, 47, 52, 40, 49, 55, 58] },
-              { label: 'Phone', values: [19, 22, 17, 21, 24, 18, 23, 25, 27] },
-              { label: 'Onsite', values: [8, 9, 6, 8, 10, 7, 9, 11, 10] },
-              { label: 'Offer', values: [2, 3, 2, 3, 4, 2, 3, 4, 3] },
-            ]}
-          />
-        </SectionCard>
+        </PreviewCard>
       </Grid>
     </div>
   );

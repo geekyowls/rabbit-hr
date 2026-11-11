@@ -51,19 +51,19 @@ import {
   useUpdateApplicationStageMutation,
   useUpdateCandidateMutation,
 } from '@/hooks/queries';
+import { useFormatters } from '@/hooks/use-formatters';
+import type { Formatters } from '@/lib/format';
 import { AddCandidateDrawer } from '@/components/candidates/add-candidate-drawer';
 import { CandidateDetailDrawer } from '@/components/candidates/candidate-detail-drawer';
 import { RejectApplicationDialog } from '@/components/applications/reject-application-dialog';
 import {
-  ACTIVE_STAGES,
   RIGHT_TO_WORK_LABEL,
   RIGHT_TO_WORK_TONE,
   SOURCE_LABEL,
-  STAGE_LABEL,
-  STAGE_TONE,
-  shortDate,
+  usePipelineStageMeta,
   userLabel,
 } from '@/components/applications/application-meta';
+import { StagePill } from '@/components/applications/stage-pill';
 import { LinkedInIcon } from '@/components/icons/brand-icons';
 import {
   CANDIDATE_SOURCES,
@@ -71,10 +71,7 @@ import {
   type CandidateSource,
   type ListCandidatesRequest,
 } from '@/types/candidate.type';
-import {
-  APPLICATION_STAGES,
-  type ApplicationStage,
-} from '@/types/application.type';
+import type { ApplicationStage } from '@/types/application.type';
 
 const SOURCE_ICON: Partial<
   Record<CandidateSource, { icon: LucideIcon; color: string }>
@@ -98,7 +95,7 @@ function SourceIcon({ source }: { source: CandidateSource }) {
 
 const fullName = (c: CandidateListItem) => `${c.firstName} ${c.lastName}`;
 
-const columns: DataGridColumn<CandidateListItem>[] = [
+const buildColumns = (fmt: Formatters): DataGridColumn<CandidateListItem>[] => [
   {
     key: 'name',
     header: 'Candidate',
@@ -185,9 +182,7 @@ const columns: DataGridColumn<CandidateListItem>[] = [
     render: (r) =>
       r.latestApplication ? (
         <span className="flex min-w-0 items-center gap-2">
-          <StatusPill tone={STAGE_TONE[r.latestApplication.stage]} dot>
-            {STAGE_LABEL[r.latestApplication.stage]}
-          </StatusPill>
+          <StagePill stage={r.latestApplication.stage} />
           <span className="truncate text-muted-foreground">
             {r.latestApplication.jobTitle}
           </span>
@@ -223,7 +218,7 @@ const columns: DataGridColumn<CandidateListItem>[] = [
     header: 'Added',
     width: 120,
     mono: true,
-    render: (r) => shortDate(r.createdAt),
+    render: (r) => fmt.date(r.createdAt),
   },
 ];
 
@@ -287,6 +282,9 @@ export default function CandidatesPage() {
   );
   const updateStage = useUpdateApplicationStageMutation();
   const updateCandidate = useUpdateCandidateMutation();
+  const stageMeta = usePipelineStageMeta();
+  const fmt = useFormatters();
+  const columns = useMemo(() => buildColumns(fmt), [fmt]);
 
   const rows = useMemo(() => data?.data ?? [], [data]);
   const total = data?.total ?? 0;
@@ -338,7 +336,7 @@ export default function CandidatesPage() {
           id: c.latestApplication!.id,
           data: { stage },
         }),
-      `Moved to ${STAGE_LABEL[stage]}:`,
+      `Moved to ${stageMeta.label(stage)}:`,
     );
 
   const rejectSelected = (reason: string) =>
@@ -347,7 +345,7 @@ export default function CandidatesPage() {
       (c) =>
         updateStage.mutateAsync({
           id: c.latestApplication!.id,
-          data: { stage: 'rejected', rejectionReason: reason },
+          data: { stage: stageMeta.rejectKey ?? '', rejectionReason: reason },
         }),
       'Rejected',
     );
@@ -387,10 +385,10 @@ export default function CandidatesPage() {
       {
         header: 'Stage',
         value: (c) =>
-          c.latestApplication ? STAGE_LABEL[c.latestApplication.stage] : '',
+          c.latestApplication ? stageMeta.label(c.latestApplication.stage) : '',
       },
       { header: 'Owner', value: (c) => userLabel(c.owner) },
-      { header: 'Added', value: (c) => shortDate(c.createdAt) },
+      { header: 'Added', value: (c) => fmt.date(c.createdAt) },
     ]);
 
   const detailIndex = rows.findIndex((r) => r.id === detailId);
@@ -443,9 +441,9 @@ export default function CandidatesPage() {
           value={stageFilter}
           options={[
             { label: 'All stages', value: ALL },
-            ...APPLICATION_STAGES.map((st) => ({
-              label: STAGE_LABEL[st],
-              value: st,
+            ...stageMeta.stages.map((st) => ({
+              label: st.name,
+              value: st.key,
             })),
           ]}
           onChange={setStageFilter}
@@ -506,14 +504,16 @@ export default function CandidatesPage() {
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                       Move latest application to
                     </DropdownMenuLabel>
-                    {[...ACTIVE_STAGES, 'withdrawn' as const].map((st) => (
-                      <DropdownMenuItem
-                        key={st}
-                        onSelect={() => moveSelected(st)}
-                      >
-                        {STAGE_LABEL[st]}
-                      </DropdownMenuItem>
-                    ))}
+                    {stageMeta.stages
+                      .filter((st) => st.category !== 'rejected')
+                      .map((st) => (
+                        <DropdownMenuItem
+                          key={st.key}
+                          onSelect={() => moveSelected(st.key)}
+                        >
+                          {st.name}
+                        </DropdownMenuItem>
+                      ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </PermissionGuard>

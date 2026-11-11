@@ -4,6 +4,7 @@ import { OrganizationEntity } from './organization.entity';
 import { UserEntity } from './user.entity';
 import { numericTransformer } from '../numeric.transformer';
 import { CandidateSource, RightToWork } from '../enums';
+import type { CustomFieldValues } from './custom-field-definition.entity';
 
 @Entity('candidates')
 @Index(['organizationId', 'email'], { unique: true })
@@ -84,6 +85,9 @@ export class CandidateEntity extends BaseEntity {
 
   @Column({ type: 'int', nullable: true })
   rating: number | null;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  customFields: CustomFieldValues;
 
   @ManyToOne(() => OrganizationEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'organizationId' })

@@ -4,11 +4,13 @@ import {
   JobRepository,
   UserRepository,
 } from '@db/repositories';
-import { JobStatus } from '@db/enums';
+import { CustomFieldEntityType, JobStatus } from '@db/enums';
 import { pickDefined } from '@shared/helpers/pick-defined';
+import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
 import {
   assertJobReferences,
   normalizeScreeningQuestions,
+  uniqueIds,
 } from '../job-validation';
 import { GetJob } from '../get-job/get-job.usecase';
 import { UpdateJobCommand } from './update-job.command';
@@ -20,6 +22,7 @@ export class UpdateJob {
     private readonly clientRepository: ClientRepository,
     private readonly userRepository: UserRepository,
     private readonly getJob: GetJob,
+    private readonly customFieldValidator: CustomFieldValidator,
   ) {}
 
   async execute(command: UpdateJobCommand) {
@@ -30,14 +33,25 @@ export class UpdateJob {
       throw new NotFoundException('Job not found');
     }
 
-    const { screeningQuestions, ...rest } = pickDefined(command.payload);
+    const { screeningQuestions, customFields, hiringTeamIds, ...rest } =
+      pickDefined(command.payload);
     await assertJobReferences(
       this.clientRepository,
       this.userRepository,
       command.organizationId,
-      rest.clientId,
-      rest.ownerId,
+      { ...rest, hiringTeamIds },
     );
+    if (customFields !== undefined) {
+      job.customFields = await this.customFieldValidator.validate(
+        command.organizationId,
+        CustomFieldEntityType.JOB,
+        customFields,
+        { existing: job.customFields },
+      );
+    }
+    if (hiringTeamIds) {
+      job.hiringTeamIds = uniqueIds(hiringTeamIds);
+    }
 
     Object.assign(job, rest);
     if (screeningQuestions) {

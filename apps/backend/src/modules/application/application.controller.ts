@@ -80,6 +80,7 @@ export class ApplicationController {
         clientId: dto.clientId,
         candidateId: dto.candidateId,
         stage: dto.stage,
+        stageCategory: dto.stageCategory,
         search: dto.search,
         shortlisted: dto.shortlisted,
         ownerId: dto.ownerId,

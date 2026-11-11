@@ -6,7 +6,13 @@ import {
 import type { PillTone } from '@/components/patterns';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
+import { useMemo } from 'react';
+import { usePipelineStagesQuery } from '@/hooks/queries/use-pipeline-stages-query';
 import type { ApplicationStage } from '@/types/application.type';
+import {
+  CLOSED_STAGE_CATEGORIES,
+  type PipelineStageCategory,
+} from '@/types/pipeline-stage.type';
 import type { CandidateSource, RightToWork } from '@/types/candidate.type';
 import type { UserSummary } from '@/types/common.type';
 import type {
@@ -14,55 +20,137 @@ import type {
   DocumentVerificationStatus,
 } from '@/types/document.type';
 
-export const ACTIVE_STAGES: ApplicationStage[] = [
-  'applied',
-  'screening',
-  'interview',
-  'offer',
-  'placed',
-];
-
-export const CLOSED_STAGES: ApplicationStage[] = ['rejected', 'withdrawn'];
-
-export const STAGE_LABEL: Record<ApplicationStage, string> = {
-  applied: 'Applied',
-  screening: 'Screening',
-  interview: 'Interview',
-  offer: 'Offer',
-  placed: 'Placed',
-  rejected: 'Rejected',
-  withdrawn: 'Withdrawn',
-};
-
-export const STAGE_TONE: Record<ApplicationStage, PillTone> = {
+export const CATEGORY_TONE: Record<PipelineStageCategory, PillTone> = {
   applied: 'neutral',
   screening: 'info',
   interview: 'warning',
   offer: 'purple',
-  placed: 'success',
+  hired: 'success',
   rejected: 'danger',
   withdrawn: 'neutral',
 };
 
-export const STAGE_COLOR: Record<ApplicationStage, string> = {
-  applied: '#a1a1aa',
-  screening: '#8FBFA1',
-  interview: '#4C6EF5',
-  offer: '#E0A458',
-  placed: '#3F6650',
-  rejected: '#E0533D',
-  withdrawn: '#71717a',
-};
-
-export const STAGE_SLA_DAYS: Record<ApplicationStage, number> = {
+export const CATEGORY_SLA_DAYS: Record<PipelineStageCategory, number> = {
   applied: 5,
   screening: 4,
   interview: 7,
   offer: 5,
-  placed: 999,
+  hired: 999,
   rejected: 999,
   withdrawn: 999,
 };
+
+const COLOR_TOKEN_HEX: Record<string, string> = {
+  slate: '#a1a1aa',
+  zinc: '#71717a',
+  gray: '#9ca3af',
+  blue: '#8FBFA1',
+  sky: '#38bdf8',
+  indigo: '#6366f1',
+  violet: '#4C6EF5',
+  purple: '#8B7DD8',
+  pink: '#ec4899',
+  amber: '#E0A458',
+  orange: '#f97316',
+  yellow: '#eab308',
+  teal: '#14b8a6',
+  green: '#16a34a',
+  emerald: '#3F6650',
+  red: '#E0533D',
+  rose: '#E0533D',
+};
+
+export const STAGE_COLOR_TOKENS = [
+  'slate',
+  'blue',
+  'sky',
+  'indigo',
+  'violet',
+  'purple',
+  'pink',
+  'amber',
+  'orange',
+  'yellow',
+  'teal',
+  'emerald',
+  'rose',
+];
+
+export const STAGE_CATEGORY_LABEL: Record<PipelineStageCategory, string> = {
+  applied: 'Applied',
+  screening: 'Screening',
+  interview: 'Interview',
+  offer: 'Offer',
+  hired: 'Hired',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+};
+
+const CATEGORY_FALLBACK_COLOR: Record<PipelineStageCategory, string> = {
+  applied: COLOR_TOKEN_HEX.slate,
+  screening: COLOR_TOKEN_HEX.blue,
+  interview: COLOR_TOKEN_HEX.violet,
+  offer: COLOR_TOKEN_HEX.amber,
+  hired: COLOR_TOKEN_HEX.emerald,
+  rejected: COLOR_TOKEN_HEX.rose,
+  withdrawn: COLOR_TOKEN_HEX.zinc,
+};
+
+export type StageLike = { color: string; category: PipelineStageCategory };
+
+export function stageColor(stage: StageLike) {
+  if (stage.color.startsWith('#')) return stage.color;
+  return (
+    COLOR_TOKEN_HEX[stage.color] ?? CATEGORY_FALLBACK_COLOR[stage.category]
+  );
+}
+
+export function stageTone(stage: Pick<StageLike, 'category'> | undefined) {
+  return stage ? CATEGORY_TONE[stage.category] : 'neutral';
+}
+
+export function isClosedCategory(category: PipelineStageCategory) {
+  return CLOSED_STAGE_CATEGORIES.includes(category);
+}
+
+export function humanizeStageKey(key: string) {
+  const text = key.replace(/_/g, ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export function usePipelineStageMeta(enabled: boolean = true) {
+  const { data, isLoading } = usePipelineStagesQuery(enabled);
+  return useMemo(() => {
+    const all = data ?? [];
+    const stages = all.filter((s) => s.isActive);
+    const byKey = new Map(all.map((s) => [s.key, s]));
+    const flowStages = stages.filter((s) => !isClosedCategory(s.category));
+    const closedStages = stages.filter((s) => isClosedCategory(s.category));
+    const firstOf = (category: PipelineStageCategory) =>
+      stages.find((s) => s.category === category)?.key;
+    return {
+      stages,
+      flowStages,
+      closedStages,
+      byKey,
+      isLoading,
+      initialKey: firstOf('applied') ?? stages[0]?.key,
+      rejectKey: firstOf('rejected'),
+      label: (key: ApplicationStage) =>
+        byKey.get(key)?.name ?? humanizeStageKey(key),
+      tone: (key: ApplicationStage) => stageTone(byKey.get(key)),
+      color: (key: ApplicationStage) => {
+        const stage = byKey.get(key);
+        return stage ? stageColor(stage) : COLOR_TOKEN_HEX.slate;
+      },
+      category: (key: ApplicationStage) => byKey.get(key)?.category,
+      isRejected: (key: ApplicationStage) =>
+        byKey.get(key)?.category === 'rejected',
+    };
+  }, [data, isLoading]);
+}
+
+export type PipelineStageMeta = ReturnType<typeof usePipelineStageMeta>;
 
 export const SOURCE_LABEL: Record<CandidateSource, string> = {
   careers_page: 'Careers page',
@@ -78,8 +166,8 @@ export const SOURCE_LABEL: Record<CandidateSource, string> = {
 
 export const RIGHT_TO_WORK_LABEL: Record<RightToWork, string> = {
   unknown: 'Unknown',
-  uk_citizen: 'UK citizen',
-  settled_status: 'Settled status',
+  uk_citizen: 'Citizen',
+  settled_status: 'Permanent resident',
   visa_sponsorship_required: 'Needs sponsorship',
   work_visa: 'Work visa',
 };
@@ -98,7 +186,7 @@ export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
   right_to_work: 'Right to work',
   reference: 'Reference',
   certificate: 'Certificate',
-  dbs: 'DBS',
+  dbs: 'Background check',
   other: 'Other',
 };
 
@@ -126,46 +214,7 @@ export function userLabel(user: UserSummary | null | undefined) {
   return personName(user) || user.email;
 }
 
-export function daysSince(date: string | null | undefined) {
-  if (!date) return 0;
-  const diff = Date.now() - new Date(date).getTime();
-  return Math.max(0, Math.floor(diff / 86_400_000));
-}
-
-export function shortDate(date: string | null | undefined) {
-  if (!date) return '-';
-  const value = new Date(date);
-  if (Number.isNaN(value.getTime())) return '-';
-  return value.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-export function relativeTime(date: string) {
-  const days = daysSince(date);
-  if (days === 0) {
-    const minutes = Math.floor(
-      (Date.now() - new Date(date).getTime()) / 60_000,
-    );
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    return `${Math.floor(minutes / 60)}h ago`;
-  }
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days}d ago`;
-  return shortDate(date);
-}
-
-export function formatGbp(amount: number | null | undefined) {
-  if (amount === null || amount === undefined) return '';
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+export { daysSince } from '@/lib/format';
 
 export function errorMessage(err: unknown, fallback = 'Something went wrong') {
   return err instanceof Error && err.message ? err.message : fallback;

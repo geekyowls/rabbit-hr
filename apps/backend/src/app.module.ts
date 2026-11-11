@@ -32,6 +32,12 @@ import { DocumentModule } from './modules/document/document.module';
 import { EmailTemplateModule } from './modules/email-template/email-template.module';
 import { AtsDashboardModule } from './modules/ats-dashboard/ats-dashboard.module';
 import { CareersModule } from './modules/careers/careers.module';
+import { AtsSettingsModule } from './modules/ats-settings/ats-settings.module';
+import { PipelineStageModule } from './modules/pipeline-stage/pipeline-stage.module';
+import { CustomFieldModule } from './modules/custom-field/custom-field.module';
+import { InterviewModule } from './modules/interview/interview.module';
+import { OfferModule } from './modules/offer/offer.module';
+import { ReportModule } from './modules/report/report.module';
 
 @Module({
   imports: [
@@ -83,6 +89,12 @@ import { CareersModule } from './modules/careers/careers.module';
     EmailTemplateModule,
     AtsDashboardModule,
     CareersModule,
+    AtsSettingsModule,
+    PipelineStageModule,
+    CustomFieldModule,
+    InterviewModule,
+    OfferModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [

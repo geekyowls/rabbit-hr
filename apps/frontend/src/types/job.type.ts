@@ -1,5 +1,6 @@
 import type { UserSummary } from './common.type';
 import type { StageCounts } from './application.type';
+import type { CustomFieldValues } from './custom-field.type';
 
 export type EmploymentType = 'permanent' | 'temporary' | 'contract';
 export type WorkMode = 'onsite' | 'hybrid' | 'remote';
@@ -59,8 +60,16 @@ export interface Job {
   skills: string[];
   screeningQuestions: ScreeningQuestion[];
   requiredDocuments: string[];
+  department: string | null;
+  hiringManagerId: string | null;
+  recruiterId: string | null;
+  hiringTeamIds: string[];
+  customFields: CustomFieldValues;
   client: JobClientSummary | null;
   owner: UserSummary | null;
+  hiringManager: UserSummary | null;
+  recruiter: UserSummary | null;
+  hiringTeam: UserSummary[];
   createdAt: string;
   updatedAt: string;
 }
@@ -80,6 +89,9 @@ export interface ListJobsRequest {
   clientId?: string;
   employmentType?: EmploymentType;
   ownerId?: string;
+  department?: string;
+  hiringManagerId?: string;
+  recruiterId?: string;
 }
 
 export interface CreateJobRequest {
@@ -103,6 +115,11 @@ export interface CreateJobRequest {
   skills?: string[];
   screeningQuestions?: Array<Omit<ScreeningQuestion, 'id'> & { id?: string }>;
   requiredDocuments?: string[];
+  department?: string | null;
+  hiringManagerId?: string | null;
+  recruiterId?: string | null;
+  hiringTeamIds?: string[];
+  customFields?: CustomFieldValues;
 }
 
 export type UpdateJobRequest = Partial<CreateJobRequest>;

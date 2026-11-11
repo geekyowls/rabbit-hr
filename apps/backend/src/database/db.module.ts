@@ -25,6 +25,11 @@ import {
   TaskEntity,
   CandidateDocumentEntity,
   EmailTemplateEntity,
+  PipelineStageEntity,
+  CustomFieldDefinitionEntity,
+  InterviewEntity,
+  ScorecardEntity,
+  OfferEntity,
 } from './entities';
 import {
   UserRepository,
@@ -49,6 +54,11 @@ import {
   TaskRepository,
   CandidateDocumentRepository,
   EmailTemplateRepository,
+  PipelineStageRepository,
+  CustomFieldDefinitionRepository,
+  InterviewRepository,
+  ScorecardRepository,
+  OfferRepository,
 } from './repositories';
 
 const entities = [
@@ -74,6 +84,11 @@ const entities = [
   TaskEntity,
   CandidateDocumentEntity,
   EmailTemplateEntity,
+  PipelineStageEntity,
+  CustomFieldDefinitionEntity,
+  InterviewEntity,
+  ScorecardEntity,
+  OfferEntity,
 ];
 const repositories = [
   UserRepository,
@@ -98,6 +113,11 @@ const repositories = [
   TaskRepository,
   CandidateDocumentRepository,
   EmailTemplateRepository,
+  PipelineStageRepository,
+  CustomFieldDefinitionRepository,
+  InterviewRepository,
+  ScorecardRepository,
+  OfferRepository,
 ];
 
 @Global()

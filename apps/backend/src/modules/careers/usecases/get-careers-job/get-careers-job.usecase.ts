@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { JobRepository, OrganizationRepository } from '@db/repositories';
+import { CustomFieldEntityType } from '@db/enums';
+import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
 import {
   buildOpenJobsQuery,
   CAREERS_JOB_DETAIL_SELECT,
@@ -12,6 +14,7 @@ export class GetCareersJob {
   constructor(
     private readonly organizationRepository: OrganizationRepository,
     private readonly jobRepository: JobRepository,
+    private readonly customFieldValidator: CustomFieldValidator,
   ) {}
 
   async execute(command: GetCareersJobCommand) {
@@ -29,7 +32,21 @@ export class GetCareersJob {
     if (!job) {
       throw new NotFoundException('This role is no longer open');
     }
+    const definitions = await this.customFieldValidator.getActiveDefinitions(
+      organization.id,
+      CustomFieldEntityType.CANDIDATE,
+      true,
+    );
     const { ownerId: _ownerId, clientId: _clientId, ...publicJob } = job;
-    return publicJob;
+    return {
+      ...publicJob,
+      customFields: definitions.map((d) => ({
+        key: d.key,
+        label: d.label,
+        type: d.type,
+        options: d.options,
+        required: d.required,
+      })),
+    };
   }
 }

@@ -1,24 +1,8 @@
 import type { UserSummary } from './common.type';
 import type { CandidateSource, RightToWork } from './candidate.type';
+import type { PipelineStageCategory } from './pipeline-stage.type';
 
-export type ApplicationStage =
-  | 'applied'
-  | 'screening'
-  | 'interview'
-  | 'offer'
-  | 'placed'
-  | 'rejected'
-  | 'withdrawn';
-
-export const APPLICATION_STAGES: ApplicationStage[] = [
-  'applied',
-  'screening',
-  'interview',
-  'offer',
-  'placed',
-  'rejected',
-  'withdrawn',
-];
+export type ApplicationStage = string;
 
 export type StageCounts = Record<ApplicationStage, number>;
 
@@ -95,10 +79,15 @@ export interface BoardCard {
   ownerId: string | null;
   appliedAt: string;
   stageChangedAt: string;
+  nextInterviewAt?: string | null;
 }
 
 export interface BoardColumn {
   stage: ApplicationStage;
+  name: string;
+  category: PipelineStageCategory;
+  color: string;
+  order: number;
   count: number;
   cards: BoardCard[];
 }
@@ -114,6 +103,7 @@ export interface ListApplicationsRequest {
   clientId?: string;
   candidateId?: string;
   stage?: ApplicationStage;
+  stageCategory?: PipelineStageCategory;
   search?: string;
   shortlisted?: boolean;
   ownerId?: string;

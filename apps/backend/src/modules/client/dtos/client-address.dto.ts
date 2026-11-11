@@ -57,7 +57,10 @@ export class ClientBillingDto {
   @MaxLength(100)
   paymentTerms?: string;
 
-  @ApiPropertyOptional({ example: 'GBP', default: 'GBP' })
+  @ApiPropertyOptional({
+    example: 'USD',
+    description: 'Defaults to the organization default currency',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(3)

@@ -1,6 +1,14 @@
-import { IsArray, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+} from 'class-validator';
 import { BasePaginatedCommand } from '@boilerplate/core';
-import { ApplicationStage, CandidateSource, RightToWork } from '@db/enums';
+import { CandidateSource, PipelineStageCategory, RightToWork } from '@db/enums';
+import { STAGE_KEY_PATTERN } from '@modules/pipeline-stage/dtos/pipeline-stage.dto';
 
 export class ListCandidatesCommand extends BasePaginatedCommand {
   @IsString()
@@ -20,9 +28,14 @@ export class ListCandidatesCommand extends BasePaginatedCommand {
   @IsOptional()
   jobId?: string;
 
-  @IsEnum(ApplicationStage)
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
   @IsOptional()
-  stage?: ApplicationStage;
+  stage?: string;
+
+  @IsEnum(PipelineStageCategory)
+  @IsOptional()
+  stageCategory?: PipelineStageCategory;
 
   @IsEnum(RightToWork)
   @IsOptional()

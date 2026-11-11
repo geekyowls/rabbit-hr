@@ -10,29 +10,21 @@ import {
   TrendStat,
   type PillTone,
 } from '@/components/patterns';
+import { useFormatters } from '@/hooks/use-formatters';
 import {
   AMBER,
   BRAND,
   BRAND_LIGHT,
+  EmptyReport,
   Grid,
   KpiGrid,
-  MONTHS,
-  RANGE_FACTOR,
-  fmt,
-  type ReportProps,
+  PreviewCard,
+  changePct,
+  flowFunnel,
+  pointsChange,
+  rateLabel,
+  type LiveReportProps,
 } from './report-kit';
-
-const DELTAS = {
-  '30d': [18.2, 22.2, -3.7, 4.1, -6.0],
-  '90d': [24.8, 11.5, -8.2, 2.6, -9.4],
-  '12m': [31.4, 26.9, -14.1, 5.8, -12.2],
-};
-
-const HIRES_VS_PLAN = MONTHS.map((month, i) => ({
-  month,
-  hired: [6, 4, 7, 9, 8, 10, 9, 12, 11, 13, 10, 11][i],
-  plan: [7, 6, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12][i],
-}));
 
 const RISKS: {
   icon: typeof AlertTriangle;
@@ -71,74 +63,89 @@ const RISKS: {
   },
 ];
 
-export function ExecutiveSummary({ range }: ReportProps) {
-  const f = RANGE_FACTOR[range];
-  const d = DELTAS[range];
-  const applicants = 1084 * f;
-  const hires = Math.round(11 * f);
-  const funnel = [
-    { label: 'Applied', value: Math.round(applicants) },
-    { label: 'Screened', value: Math.round(412 * f) },
-    { label: 'Phone screen', value: Math.round(186 * f) },
-    { label: 'Onsite', value: Math.round(74 * f) },
-    { label: 'Offer', value: Math.round(15 * f) },
-    { label: 'Hired', value: hires },
-  ];
+export function ExecutiveSummary({ data, previous }: LiveReportProps) {
+  const f = useFormatters();
+  const weekly = data.applicationsOverTime.map((w) => ({
+    week: f.dateLong(w.weekStart, { day: 'numeric', month: 'short' }),
+    applications: w.applications,
+    hires: w.hires,
+  }));
+  const funnel = flowFunnel(data);
 
   return (
     <div className="space-y-4">
-      <KpiGrid cols={5} rangeAware>
+      <KpiGrid cols={5}>
         <TrendStat
-          label="Applicants"
-          value={fmt(applicants)}
-          delta={d[0]}
+          label="Applications"
+          value={f.number(data.totals.applications)}
+          delta={changePct(
+            data.totals.applications,
+            previous?.totals.applications,
+          )}
           className="p-4"
         />
-        <TrendStat label="Hires" value={hires} delta={d[1]} className="p-4" />
+        <TrendStat
+          label="Hires"
+          value={f.number(data.totals.hires)}
+          delta={changePct(data.totals.hires, previous?.totals.hires)}
+          className="p-4"
+        />
         <TrendStat
           label="Time to hire"
-          value={range === '30d' ? 26 : range === '90d' ? 28 : 31}
-          unit="days"
-          delta={d[2]}
+          value={data.timeToHire.medianDays ?? '-'}
+          unit={data.timeToHire.medianDays == null ? undefined : 'days median'}
+          delta={changePct(
+            data.timeToHire.medianDays,
+            previous?.timeToHire.medianDays,
+          )}
           invertDelta
           className="p-4"
         />
         <TrendStat
           label="Offer acceptance"
-          value={range === '12m' ? 84 : 86}
-          unit="%"
-          delta={d[3]}
+          value={rateLabel(data.offers.acceptanceRate)}
+          delta={pointsChange(
+            data.offers.acceptanceRate,
+            previous?.offers.acceptanceRate,
+          )}
           className="p-4"
         />
         <TrendStat
-          label="Cost per hire"
-          value={range === '12m' ? '$3,940' : '$3,610'}
-          delta={d[4]}
-          invertDelta
+          label="Interviews"
+          value={f.number(data.totals.interviews)}
+          delta={changePct(data.totals.interviews, previous?.totals.interviews)}
           className="p-4"
         />
       </KpiGrid>
 
       <Grid>
         <SectionCard
-          title="Hires vs plan"
-          subtitle="Monthly, trailing 12 months"
+          title="Applications and hires"
+          subtitle="Per week in the selected period"
           className="xl:col-span-2"
           bodyClassName="p-4"
         >
-          <BarSeriesChart
-            data={HIRES_VS_PLAN}
-            xKey="month"
-            height={240}
-            showLegend
-            series={[
-              { key: 'hired', label: 'Hired', color: BRAND },
-              { key: 'plan', label: 'Plan', color: BRAND_LIGHT },
-            ]}
-          />
+          {weekly.length === 0 ? (
+            <EmptyReport text="No applications in this period" />
+          ) : (
+            <BarSeriesChart
+              data={weekly}
+              xKey="week"
+              height={240}
+              showLegend
+              series={[
+                {
+                  key: 'applications',
+                  label: 'Applications',
+                  color: BRAND_LIGHT,
+                },
+                { key: 'hires', label: 'Hires', color: BRAND },
+              ]}
+            />
+          )}
         </SectionCard>
-        <SectionCard
-          title="Q4 hiring plan"
+        <PreviewCard
+          title="Hiring plan"
           subtitle="Company wide"
           bodyClassName="flex flex-col items-center justify-center gap-4 p-4"
         >
@@ -168,19 +175,23 @@ export function ExecutiveSummary({ range }: ReportProps) {
               <p className="text-muted-foreground">Forecast</p>
             </div>
           </div>
-        </SectionCard>
+        </PreviewCard>
       </Grid>
 
       <Grid>
         <SectionCard
           title="Funnel snapshot"
-          subtitle="Conversion from previous stage"
+          subtitle="Applications that reached each stage"
           className="xl:col-span-2"
           bodyClassName="p-4"
         >
-          <FunnelChart stages={funnel} />
+          {funnel.length === 0 ? (
+            <EmptyReport text="No pipeline stages configured" />
+          ) : (
+            <FunnelChart stages={funnel} />
+          )}
         </SectionCard>
-        <SectionCard
+        <PreviewCard
           title="Top risks"
           subtitle="Flagged from pipeline signals"
           bodyClassName="p-0"
@@ -197,7 +208,7 @@ export function ExecutiveSummary({ range }: ReportProps) {
               </li>
             ))}
           </ul>
-        </SectionCard>
+        </PreviewCard>
       </Grid>
     </div>
   );

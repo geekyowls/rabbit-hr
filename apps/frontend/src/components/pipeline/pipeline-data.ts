@@ -2,38 +2,51 @@ import type {
   ApplicationBoard,
   ApplicationStage,
   BoardCard,
+  BoardColumn,
 } from '@/types/application.type';
+import type { PipelineStageCategory } from '@/types/pipeline-stage.type';
 import {
-  ACTIVE_STAGES,
-  STAGE_COLOR,
-  STAGE_LABEL,
-  STAGE_SLA_DAYS,
+  CATEGORY_SLA_DAYS,
   daysSince,
+  isClosedCategory,
+  stageColor,
 } from '@/components/applications/application-meta';
 
-export type PipelineCandidate = BoardCard;
+export type PipelineCandidate = BoardCard & {
+  stageName: string;
+  stageCategory: PipelineStageCategory;
+};
 
 export interface StageDef {
   id: ApplicationStage;
   label: string;
   color: string;
+  category: PipelineStageCategory;
   slaDays: number;
 }
 
-export const STAGES: StageDef[] = ACTIVE_STAGES.map((id) => ({
-  id,
-  label: STAGE_LABEL[id],
-  color: STAGE_COLOR[id],
-  slaDays: STAGE_SLA_DAYS[id],
-}));
+export function toStageDef(column: BoardColumn): StageDef {
+  return {
+    id: column.stage,
+    label: column.name,
+    color: stageColor(column),
+    category: column.category,
+    slaDays: CATEGORY_SLA_DAYS[column.category],
+  };
+}
 
-export const STAGE_INDEX = Object.fromEntries(
-  STAGES.map((s, i) => [s.id, i]),
-) as Partial<Record<ApplicationStage, number>>;
+export function flowStageDefs(board: ApplicationBoard | undefined) {
+  return (board?.stages ?? [])
+    .filter((s) => !isClosedCategory(s.category))
+    .map(toStageDef);
+}
 
-export function nextStage(stage: ApplicationStage): StageDef | undefined {
-  const index = STAGE_INDEX[stage];
-  return index === undefined ? undefined : STAGES[index + 1];
+export function nextStage(
+  stages: StageDef[],
+  stage: ApplicationStage,
+): StageDef | undefined {
+  const index = stages.findIndex((s) => s.id === stage);
+  return index === -1 ? undefined : stages[index + 1];
 }
 
 export function daysInStage(c: PipelineCandidate) {
@@ -41,16 +54,26 @@ export function daysInStage(c: PipelineCandidate) {
 }
 
 export function slaState(c: PipelineCandidate): 'ok' | 'warn' | 'over' {
-  if (c.stage === 'placed') return 'ok';
+  if (c.stageCategory === 'hired') return 'ok';
   const days = daysInStage(c);
-  const target = STAGE_SLA_DAYS[c.stage];
+  const target = CATEGORY_SLA_DAYS[c.stageCategory];
   if (days > target) return 'over';
   if (days >= target - 1) return 'warn';
   return 'ok';
 }
 
-export function boardCards(board: ApplicationBoard | undefined) {
-  return board?.stages.flatMap((s) => s.cards) ?? [];
+export function columnCards(column: BoardColumn): PipelineCandidate[] {
+  return column.cards.map((card) => ({
+    ...card,
+    stageName: column.name,
+    stageCategory: column.category,
+  }));
+}
+
+export function boardCards(
+  board: ApplicationBoard | undefined,
+): PipelineCandidate[] {
+  return board?.stages.flatMap(columnCards) ?? [];
 }
 
 export function moveCardInBoard(
@@ -58,7 +81,7 @@ export function moveCardInBoard(
   id: string,
   stage: ApplicationStage,
 ): ApplicationBoard {
-  const card = boardCards(board).find((c) => c.id === id);
+  const card = board.stages.flatMap((s) => s.cards).find((c) => c.id === id);
   if (!card || card.stage === stage) return board;
   const moved: BoardCard = {
     ...card,
@@ -92,28 +115,12 @@ export function sampleMatchScore(id: string) {
   return 55 + (hash(id) % 41);
 }
 
-export const SAMPLE_NEXT_STEP: Record<ApplicationStage, string> = {
+export const SAMPLE_NEXT_STEP: Record<PipelineStageCategory, string> = {
   applied: 'Review application',
   screening: 'Phone screen',
   interview: 'Collect feedback',
   offer: 'Chase offer response',
-  placed: 'Start onboarding',
+  hired: 'Start onboarding',
   rejected: 'Archived',
   withdrawn: 'Archived',
 };
-
-const SAMPLE_INTERVIEWERS = [
-  'Neha Reddy',
-  'Olivia Brown',
-  'Kabir Shah',
-  'Rohit Sharma',
-  'Ana Martins',
-];
-
-export function sampleInterviewers(c: PipelineCandidate) {
-  if (c.stage !== 'interview' && c.stage !== 'offer') return [];
-  const start = hash(c.id) % SAMPLE_INTERVIEWERS.length;
-  return [0, 1].map(
-    (i) => SAMPLE_INTERVIEWERS[(start + i) % SAMPLE_INTERVIEWERS.length],
-  );
-}

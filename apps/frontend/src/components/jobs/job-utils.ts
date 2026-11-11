@@ -1,7 +1,7 @@
 import type { PillTone } from '@/components/patterns';
+import { PAY_UNIT_LABEL } from '@/lib/format';
 import type {
   EmploymentType,
-  Job,
   JobStatus,
   RateUnit,
   WorkMode,
@@ -44,64 +44,12 @@ export const WORK_MODE_LABEL: Record<WorkMode, string> = {
 };
 
 export const RATE_UNIT_LABEL: Record<RateUnit, string> = {
-  hour: 'per hour',
-  day: 'per day',
-  year: 'per year',
+  hour: PAY_UNIT_LABEL.hour,
+  day: PAY_UNIT_LABEL.day,
+  year: PAY_UNIT_LABEL.year,
 };
 
-export function formatMoney(amount: number, currency: string = 'GBP') {
-  try {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount}`;
-  }
-}
-
-type PayFields = Pick<
-  Job,
-  | 'employmentType'
-  | 'salaryMin'
-  | 'salaryMax'
-  | 'payRate'
-  | 'rateUnit'
-  | 'currency'
->;
-
-export function formatPay(job: PayFields): string {
-  const currency = job.currency || 'GBP';
-  const isPermanent = job.employmentType === 'permanent';
-  const unit = job.rateUnit ?? (isPermanent ? 'year' : 'hour');
-  const suffix = RATE_UNIT_LABEL[unit];
-  if (!isPermanent && job.payRate != null) {
-    return `${formatMoney(Number(job.payRate), currency)} ${suffix}`;
-  }
-  const min = job.salaryMin != null ? Number(job.salaryMin) : null;
-  const max = job.salaryMax != null ? Number(job.salaryMax) : null;
-  if (min != null && max != null && min !== max) {
-    return `${formatMoney(min, currency)} to ${formatMoney(max, currency)} ${suffix}`;
-  }
-  const single = min ?? max;
-  if (single != null) return `${formatMoney(single, currency)} ${suffix}`;
-  if (job.payRate != null) {
-    return `${formatMoney(Number(job.payRate), currency)} ${suffix}`;
-  }
-  return 'Not set';
-}
-
-export function formatShortDate(value: string | null | undefined) {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
+export { formatJobPay as formatPay } from '@/lib/format';
 
 export function errorMessage(
   error: unknown,

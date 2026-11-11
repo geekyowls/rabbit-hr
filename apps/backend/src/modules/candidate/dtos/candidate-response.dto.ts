@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ApplicationStage, CandidateSource, RightToWork } from '@db/enums';
+import { CandidateSource, RightToWork } from '@db/enums';
 import { UserSummaryDto } from '@shared/dtos/user-summary.dto';
 
 export class CandidateResponseDto {
@@ -75,6 +75,13 @@ export class CandidateResponseDto {
   @ApiPropertyOptional({ nullable: true })
   rating!: number | null;
 
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    example: { preferred_work_mode: 'Hybrid' },
+  })
+  customFields!: Record<string, unknown>;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -92,8 +99,8 @@ export class CandidateLatestApplicationDto {
   @ApiProperty()
   jobTitle!: string;
 
-  @ApiProperty({ enum: ApplicationStage })
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'screening', description: 'Stage key' })
+  stage!: string;
 
   @ApiProperty()
   stageChangedAt!: Date;
@@ -126,8 +133,8 @@ export class CandidateApplicationSummaryDto {
   @ApiPropertyOptional({ nullable: true })
   clientName!: string | null;
 
-  @ApiProperty({ enum: ApplicationStage })
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'screening', description: 'Stage key' })
+  stage!: string;
 
   @ApiPropertyOptional({ nullable: true })
   rejectionReason!: string | null;

@@ -10,6 +10,9 @@ import {
   Plug2,
   Building2,
   Mail,
+  Globe2,
+  Workflow,
+  ListPlus,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/use-permissions';
 import { isSystemAdminAccess } from '@/utils/cookies';
@@ -91,6 +94,30 @@ const settingsCards: SettingsCard[] = [
     icon: Mail,
     permission: PERMISSIONS_ENUM.EMAIL_TEMPLATE_READ,
     tourId: 'settings-email-templates',
+  },
+  {
+    href: '/dashboard/settings/ats',
+    title: 'Hiring preferences',
+    description: 'Currency, region, date format and departments',
+    icon: Globe2,
+    permission: PERMISSIONS_ENUM.ATS_SETTINGS_MANAGE,
+    tourId: 'settings-ats',
+  },
+  {
+    href: '/dashboard/settings/pipeline',
+    title: 'Pipeline stages',
+    description: 'Stages, order and colours of your hiring pipeline',
+    icon: Workflow,
+    permission: PERMISSIONS_ENUM.PIPELINE_STAGE_MANAGE,
+    tourId: 'settings-pipeline',
+  },
+  {
+    href: '/dashboard/settings/custom-fields',
+    title: 'Custom fields',
+    description: 'Extra fields on candidates, jobs and the careers form',
+    icon: ListPlus,
+    permission: PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE,
+    tourId: 'settings-custom-fields',
   },
 ];
 

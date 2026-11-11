@@ -28,4 +28,19 @@ export class ListJobsDto extends ListPaginationDto {
   @IsUUID()
   @IsOptional()
   ownerId?: string;
+
+  @ApiPropertyOptional({ example: 'Engineering' })
+  @IsString()
+  @IsOptional()
+  department?: string;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  hiringManagerId?: string;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  recruiterId?: string;
 }

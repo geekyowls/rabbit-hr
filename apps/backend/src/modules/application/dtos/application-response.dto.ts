@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ApplicationStage, CandidateSource, RightToWork } from '@db/enums';
+import { CandidateSource, PipelineStageCategory, RightToWork } from '@db/enums';
 import { UserSummaryDto } from '@shared/dtos/user-summary.dto';
 
 export class ApplicationAnswerDto {
@@ -89,8 +89,8 @@ export class ApplicationResponseDto {
   @ApiProperty()
   jobId!: string;
 
-  @ApiProperty({ enum: ApplicationStage })
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'screening', description: 'Stage key' })
+  stage!: string;
 
   @ApiPropertyOptional({ nullable: true })
   rejectionReason!: string | null;
@@ -166,8 +166,8 @@ export class BoardCardDto {
   @ApiPropertyOptional({ nullable: true })
   clientName!: string | null;
 
-  @ApiProperty({ enum: ApplicationStage })
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'screening', description: 'Stage key' })
+  stage!: string;
 
   @ApiPropertyOptional({ nullable: true })
   rating!: number | null;
@@ -186,11 +186,29 @@ export class BoardCardDto {
 
   @ApiProperty()
   stageChangedAt!: Date;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Start of the next scheduled interview, if any',
+  })
+  nextInterviewAt!: Date | null;
 }
 
 export class BoardColumnDto {
-  @ApiProperty({ enum: ApplicationStage })
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'screening', description: 'Stage key' })
+  stage!: string;
+
+  @ApiProperty({ example: 'Screening' })
+  name!: string;
+
+  @ApiProperty({ enum: PipelineStageCategory })
+  category!: PipelineStageCategory;
+
+  @ApiProperty({ example: 'blue' })
+  color!: string;
+
+  @ApiProperty()
+  order!: number;
 
   @ApiProperty()
   count!: number;

@@ -1,8 +1,8 @@
 import {
   EMPLOYMENT_TYPE_LABEL,
   WORK_MODE_LABEL,
-  formatPay,
 } from '@/components/jobs/job-utils';
+import { browserLocale, formatDateLong, formatJobPay } from '@/lib/format';
 import type {
   CareersCvExtension,
   CareersJobListItem,
@@ -17,7 +17,7 @@ export const CV_MIME_TYPES: Record<CareersCvExtension, string> = {
 };
 
 export function careersPay(job: CareersJobListItem) {
-  const pay = formatPay({ ...job, currency: job.currency || 'GBP' });
+  const pay = formatJobPay(job, browserLocale());
   return pay === 'Not set' ? null : pay;
 }
 
@@ -29,18 +29,18 @@ export function postedLabel(publishedAt: string | null) {
   if (days <= 0) return 'Posted today';
   if (days === 1) return 'Posted yesterday';
   if (days < 30) return `Posted ${days} days ago`;
-  return `Posted ${posted.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  return `Posted ${formatDateLong(posted, { locale: browserLocale() })}`;
 }
 
 export function formatClosingDate(closingDate: string | null) {
   if (!closingDate) return null;
-  const date = new Date(closingDate);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return (
+    formatDateLong(
+      closingDate,
+      { locale: browserLocale() },
+      { day: 'numeric', month: 'long', year: 'numeric' },
+    ) || null
+  );
 }
 
 export function cvExtension(fileName: string): CareersCvExtension | null {

@@ -2,18 +2,14 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { NotIntegratedBadge, SectionCard } from '@/components/patterns';
+import type { ReportSummary, ReportSummaryRequest } from '@/types/report.type';
 
-export type ReportRange = '30d' | '90d' | '12m';
-
-export interface ReportProps {
-  range: ReportRange;
+export interface LiveReportProps {
+  data: ReportSummary;
+  previous?: ReportSummary;
+  filters: ReportSummaryRequest;
 }
-
-export const RANGE_FACTOR: Record<ReportRange, number> = {
-  '30d': 1,
-  '90d': 2.9,
-  '12m': 11.4,
-};
 
 export const BRAND = '#3F6650';
 export const BRAND_LIGHT = '#8FBFA1';
@@ -39,119 +35,13 @@ export const MONTHS = [
   'Oct',
 ];
 
-export interface KpiRecord {
-  label: string;
-  value: string;
-  unit?: string;
-  delta?: number;
-}
-
-export interface ReportScope {
-  rangeFactor: number;
-  filterFactor: number;
-  rateNudge: number;
-  kpis: React.MutableRefObject<KpiRecord[]>;
-}
-
-export const ReportScopeContext = React.createContext<ReportScope | null>(null);
-
-const STOCK_WORDS = [
-  'open',
-  'active',
-  'reqs',
-  'requisition',
-  'at risk',
-  'pending',
-  'in offer',
-  'headcount',
-];
-
-const RATE_UNITS = ['%', 'days', 'day', 'hours', 'h', 'd', 'x', 'years'];
-const RATE_WORDS = [
-  'per',
-  'avg',
-  'average',
-  'rate',
-  'time',
-  'median',
-  'ratio',
-  'score',
-  'nps',
-  'satisfaction',
-  'retention',
-  'acceptance',
-  'coverage',
-  'response',
-];
-
-function isRateMetric(label: string, unit: string | undefined, raw: string) {
-  const l = label.toLowerCase();
-  return (
-    (unit !== undefined && RATE_UNITS.includes(unit.split(' ')[0])) ||
-    RATE_WORDS.some((w) => l.includes(w)) ||
-    /[%x]$/.test(raw.trim())
-  );
-}
-
-function scaleValue(raw: string, factor: number): string {
-  const match = raw.match(/^([^\d-]*)(-?[\d,]+(?:\.\d+)?)(.*)$/);
-  if (!match) return raw;
-  const [, prefix, num, suffix] = match;
-  const decimals = num.includes('.') ? num.split('.')[1].length : 0;
-  const scaled = parseFloat(num.replace(/,/g, '')) * factor;
-  const formatted =
-    decimals > 0
-      ? scaled.toFixed(decimals)
-      : Math.max(Math.round(scaled), 0).toLocaleString('en-US');
-  return `${prefix}${formatted}${suffix}`;
-}
-
-type KpiChildProps = {
-  label?: string;
-  value?: React.ReactNode;
-  unit?: string;
-  delta?: number;
-  points?: number[];
-};
-
 export function KpiGrid({
   children,
   cols = 4,
-  rangeAware,
 }: {
   children: React.ReactNode;
   cols?: 3 | 4 | 5;
-  rangeAware?: boolean;
 }) {
-  const scope = React.useContext(ReportScopeContext);
-  const records: KpiRecord[] = [];
-  const items = React.Children.map(children, (child) => {
-    if (!React.isValidElement<KpiChildProps>(child)) return child;
-    const { label = '', value, unit, delta } = child.props;
-    if (typeof value !== 'string' && typeof value !== 'number') return child;
-    const raw = String(value);
-    if (!scope) {
-      records.push({ label, value: raw, unit, delta });
-      return child;
-    }
-    const rate = isRateMetric(label, unit, raw);
-    const stock = STOCK_WORDS.some((w) => label.toLowerCase().includes(w));
-    const volume =
-      (rangeAware || stock ? 1 : scope.rangeFactor) * scope.filterFactor;
-    const factor = rate ? scope.rateNudge : volume;
-    const next = factor === 1 ? raw : scaleValue(raw, factor);
-    const nextDelta =
-      delta === undefined || factor === 1
-        ? delta
-        : Math.round((delta + (scope.rateNudge - 1) * 40) * 10) / 10;
-    records.push({ label, value: next, unit, delta: nextDelta });
-    return React.cloneElement(child, { value: next, delta: nextDelta });
-  });
-
-  React.useEffect(() => {
-    if (scope) scope.kpis.current = records;
-  });
-
   return (
     <div
       className={cn(
@@ -161,8 +51,70 @@ export function KpiGrid({
         cols === 5 && 'lg:grid-cols-5',
       )}
     >
-      {items}
+      {children}
     </div>
+  );
+}
+
+export function changePct(
+  current: number | null | undefined,
+  previous: number | null | undefined,
+): number | undefined {
+  if (current == null || previous == null || previous === 0) return undefined;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+export function pointsChange(
+  current: number | null | undefined,
+  previous: number | null | undefined,
+): number | undefined {
+  if (current == null || previous == null) return undefined;
+  return Math.round((current - previous) * 10) / 10;
+}
+
+export function rateLabel(value: number | null | undefined) {
+  return value == null ? '-' : `${value}%`;
+}
+
+export function daysLabel(value: number | null | undefined) {
+  return value == null ? '-' : `${value} d`;
+}
+
+export function ratio(part: number, whole: number) {
+  return whole > 0 ? Math.round((part / whole) * 1000) / 10 : null;
+}
+
+export function PreviewCard({
+  title,
+  subtitle,
+  className,
+  bodyClassName,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  className?: string;
+  bodyClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <SectionCard
+      title={title}
+      subtitle={subtitle}
+      className={className}
+      bodyClassName={bodyClassName}
+      actions={<NotIntegratedBadge />}
+    >
+      {children}
+    </SectionCard>
+  );
+}
+
+export function EmptyReport({ text }: { text: string }) {
+  return (
+    <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+      {text}
+    </p>
   );
 }
 
@@ -356,4 +308,10 @@ export function fmt(n: number) {
 export function money(n: number) {
   if (n >= 1000) return `$${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k`;
   return `$${Math.round(n)}`;
+}
+
+export function flowFunnel(data: ReportSummary) {
+  return data.funnel
+    .filter((s) => s.category !== 'rejected' && s.category !== 'withdrawn')
+    .map((s) => ({ label: s.name, value: s.reached }));
 }

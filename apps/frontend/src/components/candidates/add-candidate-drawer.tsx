@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useResetOnKey } from '@/hooks/use-reset-on-key';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@/lib/zod-resolver';
 import { z } from 'zod/v4';
@@ -25,32 +26,42 @@ import {
   useCreateApplicationMutation,
   useCreateCandidateDocumentMutation,
   useCreateCandidateMutation,
+  useCustomFieldsQuery,
   useUpdateCandidateMutation,
 } from '@/hooks/queries';
+import { useFormatters } from '@/hooks/use-formatters';
+import { currencySymbol } from '@/lib/format';
+import { CustomFieldsForm } from '@/components/custom-fields/custom-fields-form';
+import {
+  buildCustomFieldsSchema,
+  mergeCustomFieldDefaults,
+  toCustomFieldFormValues,
+  toCustomFieldPayload,
+  type CustomFieldFormValues,
+  type CustomFieldLike,
+} from '@/components/custom-fields/custom-field-utils';
 import {
   CANDIDATE_SOURCES,
   RIGHT_TO_WORK_OPTIONS,
   type CandidateDetail,
   type CreateCandidateRequest,
 } from '@/types/candidate.type';
-import type { ApplicationStage } from '@/types/application.type';
 import {
-  ACTIVE_STAGES,
   RIGHT_TO_WORK_LABEL,
   SOURCE_LABEL,
-  STAGE_LABEL,
   UPLOAD_ACCEPT,
+  usePipelineStageMeta,
   errorMessage,
   uploadDocumentFile,
 } from '@/components/applications/application-meta';
 import { usePublishedJobs } from '@/components/applications/add-to-job-dialog';
 
 const NO_JOB = 'none';
-const UK_PHONE = /^(?:\+44|0)\d{9,10}$/;
+const PHONE = /^\+?\d{6,15}$/;
 const LINKEDIN_URL = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
 
-const cleanPhone = (v: string) => v.replace(/[\s()-]/g, '');
-const cleanAmount = (v: string) => v.replace(/[,£\s]/g, '');
+const cleanPhone = (v: string) => v.replace(/[\s().-]/g, '');
+const cleanAmount = (v: string) => v.replace(/[^\d.]/g, '');
 
 const candidateSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required').max(100),
@@ -60,8 +71,8 @@ const candidateSchema = z.object({
     .string()
     .trim()
     .refine(
-      (v) => !v || UK_PHONE.test(cleanPhone(v)),
-      'Enter a UK number, for example 07700 900123',
+      (v) => !v || PHONE.test(cleanPhone(v)),
+      'Enter a phone number, for example +1 555 010 0000',
     ),
   location: z.string().trim().max(200),
   headline: z.string().trim().max(250),
@@ -84,7 +95,7 @@ const candidateSchema = z.object({
     .trim()
     .refine(
       (v) => !v || /^\d+(\.\d{1,2})?$/.test(cleanAmount(v)),
-      'Enter an amount in GBP',
+      'Enter an amount',
     ),
   linkedinUrl: z
     .string()
@@ -92,12 +103,14 @@ const candidateSchema = z.object({
     .refine((v) => !v || LINKEDIN_URL.test(v), 'Enter a LinkedIn profile URL'),
   rating: z.number().min(0).max(5),
   jobId: z.string(),
-  stage: z.enum(ACTIVE_STAGES as [ApplicationStage, ...ApplicationStage[]]),
+  stage: z.string().min(1),
   notes: z.string().trim().max(5000),
   cv: z.custom<File | null>((v) => v === null || v instanceof File),
 });
 
-type CandidateFormData = z.infer<typeof candidateSchema>;
+type CandidateFormData = z.infer<typeof candidateSchema> & {
+  customFields: CustomFieldFormValues;
+};
 
 const DEFAULTS: CandidateFormData = {
   firstName: '',
@@ -121,9 +134,13 @@ const DEFAULTS: CandidateFormData = {
   stage: 'applied',
   notes: '',
   cv: null,
+  customFields: {},
 };
 
-function toFormValues(c: CandidateDetail): CandidateFormData {
+function toFormValues(
+  c: CandidateDetail,
+  customFields: CustomFieldLike[],
+): CandidateFormData {
   return {
     ...DEFAULTS,
     firstName: c.firstName,
@@ -144,6 +161,7 @@ function toFormValues(c: CandidateDetail): CandidateFormData {
     expectedSalary: c.expectedSalary !== null ? String(c.expectedSalary) : '',
     linkedinUrl: c.linkedinUrl ?? '',
     rating: c.rating ?? 0,
+    customFields: toCustomFieldFormValues(customFields, c.customFields),
   };
 }
 
@@ -159,7 +177,10 @@ const splitList = (v: string) =>
 
 const orNull = (v: string) => (v ? v : null);
 
-function toPayload(data: CandidateFormData): CreateCandidateRequest {
+function toPayload(
+  data: CandidateFormData,
+  customFields: CustomFieldLike[],
+): CreateCandidateRequest {
   return {
     firstName: data.firstName,
     lastName: data.lastName,
@@ -180,6 +201,7 @@ function toPayload(data: CandidateFormData): CreateCandidateRequest {
       : null,
     linkedinUrl: orNull(data.linkedinUrl),
     rating: data.rating > 0 ? data.rating : null,
+    customFields: toCustomFieldPayload(customFields, data.customFields),
   };
 }
 
@@ -224,6 +246,20 @@ export function AddCandidateDrawer({
   const createActivity = useCreateActivityMutation();
   const { data: jobsData } = usePublishedJobs(open && !isEdit);
   const jobs = jobsData?.data ?? [];
+  const stageMeta = usePipelineStageMeta(open && !isEdit);
+  const fmt = useFormatters();
+  const { data: fieldDefs } = useCustomFieldsQuery(
+    { entity: 'candidate', activeOnly: true },
+    open,
+  );
+  const customFields = useMemo(() => fieldDefs ?? [], [fieldDefs]);
+  const schema = useMemo(
+    () =>
+      candidateSchema.extend({
+        customFields: buildCustomFieldsSchema(customFields),
+      }),
+    [customFields],
+  );
 
   const {
     register,
@@ -232,22 +268,38 @@ export function AddCandidateDrawer({
     reset,
     setError,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<CandidateFormData>({
-    resolver: zodResolver(candidateSchema),
+    resolver: zodResolver(schema),
     defaultValues: DEFAULTS,
   });
 
   const [cv, jobId] = useWatch({ control, name: ['cv', 'jobId'] });
 
+  useResetOnKey(
+    open ? `${candidate?.id ?? 'new'}:${defaultJobId ?? ''}` : null,
+    () =>
+      reset(
+        candidate
+          ? toFormValues(candidate, customFields)
+          : {
+              ...DEFAULTS,
+              jobId: defaultJobId ?? NO_JOB,
+              customFields: toCustomFieldFormValues(customFields),
+            },
+      ),
+  );
+
   useEffect(() => {
     if (!open) return;
-    reset(
-      candidate
-        ? toFormValues(candidate)
-        : { ...DEFAULTS, jobId: defaultJobId ?? NO_JOB },
+    const merged = mergeCustomFieldDefaults(
+      customFields,
+      getValues('customFields'),
+      candidate?.customFields,
     );
-  }, [open, candidate, defaultJobId, reset]);
+    if (merged) setValue('customFields', merged);
+  }, [open, customFields, candidate, getValues, setValue]);
 
   const attachCv = async (candidateId: string, file: File) => {
     try {
@@ -273,7 +325,7 @@ export function AddCandidateDrawer({
   };
 
   const save = async (data: CandidateFormData) => {
-    const payload = toPayload(data);
+    const payload = toPayload(data, customFields);
     if (candidate) {
       const updated = await updateCandidate.mutateAsync({
         id: candidate.id,
@@ -320,7 +372,12 @@ export function AddCandidateDrawer({
       try {
         await save(data);
         if (addAnother && !isEdit) {
-          reset({ ...DEFAULTS, jobId: data.jobId, source: data.source });
+          reset({
+            ...DEFAULTS,
+            jobId: data.jobId,
+            source: data.source,
+            customFields: toCustomFieldFormValues(customFields),
+          });
         } else {
           onOpenChange(false);
         }
@@ -407,7 +464,7 @@ export function AddCandidateDrawer({
             <Field label="Phone" error={errors.phone?.message}>
               <Input
                 className="h-9"
-                placeholder="07700 900123"
+                placeholder="+1 555 010 0000"
                 {...register('phone')}
               />
             </Field>
@@ -416,7 +473,7 @@ export function AddCandidateDrawer({
             <Field label="Location" error={errors.location?.message}>
               <Input
                 className="h-9"
-                placeholder="Manchester"
+                placeholder="City or region"
                 {...register('location')}
               />
             </Field>
@@ -518,15 +575,15 @@ export function AddCandidateDrawer({
               />
             </Field>
             <Field
-              label="Expected salary (GBP)"
+              label={`Expected salary (${fmt.currency})`}
               error={errors.expectedSalary?.message}
             >
               <div className="relative">
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  £
+                  {currencySymbol(fmt.currency, fmt.settings.locale)}
                 </span>
                 <Input
-                  className="h-9 pl-6"
+                  className="h-9 pl-8"
                   inputMode="decimal"
                   placeholder="32,000"
                   {...register('expectedSalary')}
@@ -598,9 +655,9 @@ export function AddCandidateDrawer({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ACTIVE_STAGES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {STAGE_LABEL[s]}
+                        {stageMeta.flowStages.map((s) => (
+                          <SelectItem key={s.key} value={s.key}>
+                            {s.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -655,6 +712,13 @@ export function AddCandidateDrawer({
             </label>
           )}
         </section>
+
+        {customFields.length > 0 && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold">Additional details</h3>
+            <CustomFieldsForm fields={customFields} control={control} />
+          </section>
+        )}
 
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Assessment</h3>

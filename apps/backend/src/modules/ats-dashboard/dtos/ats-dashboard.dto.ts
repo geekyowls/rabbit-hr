@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ApplicationStage } from '@db/enums';
+import { PipelineStageCategory } from '@db/enums';
 import { ActivityResponseDto } from '@modules/activity/dtos/activity.dto';
 import { TaskResponseDto } from '@modules/task/dtos/task.dto';
 
@@ -21,8 +21,17 @@ export class AtsDashboardTotalsDto {
 }
 
 export class StageCountDto {
-  @ApiProperty({ enum: ApplicationStage })
-  stage!: ApplicationStage;
+  @ApiProperty({ example: 'screening', description: 'Stage key' })
+  stage!: string;
+
+  @ApiProperty({ example: 'Screening' })
+  name!: string;
+
+  @ApiProperty({ enum: PipelineStageCategory })
+  category!: PipelineStageCategory;
+
+  @ApiProperty({ example: 'blue' })
+  color!: string;
 
   @ApiProperty()
   count!: number;

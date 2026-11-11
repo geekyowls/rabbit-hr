@@ -1,5 +1,6 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
 import { useState } from 'react';
 import Link from 'next/link';
 import {
@@ -56,7 +57,6 @@ import {
 import { TaskFormDialog } from '@/components/tasks/task-form-dialog';
 import {
   TASK_DUE_CLASS,
-  formatTaskDue,
   getTaskDueState,
   taskLinkHref,
   taskLinkLabel,
@@ -92,6 +92,7 @@ function errorText(err: unknown, fallback: string) {
 
 function TasksContent() {
   useBreadcrumb([{ label: 'Tasks', active: true }]);
+  const fmt = useFormatters();
   const { user } = useSession();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission(PERMISSIONS_ENUM.TASK_CREATE);
@@ -227,7 +228,7 @@ function TasksContent() {
       header: 'Due',
       cell: ({ row }) => {
         const state = getTaskDueState(row.original);
-        const label = formatTaskDue(row.original.dueAt);
+        const label = fmt.date(row.original.dueAt);
         if (!label)
           return <span className="text-muted-foreground">No date</span>;
         return (

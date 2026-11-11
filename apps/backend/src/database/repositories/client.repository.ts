@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { ClientEntity } from '../entities';
-import { ApplicationStage, JobStatus } from '../enums';
+import { JobStatus, PipelineStageCategory } from '../enums';
 
 export interface ClientStats {
   contactCount: number;
@@ -47,10 +47,15 @@ export class ClientRepository extends Repository<ClientEntity> {
         (SELECT COUNT(*) FROM jobs j WHERE j."clientId" = c.id) AS "jobCount",
         (SELECT COUNT(*) FROM jobs j WHERE j."clientId" = c.id AND j.status = $3) AS "openJobCount",
         (SELECT COUNT(*) FROM applications a JOIN jobs j ON j.id = a."jobId" WHERE j."clientId" = c.id) AS "applicationCount",
-        (SELECT COUNT(*) FROM applications a JOIN jobs j ON j.id = a."jobId" WHERE j."clientId" = c.id AND a.stage = $4) AS "placementCount"
+        (SELECT COUNT(*) FROM applications a JOIN jobs j ON j.id = a."jobId" JOIN pipeline_stages ps ON ps."organizationId" = a."organizationId" AND ps.key = a.stage WHERE j."clientId" = c.id AND ps.category = $4) AS "placementCount"
        FROM clients c
        WHERE c."organizationId" = $1 AND c.id = ANY($2::uuid[])`,
-      [organizationId, clientIds, JobStatus.PUBLISHED, ApplicationStage.PLACED],
+      [
+        organizationId,
+        clientIds,
+        JobStatus.PUBLISHED,
+        PipelineStageCategory.HIRED,
+      ],
     );
 
     for (const row of rows) {

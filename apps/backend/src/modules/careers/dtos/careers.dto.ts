@@ -9,6 +9,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -18,7 +19,7 @@ import {
 } from 'class-validator';
 import { ListPaginationDto } from '@shared/dtos/list-pagination.dto';
 import { Trim } from '@shared/transformers/trim';
-import { EmploymentType, RateUnit, WorkMode } from '@db/enums';
+import { CustomFieldType, EmploymentType, RateUnit, WorkMode } from '@db/enums';
 import { ScreeningQuestionDto } from '@modules/job/dtos/create-job.dto';
 
 export const CAREERS_CV_EXTENSIONS = ['pdf', 'doc', 'docx'] as const;
@@ -125,6 +126,15 @@ export class ApplyToJobDto {
   @IsOptional()
   @MaxLength(255)
   cvFileName?: string;
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    description: 'Values for candidate custom fields shown on the careers form',
+  })
+  @IsObject()
+  @IsOptional()
+  customFields?: Record<string, unknown>;
 }
 
 export class CareersUploadUrlDto {
@@ -200,7 +210,27 @@ export class CareersJobListItemDto {
   skills!: string[];
 }
 
+export class CareersCustomFieldDto {
+  @ApiProperty({ example: 'preferred_work_mode' })
+  key!: string;
+
+  @ApiProperty({ example: 'Preferred work mode' })
+  label!: string;
+
+  @ApiProperty({ enum: CustomFieldType })
+  type!: CustomFieldType;
+
+  @ApiProperty({ type: [String] })
+  options!: string[];
+
+  @ApiProperty()
+  required!: boolean;
+}
+
 export class CareersJobDetailDto extends CareersJobListItemDto {
+  @ApiProperty({ type: [CareersCustomFieldDto] })
+  customFields!: CareersCustomFieldDto[];
+
   @ApiPropertyOptional({ nullable: true })
   description!: string | null;
 

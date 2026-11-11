@@ -4,6 +4,10 @@ import type {
   ScreeningQuestion,
   WorkMode,
 } from './job.type';
+import type {
+  CareersCustomField,
+  CustomFieldValues,
+} from './custom-field.type';
 
 export const CAREERS_CV_EXTENSIONS = ['pdf', 'doc', 'docx'] as const;
 export type CareersCvExtension = (typeof CAREERS_CV_EXTENSIONS)[number];
@@ -38,6 +42,7 @@ export interface CareersJobDetail extends CareersJobListItem {
   requirements: string | null;
   screeningQuestions: ScreeningQuestion[];
   requiredDocuments: string[];
+  customFields: CareersCustomField[];
 }
 
 export interface ListCareersJobsParams {
@@ -65,6 +70,7 @@ export interface ApplyToJobRequest {
   gdprConsent: true;
   cvFileKey?: string;
   cvFileName?: string;
+  customFields?: CustomFieldValues;
 }
 
 export interface ApplyToJobResponse {

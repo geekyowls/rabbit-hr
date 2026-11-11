@@ -5,6 +5,7 @@ import { UserEntity } from './user.entity';
 import { ClientEntity } from './client.entity';
 import { numericTransformer } from '../numeric.transformer';
 import { EmploymentType, JobStatus, RateUnit, WorkMode } from '../enums';
+import type { CustomFieldValues } from './custom-field-definition.entity';
 
 export interface ScreeningQuestion {
   id: string;
@@ -16,6 +17,7 @@ export interface ScreeningQuestion {
 @Index(['organizationId', 'reference'], { unique: true })
 @Index(['organizationId', 'status'])
 @Index(['organizationId', 'clientId'])
+@Index(['organizationId', 'department'])
 export class JobEntity extends BaseEntity {
   @Column({ type: 'uuid' })
   organizationId: string;
@@ -114,6 +116,21 @@ export class JobEntity extends BaseEntity {
   @Column({ type: 'text', array: true, default: '{}' })
   requiredDocuments: string[];
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  department: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  hiringManagerId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  recruiterId: string | null;
+
+  @Column({ type: 'uuid', array: true, default: '{}' })
+  hiringTeamIds: string[];
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  customFields: CustomFieldValues;
+
   @ManyToOne(() => OrganizationEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'organizationId' })
   organization: OrganizationEntity;
@@ -125,4 +142,12 @@ export class JobEntity extends BaseEntity {
   @ManyToOne(() => UserEntity, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'ownerId' })
   owner: UserEntity | null;
+
+  @ManyToOne(() => UserEntity, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'hiringManagerId' })
+  hiringManager: UserEntity | null;
+
+  @ManyToOne(() => UserEntity, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'recruiterId' })
+  recruiter: UserEntity | null;
 }

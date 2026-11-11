@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ApplicationRepository } from '@db/repositories';
-import { APPLICATION_STAGE_ORDER, ApplicationStage } from '@db/enums';
+import { InterviewStatus } from '@db/enums';
+import { PipelineStageService } from '@shared/services/pipeline-stage.service';
 import { GetApplicationBoardCommand } from './get-application-board.command';
 
 export interface BoardCardRow {
@@ -15,19 +16,23 @@ export interface BoardCardRow {
   jobReference: string;
   clientId: string | null;
   clientName: string | null;
-  stage: ApplicationStage;
+  stage: string;
   rating: number | null;
   shortlisted: boolean;
   source: string;
   ownerId: string | null;
   appliedAt: Date;
   stageChangedAt: Date;
+  nextInterviewAt: Date | null;
   stageCount: string;
 }
 
 @Injectable()
 export class GetApplicationBoard {
-  constructor(private readonly applicationRepository: ApplicationRepository) {}
+  constructor(
+    private readonly applicationRepository: ApplicationRepository,
+    private readonly pipelineStageService: PipelineStageService,
+  ) {}
 
   async execute(command: GetApplicationBoardCommand) {
     const params: unknown[] = [];
@@ -48,6 +53,12 @@ export class GetApplicationBoard {
       whereClause += ` AND (c."firstName" ILIKE ${search} OR c."lastName" ILIKE ${search} OR CONCAT(c."firstName", ' ', c."lastName") ILIKE ${search} OR c.email ILIKE ${search} OR j.title ILIKE ${search})`;
     }
     const limit = addParam(command.limitPerStage);
+    const scheduled = addParam(InterviewStatus.SCHEDULED);
+
+    const stages = await this.pipelineStageService.getStages(
+      command.organizationId,
+      { activeOnly: true },
+    );
 
     const rows: BoardCardRow[] = await this.applicationRepository.query(
       `WITH ranked AS (
@@ -78,14 +89,34 @@ export class GetApplicationBoard {
          LEFT JOIN clients cl ON cl.id = j."clientId"
          WHERE ${whereClause}
        )
-       SELECT * FROM ranked WHERE rn <= ${limit} ORDER BY rn`,
+       SELECT
+         r.*,
+         (
+           SELECT MIN(i."scheduledAt")
+           FROM interviews i
+           WHERE i."organizationId" = $1
+             AND i."applicationId" = r.id
+             AND i.status = ${scheduled}
+             AND i."scheduledAt" >= NOW()
+         ) AS "nextInterviewAt"
+       FROM ranked r
+       WHERE r.rn <= ${limit}
+       ORDER BY r.rn`,
       params,
     );
 
     const columns = new Map(
-      APPLICATION_STAGE_ORDER.map((stage) => [
-        stage,
-        { stage, count: 0, cards: [] as Omit<BoardCardRow, 'stageCount'>[] },
+      stages.map((stage) => [
+        stage.key,
+        {
+          stage: stage.key,
+          name: stage.name,
+          category: stage.category,
+          color: stage.color,
+          order: stage.order,
+          count: 0,
+          cards: [] as Omit<BoardCardRow, 'stageCount'>[],
+        },
       ]),
     );
 

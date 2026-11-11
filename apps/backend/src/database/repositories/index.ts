@@ -20,3 +20,8 @@ export * from './activity.repository';
 export * from './task.repository';
 export * from './candidate-document.repository';
 export * from './email-template.repository';
+export * from './pipeline-stage.repository';
+export * from './custom-field-definition.repository';
+export * from './interview.repository';
+export * from './scorecard.repository';
+export * from './offer.repository';

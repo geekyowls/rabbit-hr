@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Briefcase,
   Building2,
+  CalendarClock,
   Clock,
   Globe,
   Star,
@@ -15,7 +16,8 @@ import {
 import { cn } from '@/lib/utils';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { LinkedInIcon } from '@/components/icons/brand-icons';
-import { AvatarStack, RatingStars } from '@/components/patterns';
+import { RatingStars } from '@/components/patterns';
+import { useFormatters } from '@/hooks/use-formatters';
 import {
   Tooltip,
   TooltipContent,
@@ -27,7 +29,6 @@ import { SOURCE_LABEL } from '@/components/applications/application-meta';
 import {
   SAMPLE_NEXT_STEP,
   daysInStage,
-  sampleInterviewers,
   sampleMatchScore,
   slaState,
   type PipelineCandidate,
@@ -148,7 +149,7 @@ export function PipelineCard({
 }) {
   const sla = slaState(c);
   const days = daysInStage(c);
-  const interviewers = sampleInterviewers(c);
+  const fmt = useFormatters();
   return (
     <div
       role="button"
@@ -235,20 +236,30 @@ export function PipelineCard({
       )}
 
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
-        <span
-          title="Sample next step, not integrated"
-          className="truncate text-[11px] font-medium text-foreground/60"
-        >
-          {SAMPLE_NEXT_STEP[c.stage]}
-        </span>
+        {c.nextInterviewAt ? (
+          <span
+            title="Next scheduled interview"
+            className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-[#3F6650] dark:text-[#8FBFA1]"
+          >
+            <CalendarClock className="h-3 w-3 shrink-0" />
+            <span className="truncate">
+              {fmt.dateLong(c.nextInterviewAt, {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              })}
+              , {fmt.time(c.nextInterviewAt)}
+            </span>
+          </span>
+        ) : (
+          <span
+            title="Sample next step, not integrated"
+            className="truncate text-[11px] font-medium text-foreground/60"
+          >
+            {SAMPLE_NEXT_STEP[c.stageCategory]}
+          </span>
+        )}
         <div className="flex shrink-0 items-center gap-1.5">
-          {interviewers.length > 0 && (
-            <AvatarStack
-              items={interviewers.map((name) => ({ name }))}
-              max={3}
-              size={18}
-            />
-          )}
           <span
             title={`${days} days in stage`}
             className={cn(

@@ -1,7 +1,17 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
 import { useState } from 'react';
-import { Briefcase, Mail, Plus, Star, X } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Briefcase,
+  CalendarPlus,
+  FileSignature,
+  Mail,
+  Plus,
+  Star,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import {
@@ -24,21 +34,17 @@ import {
   useUpdateApplicationMutation,
   useUpdateApplicationStageMutation,
 } from '@/hooks/queries';
-import {
-  APPLICATION_STAGES,
-  type ApplicationStage,
-} from '@/types/application.type';
+import type { ApplicationStage } from '@/types/application.type';
 import type {
   CandidateApplicationSummary,
   CandidateDetail,
 } from '@/types/candidate.type';
 import {
-  STAGE_LABEL,
-  STAGE_TONE,
   daysSince,
   errorMessage,
-  shortDate,
+  usePipelineStageMeta,
 } from '@/components/applications/application-meta';
+import { StagePill } from '@/components/applications/stage-pill';
 import { RejectApplicationDialog } from '@/components/applications/reject-application-dialog';
 
 export function CandidateApplicationsTab({
@@ -46,16 +52,20 @@ export function CandidateApplicationsTab({
   focusedApplicationId,
   onEmail,
   onAddToJob,
+  onSchedule,
 }: {
   candidate: CandidateDetail;
   focusedApplicationId?: string | null;
   onEmail: (application: CandidateApplicationSummary) => void;
   onAddToJob: () => void;
+  onSchedule: (application: CandidateApplicationSummary) => void;
 }) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission(PERMISSIONS_ENUM.APPLICATION_UPDATE);
   const updateStage = useUpdateApplicationStageMutation();
   const updateApplication = useUpdateApplicationMutation();
+  const stageMeta = usePipelineStageMeta();
+  const fmt = useFormatters();
   const [rejecting, setRejecting] =
     useState<CandidateApplicationSummary | null>(null);
   const name = `${candidate.firstName} ${candidate.lastName}`;
@@ -66,7 +76,7 @@ export function CandidateApplicationsTab({
     rejectionReason?: string,
   ) => {
     if (stage === app.stage) return;
-    if (stage === 'rejected' && !rejectionReason) {
+    if (stageMeta.isRejected(stage) && !rejectionReason) {
       setRejecting(app);
       return;
     }
@@ -75,7 +85,7 @@ export function CandidateApplicationsTab({
         id: app.id,
         data: { stage, ...(rejectionReason && { rejectionReason }) },
       });
-      toast.success(`Moved to ${STAGE_LABEL[stage]}`);
+      toast.success(`Moved to ${stageMeta.label(stage)}`);
     } catch (err) {
       toast.error('Could not move stage', errorMessage(err));
       throw err;
@@ -144,7 +154,7 @@ export function CandidateApplicationsTab({
                     .join(' · ')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Applied {shortDate(app.appliedAt)} ·{' '}
+                  Applied {fmt.date(app.appliedAt)} ·{' '}
                   {daysSince(app.stageChangedAt)}d in stage
                 </p>
               </div>
@@ -178,15 +188,13 @@ export function CandidateApplicationsTab({
               >
                 <SelectTrigger className="h-7 w-[140px] text-xs">
                   <SelectValue>
-                    <StatusPill tone={STAGE_TONE[app.stage]} dot>
-                      {STAGE_LABEL[app.stage]}
-                    </StatusPill>
+                    <StagePill stage={app.stage} />
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {APPLICATION_STAGES.map((s) => (
-                    <SelectItem key={s} value={s} className="text-xs">
-                      {STAGE_LABEL[s]}
+                  {stageMeta.stages.map((s) => (
+                    <SelectItem key={s.key} value={s.key} className="text-xs">
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -194,7 +202,7 @@ export function CandidateApplicationsTab({
             </div>
           </div>
 
-          {app.stage === 'rejected' && app.rejectionReason && (
+          {stageMeta.isRejected(app.stage) && app.rejectionReason && (
             <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-400">
               Rejected: {app.rejectionReason}
             </p>
@@ -221,15 +229,36 @@ export function CandidateApplicationsTab({
                   Send email
                 </ToolbarButton>
               </PermissionGuard>
-              {canUpdate && app.stage !== 'rejected' && (
+              <PermissionGuard permissions={PERMISSIONS_ENUM.INTERVIEW_CREATE}>
                 <ToolbarButton
-                  variant="danger"
-                  icon={X}
-                  onClick={() => setRejecting(app)}
+                  icon={CalendarPlus}
+                  onClick={() => onSchedule(app)}
                 >
-                  Reject
+                  Schedule interview
                 </ToolbarButton>
+              </PermissionGuard>
+              {!stageMeta.isRejected(app.stage) && (
+                <PermissionGuard permissions={PERMISSIONS_ENUM.OFFER_CREATE}>
+                  <Link
+                    href={`/dashboard/offers?new=1&applicationId=${app.id}`}
+                  >
+                    <ToolbarButton icon={FileSignature}>
+                      Make offer
+                    </ToolbarButton>
+                  </Link>
+                </PermissionGuard>
               )}
+              {canUpdate &&
+                stageMeta.rejectKey &&
+                !stageMeta.isRejected(app.stage) && (
+                  <ToolbarButton
+                    variant="danger"
+                    icon={X}
+                    onClick={() => setRejecting(app)}
+                  >
+                    Reject
+                  </ToolbarButton>
+                )}
             </div>
           </div>
         </div>
@@ -240,7 +269,9 @@ export function CandidateApplicationsTab({
         onOpenChange={(o) => !o && setRejecting(null)}
         candidateName={name}
         onConfirm={async (reason) => {
-          if (rejecting) await moveStage(rejecting, 'rejected', reason);
+          if (rejecting && stageMeta.rejectKey) {
+            await moveStage(rejecting, stageMeta.rejectKey, reason);
+          }
         }}
       />
     </div>

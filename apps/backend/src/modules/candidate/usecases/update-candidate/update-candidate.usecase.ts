@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import { Not } from 'typeorm';
 import { CandidateRepository, UserRepository } from '@db/repositories';
+import { CustomFieldEntityType } from '@db/enums';
 import { pickDefined } from '@shared/helpers/pick-defined';
+import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
 import { GetCandidate } from '../get-candidate/get-candidate.usecase';
 import { UpdateCandidateCommand } from './update-candidate.command';
 
@@ -15,6 +17,7 @@ export class UpdateCandidate {
     private readonly candidateRepository: CandidateRepository,
     private readonly userRepository: UserRepository,
     private readonly getCandidate: GetCandidate,
+    private readonly customFieldValidator: CustomFieldValidator,
   ) {}
 
   async execute(command: UpdateCandidateCommand) {
@@ -28,7 +31,9 @@ export class UpdateCandidate {
       throw new NotFoundException('Candidate not found');
     }
 
-    const { gdprConsentAt, email, ...rest } = pickDefined(command.payload);
+    const { gdprConsentAt, email, customFields, ...rest } = pickDefined(
+      command.payload,
+    );
 
     if (email && email.toLowerCase() !== candidate.email) {
       const duplicate = await this.candidateRepository.exists({
@@ -49,6 +54,15 @@ export class UpdateCandidate {
       rest.ownerId,
       command.organizationId,
     );
+
+    if (customFields !== undefined) {
+      candidate.customFields = await this.customFieldValidator.validate(
+        command.organizationId,
+        CustomFieldEntityType.CANDIDATE,
+        customFields,
+        { existing: candidate.customFields },
+      );
+    }
 
     Object.assign(candidate, rest);
     if (gdprConsentAt !== undefined) {

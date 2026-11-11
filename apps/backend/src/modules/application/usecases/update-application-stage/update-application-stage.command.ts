@@ -1,26 +1,25 @@
 import {
-  IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
-  ValidateIf,
 } from 'class-validator';
 import { OrganizationCommand } from '@shared/commands/organization.command';
-import { ApplicationStage } from '@db/enums';
+import { STAGE_KEY_PATTERN } from '@modules/pipeline-stage/dtos/pipeline-stage.dto';
 
 export class UpdateApplicationStageCommand extends OrganizationCommand {
   @IsUUID()
   readonly applicationId: string;
 
-  @IsEnum(ApplicationStage)
-  readonly stage: ApplicationStage;
+  @IsString()
+  @Matches(STAGE_KEY_PATTERN)
+  readonly stage: string;
 
-  @ValidateIf(
-    (o: UpdateApplicationStageCommand) => o.stage === ApplicationStage.REJECTED,
-  )
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
+  @IsOptional()
   readonly rejectionReason?: string;
 }

@@ -3,6 +3,8 @@ import * as bcrypt from 'bcrypt';
 import { ALL_PERMISSIONS } from '@boilerplate/core';
 import AppDataSource from '../src/database/data-source';
 import { seedAts } from './seed-ats';
+import { seedAtsPhase2 } from './seed-ats-phase2';
+import { seedAtsPhase2b } from './seed-ats-phase2b';
 import {
   UserEntity,
   OrganizationEntity,
@@ -184,11 +186,14 @@ async function seed() {
         `Synced ${adminRole.name} role permissions for ${organization.name}`,
       );
 
-      await seedAts(AppDataSource, {
+      const atsContext = {
         organizationId: organization.id,
         adminUserId: adminUser.id,
         adminRoleId: adminRole.id,
-      });
+      };
+      await seedAts(AppDataSource, atsContext);
+      await seedAtsPhase2(AppDataSource, atsContext);
+      await seedAtsPhase2b(AppDataSource, atsContext);
 
       console.log(
         `Careers page slug: ${organization.slug} (GET /api/v1/public/careers/${organization.slug}/jobs)`,

@@ -9,7 +9,6 @@ import {
   StatusPill,
   ToolbarButton,
   IconButton,
-  NotIntegratedBadge,
 } from '@/components/patterns';
 import {
   Select,
@@ -24,25 +23,20 @@ import { PermissionGuard } from '@/components/auth/permission-guard';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { useSession } from '@/contexts/session-context';
 import { JOB_STATUSES, type JobDetail, type JobStatus } from '@/types/job.type';
-import { JOB_PEOPLE } from './job-form-drawer';
+import { useCustomFieldsQuery } from '@/hooks/queries';
+import { useFormatters } from '@/hooks/use-formatters';
+import { CustomFieldsView } from '@/components/custom-fields/custom-fields-view';
+import type { UserSummary } from '@/types/common.type';
 import {
   EMPLOYMENT_TYPE_LABEL,
   JOB_STATUS_LABEL,
   JOB_STATUS_TONE,
-  RATE_UNIT_LABEL,
   WORK_MODE_LABEL,
-  formatMoney,
-  formatPay,
-  formatShortDate,
 } from './job-utils';
-
-const STAGES = [
-  { key: 'applied', label: 'Applied' },
-  { key: 'screening', label: 'Screening' },
-  { key: 'interview', label: 'Interview' },
-  { key: 'offer', label: 'Offer' },
-  { key: 'placed', label: 'Placed' },
-] as const;
+import {
+  usePipelineStageMeta,
+  userLabel,
+} from '@/components/applications/application-meta';
 
 function TagList({ items, empty }: { items: string[]; empty: string }) {
   if (items.length === 0)
@@ -82,29 +76,54 @@ export function JobDetailDrawer({
 }) {
   const { organization } = useSession();
   const slug = organization?.slug;
+  const { flowStages, closedStages } = usePipelineStageMeta(open);
+  const fmt = useFormatters();
+  const { data: fieldDefs = [] } = useCustomFieldsQuery(
+    { entity: 'job', activeOnly: true },
+    open,
+  );
+
+  const team: { user: UserSummary; role: string }[] = job
+    ? [
+        ...(job.hiringManager
+          ? [{ user: job.hiringManager, role: 'Hiring manager' }]
+          : []),
+        ...(job.recruiter ? [{ user: job.recruiter, role: 'Recruiter' }] : []),
+        ...(job.hiringTeam ?? [])
+          .filter(
+            (u) => u.id !== job.hiringManagerId && u.id !== job.recruiterId,
+          )
+          .map((user) => ({ user, role: 'Team member' })),
+      ]
+    : [];
 
   const details: [string, string][] = job
     ? [
         ['Reference', job.reference],
         ['Client', job.client?.name ?? 'No client'],
+        ['Department', job.department || 'Not set'],
         ['Location', job.location || 'Not set'],
         ['Work mode', WORK_MODE_LABEL[job.workMode]],
         ['Employment type', EMPLOYMENT_TYPE_LABEL[job.employmentType]],
         ['Openings', String(job.openings)],
         [
           job.employmentType === 'permanent' ? 'Salary' : 'Pay rate',
-          formatPay(job),
+          fmt.pay(job),
         ],
         ...(job.employmentType !== 'permanent' && job.chargeRate != null
           ? ([
               [
                 'Charge rate',
-                `${formatMoney(Number(job.chargeRate), job.currency || 'GBP')} ${RATE_UNIT_LABEL[job.rateUnit ?? 'hour']}`,
+                fmt.payRate(
+                  Number(job.chargeRate),
+                  job.rateUnit ?? 'hour',
+                  job.currency || fmt.currency,
+                ),
               ],
             ] as [string, string][])
           : []),
-        ['Closing date', formatShortDate(job.closingDate) || 'Not set'],
-        ['Published', formatShortDate(job.publishedAt) || 'Not published'],
+        ['Closing date', fmt.date(job.closingDate) || 'Not set'],
+        ['Published', fmt.date(job.publishedAt) || 'Not published'],
         [
           'Owner',
           job.owner
@@ -117,7 +136,7 @@ export function JobDetailDrawer({
     : [];
 
   const other = job
-    ? (job.stageCounts?.rejected ?? 0) + (job.stageCounts?.withdrawn ?? 0)
+    ? closedStages.reduce((n, s) => n + (job.stageCounts?.[s.key] ?? 0), 0)
     : 0;
 
   return (
@@ -207,29 +226,50 @@ export function JobDetailDrawer({
             </dl>
           </PanelSection>
 
-          <PanelSection title="Hiring team" action={<NotIntegratedBadge />}>
-            <ul className="divide-y divide-border rounded-md border border-border">
-              {[
-                ['Hiring manager', JOB_PEOPLE[0]],
-                ['Recruiter', JOB_PEOPLE[3]],
-              ].map(([role, name]) => (
-                <li
-                  key={role}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm"
-                >
-                  <InitialsAvatar name={name} className="h-6 w-6 text-[10px]" />
-                  <span className="flex-1 font-medium">{name}</span>
-                  <span className="text-xs text-muted-foreground">{role}</span>
-                </li>
-              ))}
-            </ul>
+          <PanelSection title="Hiring team">
+            {team.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hiring team assigned
+              </p>
+            ) : (
+              <ul className="divide-y divide-border rounded-md border border-border">
+                {team.map(({ user, role }) => (
+                  <li
+                    key={`${role}-${user.id}`}
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm"
+                  >
+                    <InitialsAvatar
+                      name={userLabel(user)}
+                      className="h-6 w-6 text-[10px]"
+                    />
+                    <span className="flex-1 font-medium">
+                      {userLabel(user)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {role}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </PanelSection>
+
+          {fieldDefs.length > 0 && (
+            <PanelSection title="Additional details">
+              <CustomFieldsView fields={fieldDefs} values={job.customFields} />
+            </PanelSection>
+          )}
 
           <PanelSection
             title={`Pipeline, ${job.applicationCount} ${job.applicationCount === 1 ? 'applicant' : 'applicants'}`}
           >
-            <div className="grid grid-cols-5 overflow-hidden rounded-md border border-border">
-              {STAGES.map((s) => (
+            <div
+              className="grid overflow-hidden rounded-md border border-border"
+              style={{
+                gridTemplateColumns: `repeat(${Math.max(flowStages.length, 1)}, minmax(0, 1fr))`,
+              }}
+            >
+              {flowStages.map((s) => (
                 <div
                   key={s.key}
                   className="border-r border-border px-3 py-2 last:border-r-0"
@@ -237,14 +277,20 @@ export function JobDetailDrawer({
                   <p className="text-lg font-semibold tabular-nums">
                     {job.stageCounts?.[s.key] ?? 0}
                   </p>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {s.name}
+                  </p>
                 </div>
               ))}
             </div>
             {other > 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
-                {job.stageCounts.rejected ?? 0} rejected,{' '}
-                {job.stageCounts.withdrawn ?? 0} withdrawn
+                {closedStages
+                  .map(
+                    (s) =>
+                      `${job.stageCounts?.[s.key] ?? 0} ${s.name.toLowerCase()}`,
+                  )
+                  .join(', ')}
               </p>
             )}
           </PanelSection>

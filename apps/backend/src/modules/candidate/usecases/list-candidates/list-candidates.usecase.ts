@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { calculateSkip, createPaginationMetadata } from '@boilerplate/core';
 import { CandidateRepository } from '@db/repositories';
+import { PipelineStageService } from '@shared/services/pipeline-stage.service';
 import { safeUserSelect } from '@shared/helpers/safe-user-select';
 import { ListCandidatesCommand } from './list-candidates.command';
 
 @Injectable()
 export class ListCandidates {
-  constructor(private readonly candidateRepository: CandidateRepository) {}
+  constructor(
+    private readonly candidateRepository: CandidateRepository,
+    private readonly pipelineStageService: PipelineStageService,
+  ) {}
 
   async execute(command: ListCandidatesCommand) {
     const qb = this.candidateRepository
@@ -39,13 +43,22 @@ export class ListCandidates {
         ownerId: command.ownerId,
       });
     }
-    if (command.jobId || command.stage) {
+    if (command.jobId || command.stage || command.stageCategory) {
       const conditions = ['a."candidateId" = candidate.id'];
       if (command.jobId) conditions.push('a."jobId" = :jobId');
       if (command.stage) conditions.push('a.stage = :stage');
+      const categoryStages = command.stageCategory
+        ? await this.pipelineStageService.getKeysByCategory(
+            command.organizationId,
+            [command.stageCategory],
+          )
+        : [];
+      if (command.stageCategory) {
+        conditions.push('a.stage = ANY(:categoryStages)');
+      }
       qb.andWhere(
         `EXISTS (SELECT 1 FROM applications a WHERE ${conditions.join(' AND ')})`,
-        { jobId: command.jobId, stage: command.stage },
+        { jobId: command.jobId, stage: command.stage, categoryStages },
       );
     }
 

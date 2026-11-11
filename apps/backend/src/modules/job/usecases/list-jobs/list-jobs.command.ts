@@ -22,4 +22,16 @@ export class ListJobsCommand extends BasePaginatedCommand {
   @IsUUID()
   @IsOptional()
   ownerId?: string;
+
+  @IsString()
+  @IsOptional()
+  department?: string;
+
+  @IsUUID()
+  @IsOptional()
+  hiringManagerId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  recruiterId?: string;
 }

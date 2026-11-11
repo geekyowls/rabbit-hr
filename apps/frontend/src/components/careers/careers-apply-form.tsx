@@ -22,6 +22,13 @@ import {
   type ApplyToJobRequest,
   type CareersJobDetail,
 } from '@/types/careers.type';
+import { CustomFieldsForm } from '@/components/custom-fields/custom-fields-form';
+import {
+  buildCustomFieldsSchema,
+  toCustomFieldFormValues,
+  toCustomFieldPayload,
+  type CustomFieldFormValues,
+} from '@/components/custom-fields/custom-field-utils';
 import { CV_MIME_TYPES, careersListHref, cvExtension } from './careers-utils';
 
 function buildSchema(job: CareersJobDetail) {
@@ -66,6 +73,7 @@ function buildSchema(job: CareersJobDetail) {
           (v) => v,
           'Please confirm you agree so we can process your application',
         ),
+      customFields: buildCustomFieldsSchema(job.customFields ?? []),
     })
     .superRefine((values, ctx) => {
       job.screeningQuestions.forEach((q, i) => {
@@ -91,6 +99,7 @@ type ApplyFormData = {
   answers: string[];
   cv: File | null;
   gdprConsent: boolean;
+  customFields: CustomFieldFormValues;
 };
 
 function optional(value: string | undefined) {
@@ -137,6 +146,7 @@ export function CareersApplyForm({
       answers: job.screeningQuestions.map(() => ''),
       cv: null,
       gdprConsent: false,
+      customFields: toCustomFieldFormValues(job.customFields ?? []),
     },
   });
 
@@ -179,6 +189,14 @@ export function CareersApplyForm({
         gdprConsent: true,
         cvFileKey,
         cvFileName: values.cv && cvFileKey ? values.cv.name : undefined,
+        ...(job.customFields?.length
+          ? {
+              customFields: toCustomFieldPayload(
+                job.customFields,
+                values.customFields,
+              ),
+            }
+          : {}),
       };
       const result = await applyToJob.mutateAsync({
         orgSlug,
@@ -274,7 +292,7 @@ export function CareersApplyForm({
             id="apply-phone"
             type="tel"
             autoComplete="tel"
-            placeholder="+44 7700 900123"
+            placeholder="+1 555 010 0000"
             {...register('phone')}
           />
           <FieldError message={errors.phone?.message} />
@@ -287,7 +305,7 @@ export function CareersApplyForm({
           <Input
             id="apply-location"
             autoComplete="address-level2"
-            placeholder="Leeds"
+            placeholder="City or region"
             {...register('location')}
           />
           <FieldError message={errors.location?.message} />
@@ -381,6 +399,13 @@ export function CareersApplyForm({
         </div>
       )}
 
+      <CustomFieldsForm
+        fields={job.customFields ?? []}
+        control={control}
+        className="grid-cols-1 gap-4 sm:grid-cols-2"
+        labelClassName="text-sm text-foreground"
+      />
+
       <div className="space-y-1.5">
         <Label htmlFor="apply-cover-note">Cover note</Label>
         <Textarea
@@ -409,7 +434,8 @@ export function CareersApplyForm({
                 className="cursor-pointer text-sm font-normal leading-snug"
               >
                 I agree to {organizationName} storing and processing my personal
-                data to assess my application, in line with UK GDPR. *
+                data to assess my application, in line with applicable data
+                protection law. *
               </Label>
             </div>
           )}

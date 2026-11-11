@@ -67,6 +67,9 @@ export class JobController {
         clientId: dto.clientId,
         employmentType: dto.employmentType,
         ownerId: dto.ownerId,
+        department: dto.department,
+        hiringManagerId: dto.hiringManagerId,
+        recruiterId: dto.recruiterId,
       }),
     );
   }

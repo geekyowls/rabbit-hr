@@ -8,6 +8,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -145,4 +146,13 @@ export class CreateCandidateDto {
   @Min(0)
   @Max(5)
   rating?: number | null;
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    description: 'Values keyed by custom field key',
+  })
+  @IsObject()
+  @IsOptional()
+  customFields?: Record<string, unknown>;
 }

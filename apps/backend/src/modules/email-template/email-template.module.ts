@@ -4,6 +4,7 @@ import { ListEmailTemplates } from './usecases/list-email-templates/list-email-t
 import { CreateEmailTemplate } from './usecases/create-email-template/create-email-template.usecase';
 import { UpdateEmailTemplate } from './usecases/update-email-template/update-email-template.usecase';
 import { DeleteEmailTemplate } from './usecases/delete-email-template/delete-email-template.usecase';
+import { CandidateEmailService } from './services/candidate-email.service';
 import { SendApplicationEmail } from './usecases/send-application-email/send-application-email.usecase';
 
 const USE_CASES = [
@@ -16,6 +17,7 @@ const USE_CASES = [
 
 @Module({
   controllers: [EmailTemplateController],
-  providers: [...USE_CASES],
+  providers: [...USE_CASES, CandidateEmailService],
+  exports: [CandidateEmailService],
 })
 export class EmailTemplateModule {}

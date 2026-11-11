@@ -74,18 +74,18 @@ import type {
   UpdateCandidateRequest,
 } from '@/types/candidate.type';
 import {
-  ACTIVE_STAGES,
   RIGHT_TO_WORK_LABEL,
   RIGHT_TO_WORK_TONE,
   SOURCE_LABEL,
-  STAGE_LABEL,
-  STAGE_TONE,
   daysSince,
   errorMessage,
-  formatGbp,
-  shortDate,
+  usePipelineStageMeta,
   userLabel,
 } from '@/components/applications/application-meta';
+import { StagePill } from '@/components/applications/stage-pill';
+import { useFormatters } from '@/hooks/use-formatters';
+import { useCustomFieldsQuery } from '@/hooks/queries';
+import { CustomFieldsView } from '@/components/custom-fields/custom-fields-view';
 import { SendEmailDialog } from '@/components/applications/send-email-dialog';
 import { AddToJobDialog } from '@/components/applications/add-to-job-dialog';
 import { AddCandidateDrawer } from './add-candidate-drawer';
@@ -97,6 +97,10 @@ import {
 } from './candidate-activity-tab';
 import { CandidateDocumentsTab } from './candidate-documents-tab';
 import { CandidateTasksTab } from './candidate-tasks-tab';
+import { CandidateInterviewsTab } from './candidate-interviews-tab';
+import { ScheduleInterviewDrawer } from '@/components/interviews/schedule-interview-drawer';
+import { InterviewDetailDrawer } from '@/components/interviews/interview-detail-drawer';
+import type { Interview } from '@/types/interview.type';
 
 const SAMPLE_LINKS: { label: string; icon: ReactNode }[] = [
   { label: 'GitHub', icon: <GithubIcon className="h-4 w-4 shrink-0" /> },
@@ -120,8 +124,10 @@ const SAMPLE_LINKS: { label: string; icon: ReactNode }[] = [
 const TAB_CLS =
   'rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2.5 pt-3 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-[#3F6650] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none';
 
-const UK_PHONE = /^(?:\+44|0)\d{9,10}$/;
+const PHONE = /^\+?\d{6,15}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AMOUNT = /^\d+(\.\d{1,2})?$/;
+const cleanAmount = (v: string) => v.replace(/[^\d.]/g, '');
 
 function InlineField({
   label,
@@ -245,7 +251,15 @@ function OverviewTab({
 }) {
   const { data: activities } = useCandidateActivities(c.id);
   const recent = (activities?.data ?? []).slice(0, 3);
-  const flowIndex = focused ? ACTIVE_STAGES.indexOf(focused.stage) : -1;
+  const { flowStages } = usePipelineStageMeta();
+  const fmt = useFormatters();
+  const { data: fieldDefs = [] } = useCustomFieldsQuery({
+    entity: 'candidate',
+    activeOnly: true,
+  });
+  const flowIndex = focused
+    ? flowStages.findIndex((s) => s.key === focused.stage)
+    : -1;
   const role = c.currentTitle ?? focused?.jobTitle ?? 'candidate';
 
   return (
@@ -258,13 +272,11 @@ function OverviewTab({
           </p>
           {flowIndex >= 0 ? (
             <StageProgress
-              stages={ACTIVE_STAGES.map((s) => ({ label: STAGE_LABEL[s] }))}
+              stages={flowStages.map((s) => ({ label: s.name }))}
               currentIndex={flowIndex}
             />
           ) : (
-            <StatusPill tone={STAGE_TONE[focused.stage]} dot>
-              {STAGE_LABEL[focused.stage]}
-            </StatusPill>
+            <StagePill stage={focused.stage} />
           )}
         </div>
       )}
@@ -308,10 +320,18 @@ function OverviewTab({
           <Chips items={c.tags} empty="No tags" />
         </div>
       </div>
+      {fieldDefs.length > 0 && (
+        <div>
+          <p className="mb-2 text-sm font-medium">Additional details</p>
+          <CustomFieldsView fields={fieldDefs} values={c.customFields} />
+        </div>
+      )}
       <div>
         <p className="mb-2 text-sm font-medium">Recent activity</p>
         {recent.length ? (
-          <Timeline entries={recent.map((a) => toTimelineEntry(a, false))} />
+          <Timeline
+            entries={recent.map((a) => toTimelineEntry(a, fmt, false))}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">No activity yet</p>
         )}
@@ -413,6 +433,7 @@ export function CandidateDetailDrawer({
   const deleteCandidate = useDeleteCandidateMutation();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission(PERMISSIONS_ENUM.CANDIDATE_UPDATE);
+  const fmt = useFormatters();
 
   const [tab, setTab] = useState('overview');
   const [editOpen, setEditOpen] = useState(false);
@@ -421,6 +442,25 @@ export function CandidateDetailDrawer({
     null,
   );
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleAppId, setScheduleAppId] = useState<string | null>(null);
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(
+    null,
+  );
+  const [interviewId, setInterviewId] = useState<string | null>(null);
+
+  const openSchedule = (app: CandidateApplicationSummary) => {
+    setEditingInterview(null);
+    setScheduleAppId(app.id);
+    setScheduleOpen(true);
+  };
+
+  const editInterview = (interview: Interview) => {
+    setInterviewId(null);
+    setEditingInterview(interview);
+    setScheduleAppId(null);
+    setScheduleOpen(true);
+  };
 
   useEffect(() => {
     setTab(applicationId ? 'applications' : 'overview');
@@ -517,11 +557,7 @@ export function CandidateDetailDrawer({
 
         <div className="flex items-center gap-1 border-b border-border px-4 py-2.5">
           <span className="text-sm font-medium">{name}</span>
-          {focused && (
-            <StatusPill tone={STAGE_TONE[focused.stage]} dot className="ml-2">
-              {STAGE_LABEL[focused.stage]}
-            </StatusPill>
-          )}
+          {focused && <StagePill stage={focused.stage} className="ml-2" />}
           {c && (
             <span className="ml-auto flex items-center gap-1.5">
               <PermissionGuard
@@ -551,12 +587,16 @@ export function CandidateDetailDrawer({
                   Edit
                 </ToolbarButton>
               </PermissionGuard>
-              <span className="flex items-center gap-1">
-                <ToolbarButton icon={CalendarDays} disabled>
+              <PermissionGuard permissions={PERMISSIONS_ENUM.INTERVIEW_CREATE}>
+                <ToolbarButton
+                  icon={CalendarDays}
+                  disabled={!focused}
+                  title={focused ? undefined : 'Add to a job to schedule'}
+                  onClick={() => focused && openSchedule(focused)}
+                >
                   Schedule
                 </ToolbarButton>
-                <NotIntegratedBadge />
-              </span>
+              </PermissionGuard>
               <PermissionGuard permissions={PERMISSIONS_ENUM.CANDIDATE_DELETE}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -632,9 +672,9 @@ export function CandidateDetailDrawer({
                   value={c.phone ?? ''}
                   onSave={editable(
                     saveIf(
-                      (v) => UK_PHONE.test(v.replace(/[\s()-]/g, '')),
-                      'Enter a UK phone number',
-                      (v) => ({ phone: v ? v.replace(/[\s()-]/g, '') : null }),
+                      (v) => PHONE.test(v.replace(/[\s().-]/g, '')),
+                      'Enter a valid phone number',
+                      (v) => ({ phone: v ? v.replace(/[\s().-]/g, '') : null }),
                     ),
                   )}
                 />
@@ -671,22 +711,24 @@ export function CandidateDetailDrawer({
                   value={
                     c.expectedSalary !== null ? String(c.expectedSalary) : ''
                   }
-                  display={formatGbp(c.expectedSalary) || undefined}
+                  display={
+                    c.expectedSalary !== null
+                      ? fmt.money(c.expectedSalary)
+                      : undefined
+                  }
                   onSave={editable(
                     saveIf(
-                      (v) => /^\d+(\.\d{1,2})?$/.test(v.replace(/[,£\s]/g, '')),
-                      'Enter an amount in GBP',
+                      (v) => AMOUNT.test(cleanAmount(v)),
+                      `Enter an amount in ${fmt.currency}`,
                       (v) => ({
-                        expectedSalary: v
-                          ? Number(v.replace(/[,£\s]/g, ''))
-                          : null,
+                        expectedSalary: v ? Number(cleanAmount(v)) : null,
                       }),
                     ),
                   )}
                 />
                 <ReadField label="Source">{SOURCE_LABEL[c.source]}</ReadField>
                 <ReadField label="Owner">{userLabel(c.owner) || '-'}</ReadField>
-                <ReadField label="Added">{shortDate(c.createdAt)}</ReadField>
+                <ReadField label="Added">{fmt.date(c.createdAt)}</ReadField>
                 {focused && (
                   <ReadField label="In stage">
                     {daysSince(focused.stageChangedAt)}d
@@ -757,6 +799,13 @@ export function CandidateDetailDrawer({
                   <TabsTrigger value="applications" className={TAB_CLS}>
                     Applications ({c.applications.length})
                   </TabsTrigger>
+                  <PermissionGuard
+                    permissions={PERMISSIONS_ENUM.INTERVIEW_LIST_READ}
+                  >
+                    <TabsTrigger value="interviews" className={TAB_CLS}>
+                      Interviews
+                    </TabsTrigger>
+                  </PermissionGuard>
                   <TabsTrigger value="documents" className={TAB_CLS}>
                     Documents
                   </TabsTrigger>
@@ -781,6 +830,15 @@ export function CandidateDetailDrawer({
                     focusedApplicationId={applicationId}
                     onEmail={setEmailApp}
                     onAddToJob={() => setAddToJobOpen(true)}
+                    onSchedule={openSchedule}
+                  />
+                </TabsContent>
+
+                <TabsContent value="interviews" className="mt-0 p-5">
+                  <CandidateInterviewsTab
+                    candidate={c}
+                    onOpen={setInterviewId}
+                    onSchedule={openSchedule}
                   />
                 </TabsContent>
 
@@ -814,6 +872,21 @@ export function CandidateDetailDrawer({
           </div>
         )}
 
+        <ScheduleInterviewDrawer
+          open={scheduleOpen}
+          onOpenChange={(o) => {
+            setScheduleOpen(o);
+            if (!o) setEditingInterview(null);
+          }}
+          interview={editingInterview}
+          applicationId={scheduleAppId}
+        />
+        <InterviewDetailDrawer
+          interviewId={interviewId}
+          open={interviewId !== null}
+          onOpenChange={(o) => !o && setInterviewId(null)}
+          onEdit={editInterview}
+        />
         <AddCandidateDrawer
           open={editOpen}
           onOpenChange={setEditOpen}

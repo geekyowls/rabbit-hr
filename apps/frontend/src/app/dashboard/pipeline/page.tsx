@@ -57,20 +57,19 @@ import { JobSummary } from '@/components/pipeline/job-summary';
 import { AgentScore, SourceBadge } from '@/components/pipeline/pipeline-card';
 import {
   SAMPLE_NEXT_STEP,
-  STAGES,
   boardCards,
   daysInStage,
+  flowStageDefs,
   moveCardInBoard,
   sampleMatchScore,
   slaState,
   type PipelineCandidate,
 } from '@/components/pipeline/pipeline-data';
 import {
-  CLOSED_STAGES,
+  CATEGORY_TONE,
   SOURCE_LABEL,
-  STAGE_LABEL,
-  STAGE_TONE,
   errorMessage,
+  isClosedCategory,
   userLabel,
 } from '@/components/applications/application-meta';
 import type {
@@ -84,7 +83,6 @@ import { CANDIDATE_SOURCES } from '@/types/candidate.type';
 type View = 'board' | 'list';
 
 const ALL = 'all';
-const ACTIVE = new Set<ApplicationStage>(STAGES.map((s) => s.id));
 
 const columns: DataGridColumn<PipelineCandidate>[] = [
   {
@@ -125,8 +123,8 @@ const columns: DataGridColumn<PipelineCandidate>[] = [
     header: 'Stage',
     width: 130,
     render: (r) => (
-      <StatusPill tone={STAGE_TONE[r.stage]} dot>
-        {STAGE_LABEL[r.stage]}
+      <StatusPill tone={CATEGORY_TONE[r.stageCategory]} dot>
+        {r.stageName}
       </StatusPill>
     ),
   },
@@ -178,7 +176,9 @@ const columns: DataGridColumn<PipelineCandidate>[] = [
     header: 'Next step',
     width: 180,
     render: (r) => (
-      <span className="text-muted-foreground">{SAMPLE_NEXT_STEP[r.stage]}</span>
+      <span className="text-muted-foreground">
+        {SAMPLE_NEXT_STEP[r.stageCategory]}
+      </span>
     ),
   },
   {
@@ -188,18 +188,6 @@ const columns: DataGridColumn<PipelineCandidate>[] = [
     render: (r) => (r.shortlisted ? 'Yes' : '-'),
   },
 ];
-
-function emptyCounts(): StageCounts {
-  return {
-    applied: 0,
-    screening: 0,
-    interview: 0,
-    offer: 0,
-    placed: 0,
-    rejected: 0,
-    withdrawn: 0,
-  };
-}
 
 function PipelineView() {
   const router = useRouter();
@@ -276,24 +264,32 @@ function PipelineView() {
     [sources, owner],
   );
 
+  const flowStages = useMemo(() => flowStageDefs(board), [board]);
+  const columnByKey = useMemo(
+    () => new Map((board?.stages ?? []).map((s) => [s.stage, s])),
+    [board],
+  );
+  const initialKey = board?.stages.find((s) => s.category === 'applied')?.stage;
+  const rejectKey = board?.stages.find((s) => s.category === 'rejected')?.stage;
+
   const all = useMemo(() => boardCards(board), [board]);
   const active = useMemo(
-    () => all.filter((c) => ACTIVE.has(c.stage) && filter(c)),
+    () => all.filter((c) => !isClosedCategory(c.stageCategory) && filter(c)),
     [all, filter],
   );
   const closed = useMemo(
-    () => all.filter((c) => !ACTIVE.has(c.stage) && filter(c)),
+    () => all.filter((c) => isClosedCategory(c.stageCategory) && filter(c)),
     [all, filter],
   );
 
-  const counts = useMemo(() => {
-    const result = emptyCounts();
-    board?.stages.forEach((s) => {
-      result[s.stage] = s.count;
-    });
-    return result;
-  }, [board]);
-  const closedCount = CLOSED_STAGES.reduce((n, s) => n + counts[s], 0);
+  const counts = useMemo<StageCounts>(
+    () =>
+      Object.fromEntries((board?.stages ?? []).map((s) => [s.stage, s.count])),
+    [board],
+  );
+  const closedCount = (board?.stages ?? [])
+    .filter((s) => isClosedCategory(s.category))
+    .reduce((n, s) => n + s.count, 0);
 
   const doMove = async (
     id: string,
@@ -311,7 +307,9 @@ function PipelineView() {
         id,
         data: { stage, ...(rejectionReason && { rejectionReason }) },
       });
-      toast.success(`${card.candidateName} moved to ${STAGE_LABEL[stage]}`);
+      toast.success(
+        `${card.candidateName} moved to ${columnByKey.get(stage)?.name ?? stage}`,
+      );
     } catch (err) {
       if (snapshot) qc.setQueryData(key, snapshot);
       toast.error('Could not move candidate', errorMessage(err));
@@ -320,7 +318,7 @@ function PipelineView() {
   };
 
   const move = (id: string, stage: ApplicationStage) => {
-    if (stage === 'rejected') {
+    if (columnByKey.get(stage)?.category === 'rejected') {
       setRejectingId(id);
       return;
     }
@@ -441,7 +439,9 @@ function PipelineView() {
       >
         <JobSummary
           job={jobId !== ALL ? (job ?? null) : null}
+          stages={flowStages}
           counts={counts}
+          closed={closedCount}
           jobCount={jobsData?.total ?? jobs.length}
         />
 
@@ -491,7 +491,7 @@ function PipelineView() {
             <div className="flex items-center justify-between border border-t-0 border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               <span>
                 Showing {active.length} of{' '}
-                {STAGES.reduce((n, s) => n + counts[s.id], 0)} active
+                {flowStages.reduce((n, s) => n + (counts[s.id] ?? 0), 0)} active
                 applications
               </span>
             </div>
@@ -510,7 +510,9 @@ function PipelineView() {
         onOpenChange={(o) => !o && setRejectingId(null)}
         candidateName={rejectingCard?.candidateName}
         onConfirm={async (reason) => {
-          if (rejectingId) await doMove(rejectingId, 'rejected', reason);
+          if (rejectingId && rejectKey) {
+            await doMove(rejectingId, rejectKey, reason);
+          }
         }}
       />
 
@@ -545,15 +547,15 @@ function PipelineView() {
                       {c.candidateName}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {STAGE_LABEL[c.stage]} · {c.jobTitle}
+                      {c.stageName} · {c.jobTitle}
                       {c.candidateHeadline ? ` · ${c.candidateHeadline}` : ''}
                     </p>
                   </button>
-                  {canMove && (
+                  {canMove && initialKey && (
                     <ToolbarButton
                       icon={RotateCcw}
                       onClick={() =>
-                        doMove(c.id, 'applied').catch(() => undefined)
+                        doMove(c.id, initialKey).catch(() => undefined)
                       }
                     >
                       Restore

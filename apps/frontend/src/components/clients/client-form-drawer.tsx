@@ -21,6 +21,11 @@ import {
   useUpdateClientMutation,
 } from '@/hooks/queries';
 import { toast } from '@/lib/toast';
+import { COUNTRIES } from '@boilerplate/shared';
+import { SearchableSelect } from '@/components/common/searchable-select';
+import { currencyOptions } from '@/lib/format';
+import { useOrganizationAtsSettings } from '@/hooks/queries/use-ats-settings-query';
+import type { AtsSettings } from '@/types/ats-settings.type';
 import { errorMessage } from '@/components/jobs/job-utils';
 import type {
   ClientDetail,
@@ -28,9 +33,7 @@ import type {
   CreateClientRequest,
 } from '@/types/client.type';
 
-const UK_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
-const CURRENCIES = ['GBP', 'EUR', 'USD'];
 const PAYMENT_TERMS = [
   'Due on receipt',
   '7 days',
@@ -54,16 +57,13 @@ const schema = z.object({
   street: z.string().trim().max(200, 'Too long'),
   city: z.string().trim().max(100, 'Too long'),
   county: z.string().trim().max(100, 'Too long'),
-  postcode: z
-    .string()
-    .trim()
-    .refine((v) => !v || UK_POSTCODE.test(v), 'Enter a valid UK postcode'),
+  postcode: z.string().trim().max(20, 'Too long'),
   country: z.string().trim().max(100, 'Too long'),
   billingContactName: z.string().trim().max(150, 'Too long'),
   billingEmail: optionalEmail,
   billingPhone: z.string().trim().max(40, 'Too long'),
   paymentTerms: z.string().trim().max(100, 'Too long'),
-  currency: z.string().length(3),
+  currency: z.string().regex(/^[A-Z]{3}$/, 'Choose a currency'),
   brandColor: z
     .string()
     .trim()
@@ -85,18 +85,29 @@ const DEFAULTS: ClientFormValues = {
   city: '',
   county: '',
   postcode: '',
-  country: 'United Kingdom',
+  country: '',
   billingContactName: '',
   billingEmail: '',
   billingPhone: '',
   paymentTerms: '30 days',
-  currency: 'GBP',
+  currency: '',
   brandColor: '',
   logoUrl: '',
   notes: '',
 };
 
-function toFormValues(c: ClientListItem | ClientDetail): ClientFormValues {
+function newClientValues(settings: AtsSettings): ClientFormValues {
+  return {
+    ...DEFAULTS,
+    country: COUNTRIES.find((c) => c.code2 === settings.country)?.name ?? '',
+    currency: settings.defaultCurrency,
+  };
+}
+
+function toFormValues(
+  c: ClientListItem | ClientDetail,
+  settings: AtsSettings,
+): ClientFormValues {
   return {
     name: c.name,
     legalName: c.legalName ?? '',
@@ -113,7 +124,7 @@ function toFormValues(c: ClientListItem | ClientDetail): ClientFormValues {
     billingEmail: c.billing?.email ?? '',
     billingPhone: c.billing?.phone ?? '',
     paymentTerms: c.billing?.paymentTerms ?? '',
-    currency: c.billing?.currency ?? 'GBP',
+    currency: c.billing?.currency ?? settings.defaultCurrency,
     brandColor: c.brandColor ?? '',
     logoUrl: c.logoUrl ?? '',
     notes: c.notes ?? '',
@@ -135,7 +146,7 @@ function toRequest(v: ClientFormValues): CreateClientRequest {
       street: orUndef(v.street),
       city: orUndef(v.city),
       county: orUndef(v.county),
-      postcode: v.postcode ? v.postcode.toUpperCase() : undefined,
+      postcode: orUndef(v.postcode),
       country: orUndef(v.country),
     },
     billing: {
@@ -203,9 +214,15 @@ export function ClientFormDrawer({
     defaultValues: DEFAULTS,
   });
 
+  const settings = useOrganizationAtsSettings();
+
   useEffect(() => {
-    if (open) reset(client ? toFormValues(client) : DEFAULTS);
-  }, [open, client, reset]);
+    if (open) {
+      reset(
+        client ? toFormValues(client, settings) : newClientValues(settings),
+      );
+    }
+  }, [open, client, reset, settings]);
 
   const brandColor = watch('brandColor');
 
@@ -274,14 +291,14 @@ export function ClientFormDrawer({
             <Field label="Website" error={errors.website?.message}>
               <Input
                 className="h-9"
-                placeholder="https://northwind.co.uk"
+                placeholder="https://northwind.com"
                 {...register('website')}
               />
             </Field>
             <Field label="Phone" error={errors.phone?.message}>
               <Input
                 className="h-9"
-                placeholder="0161 496 0000"
+                placeholder="+1 555 010 0000"
                 {...register('phone')}
               />
             </Field>
@@ -293,7 +310,7 @@ export function ClientFormDrawer({
               <Input
                 className="h-9"
                 type="email"
-                placeholder="hello@northwind.co.uk"
+                placeholder="hello@northwind.com"
                 {...register('email')}
               />
             </Field>
@@ -305,29 +322,25 @@ export function ClientFormDrawer({
           <Field label="Street" error={errors.street?.message}>
             <Input
               className="h-9"
-              placeholder="12 Quay Street"
+              placeholder="12 Harbour Street"
               {...register('street')}
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="City" error={errors.city?.message}>
-              <Input
-                className="h-9"
-                placeholder="Manchester"
-                {...register('city')}
-              />
+              <Input className="h-9" placeholder="City" {...register('city')} />
             </Field>
-            <Field label="County" error={errors.county?.message}>
+            <Field label="State or region" error={errors.county?.message}>
               <Input
                 className="h-9"
-                placeholder="Greater Manchester"
+                placeholder="State, province or county"
                 {...register('county')}
               />
             </Field>
-            <Field label="Postcode" error={errors.postcode?.message}>
+            <Field label="Postal code" error={errors.postcode?.message}>
               <Input
                 className="h-9 uppercase"
-                placeholder="M3 3JE"
+                placeholder="Postal code"
                 {...register('postcode')}
               />
             </Field>
@@ -354,7 +367,7 @@ export function ClientFormDrawer({
               <Input
                 className="h-9"
                 type="email"
-                placeholder="accounts@northwind.co.uk"
+                placeholder="accounts@northwind.com"
                 {...register('billingEmail')}
               />
             </Field>
@@ -394,18 +407,13 @@ export function ClientFormDrawer({
                 name="currency"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={currencyOptions(field.value)}
+                    placeholder="Select currency"
+                    searchPlaceholder="Search currency"
+                  />
                 )}
               />
             </Field>

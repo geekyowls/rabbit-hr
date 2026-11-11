@@ -13,16 +13,13 @@ import {
   StatusPill,
   RowActions,
   EmptyState,
-  NotIntegratedBadge,
   type DataGridColumn,
   type RowAction,
 } from '@/components/patterns';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { PermissionGuard } from '@/components/auth/permission-guard';
-import {
-  JobFormDrawer,
-  JOB_DEPARTMENTS,
-} from '@/components/jobs/job-form-drawer';
+import { JobFormDrawer } from '@/components/jobs/job-form-drawer';
+import { userLabel } from '@/components/applications/application-meta';
 import { JobDetailDrawer } from '@/components/jobs/job-detail-drawer';
 import { ConfirmDialog } from '@/components/jobs/confirm-dialog';
 import { ListFooter } from '@/components/jobs/list-footer';
@@ -32,8 +29,6 @@ import {
   JOB_STATUS_LABEL,
   JOB_STATUS_TONE,
   errorMessage,
-  formatPay,
-  formatShortDate,
   nextStatusActions,
 } from '@/components/jobs/job-utils';
 import {
@@ -42,8 +37,11 @@ import {
   useJobQuery,
   useJobsQuery,
   useUpdateJobStatusMutation,
+  useUserNamesQuery,
 } from '@/hooks/queries';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useFormatters } from '@/hooks/use-formatters';
+import { useOrganizationAtsSettings } from '@/hooks/queries/use-ats-settings-query';
 import { usePermissions } from '@/hooks/use-permissions';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { downloadCsv } from '@/lib/export-csv';
@@ -74,6 +72,10 @@ function JobsPageContent() {
   );
   const [employmentType, setEmploymentType] = useState<string>(ALL);
   const [department, setDepartment] = useState(ALL);
+  const [hiringManagerId, setHiringManagerId] = useState(ALL);
+  const fmt = useFormatters();
+  const { departments } = useOrganizationAtsSettings();
+  const { data: users = [] } = useUserNamesQuery();
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<JobDetail | null>(null);
@@ -93,7 +95,14 @@ function JobsPageContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status, clientId, employmentType]);
+  }, [
+    debouncedSearch,
+    status,
+    clientId,
+    employmentType,
+    department,
+    hiringManagerId,
+  ]);
 
   const params = useMemo(
     () => ({
@@ -105,8 +114,18 @@ function JobsPageContent() {
       ...(employmentType !== ALL
         ? { employmentType: employmentType as EmploymentType }
         : {}),
+      ...(department !== ALL ? { department } : {}),
+      ...(hiringManagerId !== ALL ? { hiringManagerId } : {}),
     }),
-    [page, debouncedSearch, status, clientId, employmentType],
+    [
+      page,
+      debouncedSearch,
+      status,
+      clientId,
+      employmentType,
+      department,
+      hiringManagerId,
+    ],
   );
 
   const { data, isLoading, isError, error, isFetching } = useJobsQuery(params);
@@ -210,6 +229,18 @@ function JobsPageContent() {
         ),
     },
     {
+      key: 'department',
+      header: 'Department',
+      width: 140,
+      render: (r) => r.department || '',
+    },
+    {
+      key: 'hiringManager',
+      header: 'Hiring manager',
+      width: 150,
+      render: (r) => userLabel(r.hiringManager),
+    },
+    {
       key: 'location',
       header: 'Location',
       width: 130,
@@ -221,7 +252,7 @@ function JobsPageContent() {
       width: 110,
       render: (r) => EMPLOYMENT_TYPE_LABEL[r.employmentType],
     },
-    { key: 'pay', header: 'Pay', width: 200, render: (r) => formatPay(r) },
+    { key: 'pay', header: 'Pay', width: 200, render: (r) => fmt.pay(r) },
     {
       key: 'openings',
       header: 'Openings',
@@ -253,7 +284,7 @@ function JobsPageContent() {
       header: 'Posted',
       width: 120,
       mono: true,
-      render: (r) => formatShortDate(r.publishedAt ?? r.createdAt),
+      render: (r) => fmt.date(r.publishedAt ?? r.createdAt),
     },
     {
       key: 'actions',
@@ -273,15 +304,17 @@ function JobsPageContent() {
       { header: 'Reference', value: (r) => r.reference },
       { header: 'Job title', value: (r) => r.title },
       { header: 'Client', value: (r) => r.client?.name ?? '' },
+      { header: 'Department', value: (r) => r.department ?? '' },
+      { header: 'Hiring manager', value: (r) => userLabel(r.hiringManager) },
       { header: 'Location', value: (r) => r.location ?? '' },
       { header: 'Type', value: (r) => EMPLOYMENT_TYPE_LABEL[r.employmentType] },
-      { header: 'Pay', value: (r) => formatPay(r) },
+      { header: 'Pay', value: (r) => fmt.pay(r) },
       { header: 'Openings', value: (r) => r.openings },
       { header: 'Applicants', value: (r) => r.applicationCount },
       { header: 'Status', value: (r) => JOB_STATUS_LABEL[r.status] },
       {
         header: 'Posted',
-        value: (r) => formatShortDate(r.publishedAt ?? r.createdAt),
+        value: (r) => fmt.date(r.publishedAt ?? r.createdAt),
       },
     ]);
 
@@ -289,7 +322,9 @@ function JobsPageContent() {
     !!debouncedSearch.trim() ||
     status !== ALL ||
     clientId !== ALL ||
-    employmentType !== ALL;
+    employmentType !== ALL ||
+    department !== ALL ||
+    hiringManagerId !== ALL;
 
   return (
     <div className="-m-4 flex h-[calc(100vh-6rem)] flex-col gap-3 p-4">
@@ -350,18 +385,26 @@ function JobsPageContent() {
           ]}
           onChange={setEmploymentType}
         />
-        <div className="flex items-center gap-1">
+        {departments.length > 0 && (
           <FilterDropdown
             label="Department"
             value={department}
             options={[
               { label: 'All', value: ALL },
-              ...JOB_DEPARTMENTS.map((d) => ({ label: d, value: d })),
+              ...departments.map((d) => ({ label: d, value: d })),
             ]}
             onChange={setDepartment}
           />
-          <NotIntegratedBadge />
-        </div>
+        )}
+        <FilterDropdown
+          label="Hiring manager"
+          value={hiringManagerId}
+          options={[
+            { label: 'All', value: ALL },
+            ...users.map((u) => ({ label: userLabel(u), value: u.id })),
+          ]}
+          onChange={setHiringManagerId}
+        />
       </FilterBar>
 
       <div className="flex min-h-0 flex-1 flex-col">

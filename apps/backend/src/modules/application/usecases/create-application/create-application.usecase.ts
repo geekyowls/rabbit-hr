@@ -10,7 +10,8 @@ import {
   JobRepository,
   UserRepository,
 } from '@db/repositories';
-import { ActivityType, ApplicationStage } from '@db/enums';
+import { ActivityType } from '@db/enums';
+import { PipelineStageService } from '@shared/services/pipeline-stage.service';
 import { GetApplication } from '../get-application/get-application.usecase';
 import { CreateApplicationCommand } from './create-application.command';
 
@@ -23,6 +24,7 @@ export class CreateApplication {
     private readonly activityRepository: ActivityRepository,
     private readonly userRepository: UserRepository,
     private readonly getApplication: GetApplication,
+    private readonly pipelineStageService: PipelineStageService,
   ) {}
 
   async execute(command: CreateApplicationCommand) {
@@ -46,6 +48,13 @@ export class CreateApplication {
       command.organizationId,
     );
 
+    const stage = command.stage
+      ? await this.pipelineStageService.getStage(
+          command.organizationId,
+          command.stage,
+        )
+      : await this.pipelineStageService.getInitialStage(command.organizationId);
+
     const exists = await this.applicationRepository.exists({
       where: { candidateId: candidate.id, jobId: job.id },
     });
@@ -61,7 +70,7 @@ export class CreateApplication {
         organizationId: command.organizationId,
         candidateId: candidate.id,
         jobId: job.id,
-        stage: command.stage ?? ApplicationStage.APPLIED,
+        stage: stage.key,
         source: command.source ?? candidate.source,
         ownerId: command.ownerId ?? command.userId,
         appliedAt: now,

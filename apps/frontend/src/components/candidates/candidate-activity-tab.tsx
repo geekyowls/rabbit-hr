@@ -1,11 +1,15 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
+import type { Formatters } from '@/lib/format';
 import type { ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 import {
   ArrowRightLeft,
+  CalendarClock,
   CheckSquare,
+  FileSignature,
   FileText,
   Lock,
   Mail,
@@ -37,7 +41,6 @@ import { useActivitiesQuery, useCreateActivityMutation } from '@/hooks/queries';
 import type { Activity, ActivityType } from '@/types/activity.type';
 import {
   errorMessage,
-  relativeTime,
   userLabel,
 } from '@/components/applications/application-meta';
 
@@ -53,10 +56,22 @@ const ACTIVITY_ICON: Record<ActivityType, { icon: ReactNode; color?: string }> =
     created: { icon: <UserPlus className="h-3.5 w-3.5" />, color: '#3F6650' },
     document: { icon: <FileText className="h-3.5 w-3.5" />, color: '#8B7DD8' },
     task: { icon: <CheckSquare className="h-3.5 w-3.5" />, color: '#3FB6A8' },
+    interview: {
+      icon: <CalendarClock className="h-3.5 w-3.5" />,
+      color: '#4C6EF5',
+    },
+    offer: {
+      icon: <FileSignature className="h-3.5 w-3.5" />,
+      color: '#C2410C',
+    },
   };
 
-export function toTimelineEntry(a: Activity, withBody = true): TimelineEntry {
-  const meta = ACTIVITY_ICON[a.type];
+export function toTimelineEntry(
+  a: Activity,
+  fmt: Formatters,
+  withBody = true,
+): TimelineEntry {
+  const meta = ACTIVITY_ICON[a.type] ?? ACTIVITY_ICON.note;
   const notSent =
     a.type === 'email' && a.metadata && a.metadata.sent === false
       ? `Not sent: ${String(a.metadata.reason ?? 'unknown reason')}`
@@ -66,7 +81,7 @@ export function toTimelineEntry(a: Activity, withBody = true): TimelineEntry {
     icon: meta.icon,
     color: meta.color,
     title: a.title,
-    time: relativeTime(a.createdAt),
+    time: fmt.relative(a.createdAt),
     meta: [userLabel(a.actor) || 'System', notSent].filter(Boolean).join(' · '),
     body:
       withBody && a.body ? (
@@ -169,6 +184,7 @@ export function useCandidateActivities(candidateId: string, limit = 50) {
 
 export function CandidateActivityTab({ candidateId }: { candidateId: string }) {
   const { data, isLoading, isError } = useCandidateActivities(candidateId);
+  const fmt = useFormatters();
   const activities = data?.data ?? [];
 
   return (
@@ -198,7 +214,7 @@ export function CandidateActivityTab({ candidateId }: { candidateId: string }) {
             description="Notes, stage moves, emails and documents show up here"
           />
         ) : (
-          <Timeline entries={activities.map((a) => toTimelineEntry(a))} />
+          <Timeline entries={activities.map((a) => toTimelineEntry(a, fmt))} />
         )}
         {data && data.total > activities.length && (
           <p className="text-xs text-muted-foreground">

@@ -1,5 +1,6 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -30,8 +31,14 @@ import { toast } from '@/lib/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MyOpenTasks } from '@/components/tasks/my-open-tasks';
 import { userDisplayName } from '@/components/tasks/task-utils';
-import type { ApplicationStage } from '@/types/application.type';
-import type { Activity, ActivityType } from '@/types/activity.type';
+import {
+  SOURCE_LABEL,
+  isClosedCategory,
+  personName,
+} from '@/components/applications/application-meta';
+import { INTERVIEW_TYPE_LABEL } from '@/components/interviews/interview-data';
+import { useHomeWidgets } from '@/components/dashboard/use-home-widgets';
+import type { Activity } from '@/types/activity.type';
 import { cn } from '@/lib/utils';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import {
@@ -47,28 +54,15 @@ import {
   StatusPill,
   Timeline,
   TrendStat,
-  type PillTone,
 } from '@/components/patterns';
 
 type Range = '7d' | '14d' | '30d';
 
 const RANGE_DAYS: Record<Range, number> = { '7d': 7, '14d': 14, '30d': 30 };
 
-const TIME_TO_HIRE = {
-  value: '26',
-  unit: 'days',
-  points: [29, 28, 28, 27, 27, 26, 26, 26],
-};
+const FUNNEL_SKELETON_ROWS = [0, 1, 2, 3, 4];
 
-const FUNNEL_STAGES: { stage: ApplicationStage; label: string }[] = [
-  { stage: 'applied', label: 'Applied' },
-  { stage: 'screening', label: 'Screening' },
-  { stage: 'interview', label: 'Interview' },
-  { stage: 'offer', label: 'Offer' },
-  { stage: 'placed', label: 'Placed' },
-];
-
-const ACTIVITY_COLOR: Record<ActivityType, string> = {
+const ACTIVITY_COLOR: Record<string, string> = {
   stage_change: '#4C6EF5',
   note: '#3F6650',
   email: '#E0A458',
@@ -76,15 +70,30 @@ const ACTIVITY_COLOR: Record<ActivityType, string> = {
   created: '#16a34a',
   document: '#0ea5e9',
   task: '#a1a1aa',
+  interview: '#8B7DD8',
+  offer: '#E0A458',
 };
 
-const SOURCES = [
-  { key: 'linkedin', label: 'LinkedIn', value: 38, color: '#3F6650' },
-  { key: 'referral', label: 'Referrals', value: 22, color: '#8FBFA1' },
-  { key: 'careers', label: 'Careers page', value: 19, color: '#4C6EF5' },
-  { key: 'agency', label: 'Agencies', value: 12, color: '#E0A458' },
-  { key: 'other', label: 'Other', value: 9, color: '#a1a1aa' },
+const DEFAULT_ACTIVITY_COLOR = '#a1a1aa';
+
+const SOURCE_COLORS = [
+  '#3F6650',
+  '#8FBFA1',
+  '#4C6EF5',
+  '#E0A458',
+  '#8B7DD8',
+  '#3FB6A8',
+  '#E06B6B',
+  '#0ea5e9',
+  '#a1a1aa',
 ];
+
+function activityColor(activity: Activity) {
+  const kind = activity.metadata?.kind;
+  const key =
+    typeof kind === 'string' && kind in ACTIVITY_COLOR ? kind : activity.type;
+  return ACTIVITY_COLOR[key] ?? DEFAULT_ACTIVITY_COLOR;
+}
 
 const ATTENTION: {
   count: number;
@@ -129,56 +138,6 @@ const ATTENTION_TONE = {
   info: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
 };
 
-const AGENDA: {
-  time: string;
-  name: string;
-  role: string;
-  stage: string;
-  panel: string;
-  tone: PillTone;
-}[] = [
-  {
-    time: '10:00',
-    name: 'Aarav Mehta',
-    role: 'Backend Engineer',
-    stage: 'Technical',
-    panel: 'Rohit S, Priya K',
-    tone: 'info',
-  },
-  {
-    time: '11:30',
-    name: 'Sophie Laurent',
-    role: 'Product Designer',
-    stage: 'Portfolio review',
-    panel: 'Ana M',
-    tone: 'purple',
-  },
-  {
-    time: '13:00',
-    name: 'Daniel Okafor',
-    role: 'Data Analyst',
-    stage: 'Phone screen',
-    panel: 'Neha R',
-    tone: 'neutral',
-  },
-  {
-    time: '15:00',
-    name: 'Ishita Rao',
-    role: 'Product Manager',
-    stage: 'Hiring manager',
-    panel: 'Vikram J',
-    tone: 'success',
-  },
-  {
-    time: '16:30',
-    name: 'Lucas Becker',
-    role: 'DevOps Engineer',
-    stage: 'Onsite loop',
-    panel: '4 interviewers',
-    tone: 'warning',
-  },
-];
-
 const ROLES = [
   {
     title: 'Senior Backend Engineer',
@@ -219,30 +178,6 @@ const ROLES = [
 
 const STAGE_LABELS = ['Applied', 'Screen', 'Interview', 'Onsite', 'Offer'];
 
-const QUEUE = [
-  {
-    icon: Video,
-    label: 'Scorecards to submit',
-    value: 2,
-    href: '/dashboard/interviews',
-    urgent: true,
-  },
-  {
-    icon: CalendarDays,
-    label: 'Interviews to schedule',
-    value: 7,
-    href: '/dashboard/interviews',
-    urgent: false,
-  },
-  {
-    icon: FileSignature,
-    label: 'Offers to approve',
-    value: 1,
-    href: '/dashboard/offers',
-    urgent: false,
-  },
-];
-
 const PLAN = [
   { team: 'Engineering', target: 12, hired: 8, offer: 2 },
   { team: 'Product', target: 3, hired: 2, offer: 0 },
@@ -252,92 +187,12 @@ const PLAN = [
   { team: 'People', target: 1, hired: 1, offer: 0 },
 ];
 
-const RECRUITERS = [
-  {
-    name: 'Neha Reddy',
-    reqs: 5,
-    active: 64,
-    interviews: 14,
-    overdue: 0,
-    fill: 24,
-  },
-  {
-    name: 'Olivia Brown',
-    reqs: 4,
-    active: 51,
-    interviews: 11,
-    overdue: 2,
-    fill: 29,
-  },
-  {
-    name: 'Arjun Nair',
-    reqs: 6,
-    active: 88,
-    interviews: 19,
-    overdue: 5,
-    fill: 34,
-  },
-  {
-    name: 'Emma Wilson',
-    reqs: 3,
-    active: 37,
-    interviews: 8,
-    overdue: 1,
-    fill: 21,
-  },
-  {
-    name: 'Kabir Shah',
-    reqs: 2,
-    active: 22,
-    interviews: 6,
-    overdue: 0,
-    fill: 18,
-  },
-  {
-    name: 'Ana Martins',
-    reqs: 3,
-    active: 45,
-    interviews: 9,
-    overdue: 3,
-    fill: 31,
-  },
-];
-
-const STARTS = [
-  {
-    name: 'Rohan Gupta',
-    role: 'Product Manager, Growth',
-    date: 'Mon 19 Oct',
-    ready: 'Laptop shipped',
-  },
-  {
-    name: 'Priya Nair',
-    role: 'HR Business Partner',
-    date: 'Mon 26 Oct',
-    ready: 'Docs pending',
-  },
-  {
-    name: 'Meera Pillai',
-    role: 'Frontend Engineer',
-    date: 'Mon 2 Nov',
-    ready: 'Background check',
-  },
-];
-
 const AGENT_IMPACT = [
   { label: 'Applications screened', value: '246' },
   { label: 'Interviews booked', value: '58' },
   { label: 'Recruiter hours saved', value: '31 h' },
   { label: 'Agreement with recruiters', value: '91%' },
 ];
-
-function formatDay(date: string) {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  });
-}
 
 function activityMeta(activity: Activity) {
   const actor = userDisplayName(activity.actor);
@@ -351,12 +206,14 @@ function LiveValue({
   loading: boolean;
   value: number | undefined;
 }) {
+  const fmt = useFormatters();
   if (loading) return <Skeleton className="h-7 w-12" />;
-  return <>{value === undefined ? '-' : value.toLocaleString('en-GB')}</>;
+  return <>{value === undefined ? '-' : fmt.number(value)}</>;
 }
 
 export default function DashboardPage() {
   const { user } = useSession();
+  const fmt = useFormatters();
   const { hasPermission } = usePermissions();
   const canViewDashboard = hasPermission(PERMISSIONS_ENUM.ATS_DASHBOARD_READ);
   const canCompleteTasks = hasPermission(PERMISSIONS_ENUM.TASK_UPDATE);
@@ -367,30 +224,81 @@ export default function DashboardPage() {
   } = useAtsDashboardQuery(canViewDashboard);
   const isLoading = canViewDashboard && queryLoading;
   const [range, setRange] = useState<Range>('30d');
+  const home = useHomeWidgets(RANGE_DAYS[range]);
+  const report = home.report;
+  const sourceTotal = (report?.sources ?? []).reduce(
+    (sum, src) => sum + src.applications,
+    0,
+  );
+  const sources = (report?.sources ?? [])
+    .filter((src) => src.applications > 0)
+    .map((src, i) => ({
+      key: src.source,
+      label: SOURCE_LABEL[src.source] ?? src.source,
+      value: src.applications,
+      hires: src.hires,
+      color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+    }));
+  const maxRecruiterApps = Math.max(
+    1,
+    ...(report?.recruiters ?? []).map((r) => r.applications),
+  );
+
+  const queue = [
+    {
+      icon: Video,
+      label: 'Scorecards to submit',
+      value: home.scorecardsDue,
+      loading: home.scorecardsLoading,
+      href: '/dashboard/interviews',
+      urgent: true,
+      enabled: home.canInterviews,
+    },
+    {
+      icon: CalendarDays,
+      label: `Interviews next ${home.scheduledWindowDays} days`,
+      value: home.interviewsThisWeek,
+      loading: home.interviewsThisWeekLoading,
+      href: '/dashboard/interviews',
+      urgent: false,
+      enabled: home.canInterviews,
+    },
+    {
+      icon: FileSignature,
+      label: 'Offers to approve',
+      value: home.offersToApprove.length,
+      loading: home.offersToApproveLoading,
+      href: '/dashboard/offers?status=pending_approval',
+      urgent: home.offersToApprove.length > 0,
+      enabled: home.canOffers,
+    },
+  ];
 
   useEffect(() => {
     if (error) toast.error('Could not load dashboard', error.message);
   }, [error]);
 
   const funnel = useMemo(() => {
-    const counts = new Map((data?.funnel ?? []).map((f) => [f.stage, f.count]));
-    return FUNNEL_STAGES.map((s, i) => ({
-      label: s.label,
-      value: FUNNEL_STAGES.slice(i).reduce(
-        (sum, later) => sum + (counts.get(later.stage) ?? 0),
-        0,
-      ),
+    const stages = (data?.funnel ?? []).filter(
+      (f) => !isClosedCategory(f.category),
+    );
+    return stages.map((s, i) => ({
+      label: s.name,
+      value: stages.slice(i).reduce((sum, later) => sum + later.count, 0),
     }));
   }, [data]);
 
-  const appliedCount = data?.funnel.find((f) => f.stage === 'applied')?.count;
+  const appliedCount = data?.funnel
+    .filter((f) => f.category === 'applied')
+    .reduce((sum, f) => sum + f.count, 0);
 
   const applications = useMemo(
     () =>
-      (data?.applicationsPerDay ?? [])
-        .slice(-RANGE_DAYS[range])
-        .map((d) => ({ day: formatDay(d.date), applied: d.count })),
-    [data, range],
+      (data?.applicationsPerDay ?? []).slice(-RANGE_DAYS[range]).map((d) => ({
+        day: fmt.dateLong(d.date, { day: 'numeric', month: 'short' }),
+        applied: d.count,
+      })),
+    [data, range, fmt],
   );
 
   const applicationsTotal = applications.reduce((sum, d) => sum + d.applied, 0);
@@ -408,16 +316,16 @@ export default function DashboardPage() {
     title: a.title,
     meta: activityMeta(a),
     time: formatDistanceToNow(new Date(a.createdAt), { addSuffix: true }),
-    color: ACTIVITY_COLOR[a.type],
+    color: activityColor(a),
   }));
   const dateLabel = useMemo(
     () =>
-      new Date().toLocaleDateString('en-GB', {
+      fmt.dateLong(new Date(), {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
       }),
-    [],
+    [fmt],
   );
 
   return (
@@ -462,7 +370,7 @@ export default function DashboardPage() {
           </span>
           <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </Link>
-        {QUEUE.map((q) => (
+        {queue.map((q) => (
           <Link
             key={q.label}
             href={q.href}
@@ -478,9 +386,14 @@ export default function DashboardPage() {
                 q.urgent && 'text-[#3F6650] dark:text-[#8FBFA1]',
               )}
             >
-              {q.value}
+              {q.loading ? (
+                <Skeleton className="h-5 w-6" />
+              ) : q.enabled && q.value !== undefined ? (
+                fmt.number(q.value)
+              ) : (
+                '-'
+              )}
             </span>
-            <NotIntegratedBadge label="" />
             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </Link>
         ))}
@@ -495,16 +408,24 @@ export default function DashboardPage() {
             className="p-4"
           />
         ))}
-        <div className="relative">
-          <TrendStat
-            label="Time to hire"
-            value={TIME_TO_HIRE.value}
-            unit={TIME_TO_HIRE.unit}
-            points={TIME_TO_HIRE.points}
-            className="h-full p-4"
-          />
-          <NotIntegratedBadge label="" className="absolute right-3 top-3" />
-        </div>
+        <TrendStat
+          label="Time to hire"
+          value={
+            home.reportLoading ? (
+              <Skeleton className="h-7 w-12" />
+            ) : report?.timeToHire.medianDays != null ? (
+              fmt.number(report.timeToHire.medianDays)
+            ) : (
+              '-'
+            )
+          }
+          unit={
+            report?.timeToHire.medianDays != null
+              ? `days median, ${fmt.number(report.timeToHire.hires)} hires`
+              : 'no hires in range'
+          }
+          className="h-full p-4"
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -525,8 +446,8 @@ export default function DashboardPage() {
         >
           {isLoading ? (
             <div className="space-y-2">
-              {FUNNEL_STAGES.map((s) => (
-                <Skeleton key={s.stage} className="h-9 w-full" />
+              {FUNNEL_SKELETON_ROWS.map((row) => (
+                <Skeleton key={row} className="h-9 w-full" />
               ))}
             </div>
           ) : (
@@ -579,7 +500,7 @@ export default function DashboardPage() {
           actions={
             !isLoading && (
               <span className="text-xs tabular-nums text-muted-foreground">
-                {applicationsTotal.toLocaleString('en-GB')} total
+                {fmt.number(applicationsTotal)} total
               </span>
             )
           }
@@ -601,27 +522,37 @@ export default function DashboardPage() {
         <SectionCard
           icon={PieChart}
           title="Source of hire"
-          subtitle="Share of applicants"
+          subtitle={`Applications and hires, last ${RANGE_DAYS[range]} days`}
           bodyClassName="p-4"
-          actions={<NotIntegratedBadge />}
         >
-          <div className="flex items-center gap-5">
-            <DonutChart
-              data={SOURCES}
-              size={150}
-              centerValue="1,084"
-              centerLabel="Applicants"
+          {home.reportLoading ? (
+            <Skeleton className="h-[150px] w-full" />
+          ) : sources.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<PieChart className="h-6 w-6" />}
+              title="No applications in this range"
+              description="Sources appear once candidates apply"
             />
-            <div className="min-w-0 flex-1">
-              <LegendDots
-                items={SOURCES.map((s) => ({
-                  color: s.color,
-                  label: s.label,
-                  value: `${s.value}%`,
-                }))}
+          ) : (
+            <div className="flex items-center gap-5">
+              <DonutChart
+                data={sources}
+                size={150}
+                centerValue={fmt.number(sourceTotal)}
+                centerLabel="Applications"
               />
+              <div className="min-w-0 flex-1">
+                <LegendDots
+                  items={sources.map((src) => ({
+                    color: src.color,
+                    label: src.label,
+                    value: `${Math.round((src.value / sourceTotal) * 100)}%, ${fmt.number(src.hires)} hired`,
+                  }))}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </SectionCard>
       </div>
 
@@ -742,82 +673,96 @@ export default function DashboardPage() {
         <SectionCard
           icon={UserCheck}
           title="Recruiter workload"
-          subtitle="Current load across the team"
+          subtitle={`Jobs owned and outcomes, last ${RANGE_DAYS[range]} days`}
           className="xl:col-span-2"
           bodyClassName="p-0"
-          actions={<NotIntegratedBadge />}
+          actions={
+            <Link
+              href="/dashboard/reports"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Reports
+            </Link>
+          }
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">Recruiter</th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    Open reqs
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    Active candidates
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    Interviews this week
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    Overdue tasks
-                  </th>
-                  <th className="px-4 py-2 text-right font-medium">
-                    Avg time to fill
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {RECRUITERS.map((r) => (
-                  <tr key={r.name} className="hover:bg-muted/40">
-                    <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2">
-                        <InitialsAvatar
-                          name={r.name}
-                          className="h-6 w-6 text-[10px]"
-                        />
-                        <span className="font-medium">{r.name}</span>
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
-                      {r.reqs}
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="h-1.5 w-16 overflow-hidden rounded-sm bg-muted">
-                          <span
-                            className={cn(
-                              'block h-full',
-                              r.active > 80 ? 'bg-amber-500' : 'bg-[#3F6650]',
-                            )}
-                            style={{ width: `${Math.min(r.active, 100)}%` }}
-                          />
-                        </span>
-                        <span className="w-6 tabular-nums">{r.active}</span>
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
-                      {r.interviews}
-                    </td>
-                    <td
-                      className={cn(
-                        'px-3 py-2.5 text-right tabular-nums',
-                        r.overdue > 2 &&
-                          'font-medium text-red-600 dark:text-red-400',
-                      )}
-                    >
-                      {r.overdue}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {r.fill}d
-                    </td>
+          {home.reportLoading ? (
+            <div className="space-y-2 p-4">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : (report?.recruiters ?? []).length === 0 ? (
+            <EmptyState
+              compact
+              icon={<UserCheck className="h-6 w-6" />}
+              title="No recruiter activity"
+              description="Assign recruiters to jobs to see their workload"
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th className="px-4 py-2 font-medium">Recruiter</th>
+                    <th className="px-3 py-2 text-right font-medium">Jobs</th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Applications
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Interviews
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">Offers</th>
+                    <th className="px-4 py-2 text-right font-medium">Hires</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {(report?.recruiters ?? []).map((r) => {
+                    const name = personName(r.recruiter) || r.recruiter.email;
+                    return (
+                      <tr key={r.recruiter.id} className="hover:bg-muted/40">
+                        <td className="px-4 py-2.5">
+                          <span className="flex items-center gap-2">
+                            <InitialsAvatar
+                              name={name}
+                              className="h-6 w-6 text-[10px]"
+                            />
+                            <span className="font-medium">{name}</span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {fmt.number(r.jobs)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="h-1.5 w-16 overflow-hidden rounded-sm bg-muted">
+                              <span
+                                className="block h-full bg-[#3F6650] dark:bg-[#8FBFA1]"
+                                style={{
+                                  width: `${(r.applications / maxRecruiterApps) * 100}%`,
+                                }}
+                              />
+                            </span>
+                            <span className="w-8 tabular-nums">
+                              {fmt.number(r.applications)}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {fmt.number(r.interviews)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {fmt.number(r.offers)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+                          {fmt.number(r.hires)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </SectionCard>
       </div>
 
@@ -891,40 +836,80 @@ export default function DashboardPage() {
         <SectionCard
           icon={CalendarDays}
           title="Today's interviews"
-          subtitle={`${AGENDA.length} scheduled`}
+          subtitle={
+            home.todaysInterviewsLoading
+              ? 'Loading'
+              : `${home.todaysInterviews.length} scheduled`
+          }
           bodyClassName="p-0"
           actions={
-            <>
-              <NotIntegratedBadge />
-              <Link
-                href="/dashboard/interviews"
-                className="text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                Calendar
-              </Link>
-            </>
+            <Link
+              href="/dashboard/interviews"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Calendar
+            </Link>
           }
         >
-          <ul className="divide-y divide-border">
-            {AGENDA.map((a) => (
-              <li key={a.time} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="w-11 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
-                  {a.time}
-                </span>
-                <InitialsAvatar
-                  name={a.name}
-                  className="h-7 w-7 shrink-0 text-[11px]"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{a.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {a.role} · {a.panel}
-                  </p>
-                </div>
-                <StatusPill tone={a.tone}>{a.stage}</StatusPill>
-              </li>
-            ))}
-          </ul>
+          {home.todaysInterviewsLoading ? (
+            <div className="space-y-2 p-4">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : home.todaysInterviews.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<CalendarDays className="h-6 w-6" />}
+              title="No interviews today"
+              description="Scheduled interviews for today show up here"
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {home.todaysInterviews.map((iv) => {
+                const name = personName(iv.candidate) || iv.candidate.email;
+                const panel =
+                  iv.interviewers.length > 2
+                    ? `${iv.interviewers.length} interviewers`
+                    : iv.interviewers.map((u) => userDisplayName(u)).join(', ');
+                return (
+                  <li key={iv.id}>
+                    <Link
+                      href={`/dashboard/interviews?id=${iv.id}`}
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40"
+                    >
+                      <span className="w-14 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                        {fmt.time(iv.scheduledAt)}
+                      </span>
+                      <InitialsAvatar
+                        name={name}
+                        className="h-7 w-7 shrink-0 text-[11px]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            'truncate text-sm font-medium',
+                            iv.status === 'cancelled' &&
+                              'text-muted-foreground line-through',
+                          )}
+                        >
+                          {name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {[iv.job.title, panel].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      <StatusPill
+                        tone={iv.status === 'scheduled' ? 'info' : 'neutral'}
+                      >
+                        {INTERVIEW_TYPE_LABEL[iv.type] ?? iv.title}
+                      </StatusPill>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </SectionCard>
       </div>
 
@@ -988,30 +973,74 @@ export default function DashboardPage() {
         <SectionCard
           icon={UserPlus}
           title="Upcoming starts"
-          subtitle="Accepted offers joining soon"
+          subtitle={`Accepted offers starting in the next ${home.upcomingStartDays} days`}
           bodyClassName="p-0"
-          actions={<NotIntegratedBadge />}
+          actions={
+            <Link
+              href="/dashboard/offers?status=accepted"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Offers
+            </Link>
+          }
         >
-          <ul className="divide-y divide-border">
-            {STARTS.map((st) => (
-              <li key={st.name} className="flex items-center gap-3 px-4 py-2.5">
-                <InitialsAvatar
-                  name={st.name}
-                  className="h-7 w-7 shrink-0 text-[11px]"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{st.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {st.role}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-medium tabular-nums">{st.date}</p>
-                  <p className="text-xs text-muted-foreground">{st.ready}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {home.upcomingStartsLoading ? (
+            <div className="space-y-2 p-4">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : home.upcomingStarts.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<UserPlus className="h-6 w-6" />}
+              title="No upcoming starts"
+              description="Accepted offers with a start date appear here"
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {home.upcomingStarts.map((o) => {
+                const name = personName(o.candidate) || o.candidate.email;
+                const days = home.daysUntil(o.startDate ?? '');
+                return (
+                  <li key={o.id}>
+                    <Link
+                      href={`/dashboard/offers?id=${o.id}`}
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40"
+                    >
+                      <InitialsAvatar
+                        name={name}
+                        className="h-7 w-7 shrink-0 text-[11px]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {o.title}
+                          {o.client ? ` · ${o.client.name}` : ''}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium tabular-nums">
+                          {fmt.dateLong(o.startDate, {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {days === 0
+                            ? 'Today'
+                            : days === 1
+                              ? 'Tomorrow'
+                              : `In ${days} days`}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </SectionCard>
       </div>
     </div>

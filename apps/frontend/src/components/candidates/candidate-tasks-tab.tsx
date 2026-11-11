@@ -1,5 +1,6 @@
 'use client';
 
+import { useFormatters } from '@/hooks/use-formatters';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 import { CalendarDays, CheckCircle2, Circle, ListTodo } from 'lucide-react';
@@ -34,7 +35,6 @@ import {
 import type { CandidateDetail } from '@/types/candidate.type';
 import {
   errorMessage,
-  shortDate,
   userLabel,
 } from '@/components/applications/application-meta';
 
@@ -204,6 +204,7 @@ export function CandidateTasksTab({
 }: {
   candidate: CandidateDetail;
 }) {
+  const fmt = useFormatters();
   const { hasPermission } = usePermissions();
   const canComplete = hasPermission(PERMISSIONS_ENUM.TASK_UPDATE);
   const { data, isLoading, isError } = useTasksQuery(
@@ -300,7 +301,7 @@ export function CandidateTasksTab({
                       )}
                     >
                       <CalendarDays className="h-3 w-3" />
-                      {shortDate(t.dueAt)}
+                      {fmt.date(t.dueAt)}
                     </span>
                   )}
                 </li>
