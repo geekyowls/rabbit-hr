@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "help:index": "node scripts/build-help-index.mjs",
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev",
     "build": "next build",
     "build:pages": "next build && node scripts/upload-sourcemaps.mjs",
     "start": "next start",
