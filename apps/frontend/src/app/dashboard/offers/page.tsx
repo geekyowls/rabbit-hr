@@ -51,10 +51,10 @@ const LIMIT = 25;
 const ALL = 'all';
 const BASE = '/dashboard/offers';
 
-const DECISION_RING = {
-  approved: 'ring-[#3F6650] dark:ring-[#8FBFA1]',
-  rejected: 'ring-red-500 dark:ring-red-400',
-  pending: 'ring-border',
+const DECISION_DOT = {
+  approved: 'bg-green-500 dark:bg-green-400',
+  rejected: 'bg-red-500 dark:bg-red-400',
+  pending: 'bg-zinc-300 dark:bg-zinc-600',
 };
 
 function OffersPageContent() {
@@ -209,19 +209,22 @@ function OffersPageContent() {
           <span className="text-muted-foreground">None</span>
         ) : (
           <span className="flex items-center gap-2">
-            <span className="flex -space-x-1">
+            <span className="flex -space-x-1.5">
               {r.approvers.slice(0, 4).map((a) => (
                 <span
                   key={a.id}
                   title={`${approverName(a)}: ${a.decision ?? 'pending'}`}
-                  className={cn(
-                    'rounded-full ring-2',
-                    DECISION_RING[a.decision ?? 'pending'],
-                  )}
+                  className="relative rounded-full ring-2 ring-background"
                 >
                   <InitialsAvatar
                     name={approverName(a)}
-                    className="h-5 w-5 text-[9px]"
+                    className="h-6 w-6 text-[10px]"
+                  />
+                  <span
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-background',
+                      DECISION_DOT[a.decision ?? 'pending'],
+                    )}
                   />
                 </span>
               ))}

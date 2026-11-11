@@ -325,7 +325,7 @@ export function DataGrid<T>({
                       className={cn(
                         cellBase,
                         alignClass(col.align),
-                        col.mono && 'font-mono tabular-nums',
+                        col.mono && 'tabular-nums',
                         'last:border-r-0',
                         isPinned && cn('z-10 bg-inherit', pinnedShadow),
                       )}
