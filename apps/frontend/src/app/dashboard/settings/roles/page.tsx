@@ -1,20 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
+import { Plus, ShieldCheck } from 'lucide-react';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAnalytics } from '@/hooks/use-analytics';
+import { useBreadcrumb } from '@/contexts/breadcrumb-context';
 import { PermissionGuard } from '@/components/auth/permission-guard';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,29 +21,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ListPageSkeleton } from '@/components/ui/list-page-skeleton';
-import { toast } from '@/lib/toast';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/solid';
 import { PageHeader } from '@/components/ui/page-header';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import {
+  DataGrid,
+  EmptyState,
+  RowActions,
+  StatusPill,
+  ToolbarButton,
+  type DataGridColumn,
+  type RowAction,
+} from '@/components/patterns';
+import { toast } from '@/lib/toast';
 import type { Role } from '@/types/role.type';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  ColumnDef,
-  VisibilityState,
-} from '@tanstack/react-table';
-import {
-  DataTable,
-  DataTablePagination,
-} from '@/components/patterns/data-table';
-import { useAnalytics } from '@/hooks/use-analytics';
 
 function RolesContent() {
+  useBreadcrumb([
+    { label: 'Settings', href: '/dashboard/settings' },
+    { label: 'Roles', active: true },
+  ]);
+  const router = useRouter();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const { hasPermission } = usePermissions();
   const { trackRoleEvent } = useAnalytics();
 
@@ -96,115 +92,110 @@ function RolesContent() {
     }
   };
 
-  const columns = useMemo<ColumnDef<Role>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: 'Name',
-        enableHiding: false,
-        cell: ({ row }) => (
-          <span className="font-medium">{row.original.name}</span>
-        ),
-      },
-      {
-        accessorKey: 'permissions',
-        header: 'Permissions',
-        enableHiding: true,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.permissions.length} permission
-            {row.original.permissions.length !== 1 ? 's' : ''}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'isDefault',
-        header: 'Type',
-        size: 80,
-        enableHiding: true,
-        cell: ({ row }) =>
-          row.original.isDefault ? (
-            <Badge variant="secondary">Default</Badge>
-          ) : null,
-      },
-      {
-        id: 'actions',
-        header: '',
-        size: 48,
-        enableHiding: false,
-        cell: ({ row }) =>
-          hasPermission(PERMISSIONS_ENUM.ROLE_UPDATE) ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <EllipsisVerticalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/dashboard/settings/roles/edit?id=${row.original.id}`}
-                  >
-                    Edit
-                  </Link>
-                </DropdownMenuItem>
-                {!row.original.isDefault && (
-                  <DropdownMenuItem
-                    onClick={() => setDeleteTarget(row.original)}
-                    className="text-destructive"
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null,
-      },
-    ],
-    [hasPermission],
-  );
+  const canUpdate = hasPermission(PERMISSIONS_ENUM.ROLE_UPDATE);
+  const editRole = (role: Role) =>
+    router.push(`/dashboard/settings/roles/edit?id=${role.id}`);
 
-  const table = useReactTable({
-    data: roles,
-    columns,
-    state: {
-      columnVisibility,
-    },
-    onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
-  });
+  const rowActions = (role: Role): RowAction[] => [
+    { label: 'Edit', onSelect: () => editRole(role) },
+    ...(role.isDefault
+      ? []
+      : [
+          {
+            label: 'Delete',
+            destructive: true,
+            onSelect: () => setDeleteTarget(role),
+          },
+        ]),
+  ];
 
-  if (isLoading) {
-    return <ListPageSkeleton searchBar={false} filters={0} rows={3} />;
-  }
+  const columns: DataGridColumn<Role>[] = [
+    {
+      key: 'name',
+      header: 'Role',
+      width: 260,
+      render: (r) => <span className="font-medium">{r.name}</span>,
+    },
+    {
+      key: 'permissions',
+      header: 'Permissions',
+      width: 160,
+      render: (r) =>
+        `${r.permissions.length} permission${r.permissions.length === 1 ? '' : 's'}`,
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      width: 120,
+      render: (r) =>
+        r.isDefault ? (
+          <StatusPill tone="info">Default</StatusPill>
+        ) : (
+          <StatusPill tone="neutral">Custom</StatusPill>
+        ),
+    },
+    {
+      key: 'updatedAt',
+      header: 'Updated',
+      width: 140,
+      render: (r) => format(new Date(r.updatedAt), 'd MMM yyyy'),
+    },
+    ...(canUpdate
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            width: 56,
+            align: 'center' as const,
+            render: (r: Role) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions actions={rowActions(r)} />
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Roles"
+        description="Who can see and do what across the workspace"
         backHref="/dashboard/settings"
         actions={
           hasPermission(PERMISSIONS_ENUM.ROLE_CREATE) ? (
-            <Link href="/dashboard/settings/roles/new">
-              <Button>Create Role</Button>
-            </Link>
+            <ToolbarButton
+              variant="primary"
+              icon={Plus}
+              onClick={() => router.push('/dashboard/settings/roles/new')}
+            >
+              New role
+            </ToolbarButton>
           ) : undefined
         }
       />
 
-      <DataTable
-        table={table}
-        isLoading={isLoading}
-        emptyMessage="No roles found"
-      />
-
-      <DataTablePagination table={table} totalItems={roles.length} />
+      {isLoading ? (
+        <TableSkeleton />
+      ) : roles.length === 0 ? (
+        <div className="rounded-md border border-border">
+          <EmptyState
+            icon={<ShieldCheck className="h-8 w-8" />}
+            title="No roles yet"
+            description="Create a role to group permissions for your team"
+          />
+        </div>
+      ) : (
+        <DataGrid
+          columns={columns}
+          rows={roles}
+          getRowId={(r) => r.id}
+          onRowClick={canUpdate ? editRole : undefined}
+          pinFirstColumn
+          maxHeight="calc(100vh - 14rem)"
+        />
+      )}
 
       <AlertDialog
         open={!!deleteTarget}
@@ -214,8 +205,8 @@ function RolesContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete role</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the role &quot;
-              {deleteTarget?.name}&quot;? This cannot be undone.
+              &quot;{deleteTarget?.name}&quot; will be deleted. This cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -86,14 +86,14 @@ export function DashboardHeader() {
         </div>
         <div className="flex items-center gap-3">
           <div
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted/50 border rounded-md cursor-pointer hover:bg-muted transition-colors"
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted/50 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors"
             onClick={() =>
               window.dispatchEvent(new CustomEvent('open-command-palette'))
             }
           >
             <Search className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Search...</span>
-            <kbd className="ml-auto text-xs bg-background px-1.5 py-0.5 rounded border font-mono">
+            <kbd className="ml-auto text-xs bg-background px-1.5 py-0.5 rounded border border-border font-mono">
               ⌘K
             </kbd>
           </div>

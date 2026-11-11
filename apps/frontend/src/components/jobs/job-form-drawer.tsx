@@ -731,7 +731,7 @@ export function JobFormDrawer({
           <Field label="Required documents, comma separated">
             <Input
               className="h-9"
-              placeholder="Right to work, CV, Background check"
+              placeholder="Work eligibility, CV, Background check"
               {...register('requiredDocuments')}
             />
           </Field>

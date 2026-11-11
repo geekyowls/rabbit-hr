@@ -554,7 +554,7 @@ export function AddCandidateDrawer({
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Eligibility and pay</h3>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Right to work">
+            <Field label="Work eligibility">
               <Controller
                 name="rightToWork"
                 control={control}

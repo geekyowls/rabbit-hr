@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronLeft, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronUp, X } from 'lucide-react';
+import { IconButton } from '../toolbar';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -31,21 +32,10 @@ export function DetailDrawer({
         side="right"
         hideClose
         className={cn(
-          'flex w-full flex-col gap-0 overflow-visible bg-background p-0 sm:max-w-xl',
+          'flex w-full flex-col gap-0 bg-background p-0 sm:max-w-xl',
           className,
         )}
       >
-        <div className="absolute left-0 top-4 z-50 flex -translate-x-[calc(100%+8px)] flex-col overflow-hidden rounded-md border border-border bg-background shadow-md">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
         <div className="flex items-center gap-2 border-b border-border px-5 py-4">
           {onBack && (
             <Button
@@ -61,9 +51,10 @@ export function DetailDrawer({
           <SheetTitle className="truncate text-base font-semibold">
             {title}
           </SheetTitle>
-          {chips && (
-            <div className="ml-auto flex items-center gap-2">{chips}</div>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {chips}
+            <DrawerNavControls onClose={() => onOpenChange(false)} />
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
         {footer && (
@@ -71,6 +62,48 @@ export function DetailDrawer({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+export function DrawerNavControls({
+  onClose,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  prevLabel = 'Previous',
+  nextLabel = 'Next',
+}: {
+  onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  prevLabel?: string;
+  nextLabel?: string;
+}) {
+  const showNav = !!(onPrev || onNext);
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      {showNav && (
+        <>
+          <IconButton
+            icon={ChevronUp}
+            label={prevLabel}
+            onClick={onPrev}
+            disabled={!hasPrev}
+          />
+          <IconButton
+            icon={ChevronDown}
+            label={nextLabel}
+            onClick={onNext}
+            disabled={!hasNext}
+          />
+          <span className="mx-1 h-5 w-px bg-border" />
+        </>
+      )}
+      <IconButton icon={X} label="Close" onClick={onClose} />
+    </div>
   );
 }
 

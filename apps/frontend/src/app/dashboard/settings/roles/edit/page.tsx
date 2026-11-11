@@ -2,22 +2,17 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@/lib/zod-resolver';
 import { roleSchema, RoleFormData } from '@/schemas/role.schema';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
+import { useBreadcrumb } from '@/contexts/breadcrumb-context';
 import { PermissionGuard } from '@/components/auth/permission-guard';
-import { PermissionPicker } from '@/components/roles/permission-picker';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { RoleForm } from '@/components/roles/role-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/lib/toast';
-import { PageHeader } from '@/components/ui/page-header';
-import Link from 'next/link';
 import type { Role } from '@/types/role.type';
 
 function EditRoleContent() {
@@ -27,20 +22,20 @@ function EditRoleContent() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<RoleFormData>({
+  useBreadcrumb([
+    { label: 'Settings', href: '/dashboard/settings' },
+    { label: 'Roles', href: '/dashboard/settings/roles' },
+    { label: 'Edit role', active: true },
+  ]);
+  const form = useForm<RoleFormData>({
     resolver: zodResolver(roleSchema),
     defaultValues: { name: '', permissions: [] },
   });
+  const { reset } = form;
 
   const loadRole = useCallback(async () => {
     if (!roleId) {
-      toast.error('Role ID is required');
+      toast.error('Role not found');
       router.push('/dashboard/settings/roles');
       return;
     }
@@ -82,9 +77,9 @@ function EditRoleContent() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-24 w-full" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-48 w-full" />
@@ -95,59 +90,13 @@ function EditRoleContent() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <PageHeader title="Edit Role" backHref="/dashboard/settings/roles" />
-
-      <Separator />
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="space-y-2 max-w-md">
-          <Label htmlFor="role-name">Role Name</Label>
-          <Input
-            id="role-name"
-            placeholder="e.g. Editor, Viewer, Manager"
-            disabled={isSubmitting}
-            {...register('name')}
-          />
-          {errors.name && (
-            <p className="text-sm text-red-500">{errors.name.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <Label>Permissions</Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              Select which actions this role can perform
-            </p>
-          </div>
-          <Controller
-            name="permissions"
-            control={control}
-            render={({ field }) => (
-              <PermissionPicker
-                selected={field.value}
-                onChange={field.onChange}
-                disabled={isSubmitting}
-              />
-            )}
-          />
-        </div>
-
-        <Separator />
-
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Update Role'}
-          </Button>
-          <Link href="/dashboard/settings/roles">
-            <Button type="button" variant="outline" disabled={isSubmitting}>
-              Cancel
-            </Button>
-          </Link>
-        </div>
-      </form>
-    </div>
+    <RoleForm
+      form={form}
+      title="Edit role"
+      description="Rename the role or change what it can do"
+      submitLabel="Save changes"
+      onSubmit={onSubmit}
+    />
   );
 }
 
@@ -163,7 +112,7 @@ export default function EditRolePage() {
     >
       <Suspense
         fallback={
-          <div className="max-w-4xl space-y-6">
+          <div className="space-y-4">
             <Skeleton className="h-8 w-48" />
           </div>
         }

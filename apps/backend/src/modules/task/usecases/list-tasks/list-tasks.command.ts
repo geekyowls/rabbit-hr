@@ -1,8 +1,18 @@
-import { IsBoolean, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { BasePaginatedCommand } from '@boilerplate/core';
 import { TaskDueFilter, TaskStatus } from '@db/enums';
 
 export class ListTasksCommand extends BasePaginatedCommand {
+  @IsString()
+  @IsOptional()
+  search?: string;
+
   @IsEnum(TaskStatus)
   @IsOptional()
   status?: TaskStatus;

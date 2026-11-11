@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { StatusPill } from '@/components/patterns';
 import { usePermissions } from '@/hooks/use-permissions';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import {
@@ -149,7 +148,9 @@ export function MailboxComposeDialog({
             <Mail className="h-4 w-4 text-[#3F6650] dark:text-[#8FBFA1]" />
             New email
             {mailbox?.isDemo && (
-              <StatusPill tone="warning">Demo inbox, not sent</StatusPill>
+              <span className="text-xs font-normal text-muted-foreground">
+                Demo inbox, not sent
+              </span>
             )}
           </DialogTitle>
           <DialogDescription>

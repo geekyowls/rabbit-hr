@@ -697,7 +697,7 @@ const REJECTION_REASONS = [
   'Insufficient relevant experience for the role',
   'Salary expectations above the client budget',
   'Client has progressed with a stronger candidate',
-  'Unable to provide right to work documentation',
+  'Unable to provide eligibility documentation',
   'Location and commute not suitable',
   'Did not attend the interview',
   'Notice period too long for the client start date',
@@ -712,14 +712,14 @@ const NOTES = [
   'Strong CV, previous experience in a very similar setting. Recommend fast tracking.',
   'Left a voicemail, will try again tomorrow morning.',
   'Candidate has a competing offer, needs a decision by Friday.',
-  'Right to work checked in person, share code verified on GOV.UK.',
+  'ID and eligibility documents checked in person and verified.',
   'Client asked for two more profiles similar to this one.',
   'Candidate is happy with the rate and can start on Monday.',
   'Discussed salary expectations, open to negotiation within the band.',
   'Reference from previous manager was very positive.',
   'Candidate asked about flexible working, client is open to four days on site.',
   'Interview feedback was positive, client wants a second stage.',
-  'Needs to renew their DBS, application submitted via the update service.',
+  'Needs to renew their background check, application already submitted.',
   'Candidate relocating from Scotland in the new year, keep warm.',
   'Agreed to put forward for the weekend rota as well.',
 ];
@@ -740,13 +740,13 @@ const EMAIL_SUBJECTS = [
 ];
 
 const TASK_TITLES = [
-  'Chase right to work documents',
+  'Chase ID and eligibility documents',
   'Book second interview with the client',
   'Send interview feedback to candidate',
   'Request references',
   'Confirm start date and induction',
   'Update client on shortlist',
-  'Check DBS certificate',
+  'Review background check',
   'Prepare offer letter',
   'Call candidate re availability',
   'Collect timesheets for the week',
@@ -763,7 +763,7 @@ function jobRequirements(seed: JobSeed): string {
     `Proven experience as a ${seed.title} or in a similar role`,
     ...seed.skills.map((s) => `Knowledge of ${s}`),
     'Excellent communication skills and a positive attitude',
-    'Right to work in the UK',
+    'Eligible to work in this country',
   ]
     .map((line) => `- ${line}`)
     .join('\n');
@@ -808,7 +808,7 @@ const EMAIL_TEMPLATES: Array<DeepPartial<EmailTemplateEntity>> = [
     name: 'Interview invitation',
     category: EmailTemplateCategory.INTERVIEW,
     subject: 'Interview invitation: {{job.title}} with {{client.name}}',
-    body: 'Hi {{candidate.firstName}},\n\nGood news! {{client.name}} would like to invite you to interview for the {{job.title}} position.\n\nPlease let me know your availability over the next few days and I will confirm a time that works for everyone. Do bring photo ID and proof of your right to work in the UK.\n\nBest of luck,\n{{recruiter.name}}\n{{organization.name}}',
+    body: 'Hi {{candidate.firstName}},\n\nGood news! {{client.name}} would like to invite you to interview for the {{job.title}} position.\n\nPlease let me know your availability over the next few days and I will confirm a time that works for everyone. Do bring photo ID and proof of your eligibility to work.\n\nBest of luck,\n{{recruiter.name}}\n{{organization.name}}',
   },
   {
     name: 'Offer of employment',
@@ -832,7 +832,7 @@ const EMAIL_TEMPLATES: Array<DeepPartial<EmailTemplateEntity>> = [
     name: 'Documents request',
     category: EmailTemplateCategory.GENERAL,
     subject: 'Documents needed for your {{job.title}} application',
-    body: 'Hi {{candidate.firstName}},\n\nTo keep your application for {{job.title}} moving, please send over the following at your earliest convenience:\n\n- Proof of your right to work in the UK (passport or share code)\n- Photo ID\n- Details of two referees\n\nThank you,\n{{recruiter.name}}\n{{organization.name}}',
+    body: 'Hi {{candidate.firstName}},\n\nTo keep your application for {{job.title}} moving, please send over the following at your earliest convenience:\n\n- Proof of your eligibility to work (passport or work permit)\n- Photo ID\n- Details of two referees\n\nThank you,\n{{recruiter.name}}\n{{organization.name}}',
   },
 ];
 
@@ -977,7 +977,7 @@ export async function seedAts(
         screeningQuestions: [
           {
             id: randomUUID(),
-            question: 'Do you have the right to work in the UK?',
+            question: 'Are you eligible to work in this country?',
             required: true,
           },
           {
@@ -1307,9 +1307,9 @@ export async function seedAts(
   const docNames: Record<string, string> = {
     [DocumentType.CV]: 'CV',
     [DocumentType.ID]: 'Passport',
-    [DocumentType.RIGHT_TO_WORK]: 'Right to work share code',
+    [DocumentType.RIGHT_TO_WORK]: 'ID and eligibility proof',
     [DocumentType.REFERENCE]: 'Employment reference',
-    [DocumentType.DBS]: 'Enhanced DBS certificate',
+    [DocumentType.DBS]: 'Background check certificate',
   };
   const documents: Array<DeepPartial<CandidateDocumentEntity>> = [];
   for (const candidate of pickMany(candidates, 40)) {

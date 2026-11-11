@@ -306,7 +306,7 @@ async function seedInterviews(
       organizerId: app.recruiterId ?? context.adminUserId,
       status,
       notes: chance(0.4)
-        ? 'Please bring photo ID and proof of right to work.'
+        ? 'Please bring photo ID and proof of eligibility to work.'
         : null,
       cancelledReason,
       createdAt: new Date(

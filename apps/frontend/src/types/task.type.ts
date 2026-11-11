@@ -45,6 +45,7 @@ export interface Task {
 export interface ListTasksRequest {
   page: number;
   limit: number;
+  search?: string;
   status?: TaskStatus;
   assigneeId?: string;
   mine?: boolean;

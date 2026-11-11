@@ -61,6 +61,7 @@ export class TaskController {
         organizationId: user.organizationId,
         page: dto.page,
         limit: dto.limit,
+        search: dto.search?.trim() || undefined,
         status: dto.status,
         assigneeId: dto.assigneeId,
         mine: dto.mine,

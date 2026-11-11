@@ -127,7 +127,7 @@ const CALL_OUTCOMES: Array<{
 const CALL_NOTES: Partial<Record<CallDisposition, string[]>> = {
   [CallDisposition.CONNECTED]: [
     'Talked through the role and shift pattern, happy to proceed',
-    'Confirmed right to work and availability from next week',
+    'Confirmed work eligibility and availability from next week',
     'Discussed pay rate expectations, within budget',
   ],
   [CallDisposition.INTERESTED]: [

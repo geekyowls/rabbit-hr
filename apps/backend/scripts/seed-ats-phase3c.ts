@@ -146,17 +146,17 @@ function candidateScripts(job: string, client: string, them: Party, me: Party) {
       ],
     },
     {
-      subject: 'Right to work documents',
+      subject: 'Eligibility documents',
       steps: [
         {
           from: 'me',
-          body: `Hi ${them.firstName},\n\nBefore your first shift we need a copy of your right to work documents. A photo of your passport or share code is fine.\n\n${me.firstName}`,
+          body: `Hi ${them.firstName},\n\nBefore your first shift we need a copy of your ID and eligibility documents. A photo of your passport or work permit is fine.\n\n${me.firstName}`,
         },
         {
           from: 'them',
-          body: `Hi,\n\nMy share code is attached. Let me know if you need anything else.\n\n${them.firstName}`,
+          body: `Hi,\n\nMy work permit is attached. Let me know if you need anything else.\n\n${them.firstName}`,
           attachment: {
-            filename: 'share_code.pdf',
+            filename: 'work_permit.pdf',
             mimeType: 'application/pdf',
             size: int(40_000, 90_000),
             providerAttachmentId: null,

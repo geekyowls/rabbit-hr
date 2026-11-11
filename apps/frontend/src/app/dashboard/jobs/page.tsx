@@ -10,6 +10,7 @@ import {
   ExportButton,
   ToolbarButton,
   DataGrid,
+  TruncatedText,
   StatusPill,
   RowActions,
   EmptyState,
@@ -210,7 +211,7 @@ function JobsPageContent() {
       key: 'title',
       header: 'Job title',
       width: 220,
-      render: (r) => <span className="font-medium">{r.title}</span>,
+      render: (r) => <TruncatedText text={r.title} className="font-medium" />,
     },
     {
       key: 'reference',
@@ -224,7 +225,9 @@ function JobsPageContent() {
       header: 'Client',
       width: 160,
       render: (r) =>
-        r.client?.name ?? (
+        r.client?.name ? (
+          <TruncatedText text={r.client.name} />
+        ) : (
           <span className="text-muted-foreground">No client</span>
         ),
     },
@@ -232,19 +235,19 @@ function JobsPageContent() {
       key: 'department',
       header: 'Department',
       width: 140,
-      render: (r) => r.department || '',
+      render: (r) => <TruncatedText text={r.department} />,
     },
     {
       key: 'hiringManager',
       header: 'Hiring manager',
       width: 150,
-      render: (r) => userLabel(r.hiringManager),
+      render: (r) => <TruncatedText text={userLabel(r.hiringManager)} />,
     },
     {
       key: 'location',
       header: 'Location',
       width: 130,
-      render: (r) => r.location || '',
+      render: (r) => <TruncatedText text={r.location} />,
     },
     {
       key: 'type',
@@ -252,7 +255,14 @@ function JobsPageContent() {
       width: 110,
       render: (r) => EMPLOYMENT_TYPE_LABEL[r.employmentType],
     },
-    { key: 'pay', header: 'Pay', width: 200, render: (r) => fmt.pay(r) },
+    {
+      key: 'pay',
+      header: 'Pay',
+      width: 170,
+      render: (r) => (
+        <TruncatedText text={fmt.payCompact(r)} title={fmt.pay(r)} />
+      ),
+    },
     {
       key: 'openings',
       header: 'Openings',

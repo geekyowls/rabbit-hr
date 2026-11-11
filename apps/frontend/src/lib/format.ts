@@ -19,6 +19,13 @@ export const PAY_UNIT_LABEL: Record<SalaryPeriod, string> = {
   year: 'per year',
 };
 
+export const PAY_UNIT_SHORT_LABEL: Record<SalaryPeriod, string> = {
+  hour: 'hr',
+  day: 'day',
+  month: 'mo',
+  year: 'yr',
+};
+
 export const SALARY_PERIOD_LABEL: Record<SalaryPeriod, string> = {
   hour: 'Hourly',
   day: 'Daily',
@@ -84,6 +91,24 @@ export function formatMoney(
   }
 }
 
+export function formatMoneyCompact(
+  amount: number,
+  currency: string = DEFAULT_ATS_SETTINGS.defaultCurrency,
+  locale?: string,
+) {
+  if (Math.abs(amount) < 1000) return formatMoney(amount, currency, locale);
+  try {
+    return new Intl.NumberFormat(safeLocale(locale), {
+      style: 'currency',
+      currency,
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(amount);
+  } catch {
+    return formatMoney(amount, currency, locale);
+  }
+}
+
 export function formatMoneyRange(
   min: number | null | undefined,
   max: number | null | undefined,
@@ -140,6 +165,30 @@ export function formatJobPay(
     return formatPayRate(Number(job.payRate), unit, currency, locale);
   }
   return 'Not set';
+}
+
+export function formatJobPayCompact(
+  job: PayFields,
+  locale?: string,
+  fallbackCurrency?: string,
+): string {
+  const currency = job.currency || fallbackCurrency;
+  const isPermanent = job.employmentType === 'permanent';
+  const unit = job.rateUnit ?? (isPermanent ? 'year' : 'hour');
+  const suffix = ` / ${PAY_UNIT_SHORT_LABEL[unit]}`;
+  const compact = (value: number) =>
+    formatMoneyCompact(value, currency, locale);
+  if (!isPermanent && job.payRate != null) {
+    return compact(Number(job.payRate)) + suffix;
+  }
+  const min = job.salaryMin != null ? Number(job.salaryMin) : null;
+  const max = job.salaryMax != null ? Number(job.salaryMax) : null;
+  if (min != null && max != null && min !== max) {
+    return `${compact(min)} - ${compact(max)}${suffix}`;
+  }
+  const single =
+    min ?? max ?? (job.payRate != null ? Number(job.payRate) : null);
+  return single != null ? compact(single) + suffix : 'Not set';
 }
 
 export function currencySymbol(currency: string, locale?: string) {
@@ -270,6 +319,8 @@ export function createFormatters(settings: AtsSettings) {
       currency: string = defaultCurrency,
     ) => formatPayRate(amount, unit, currency, locale),
     pay: (job: PayFields) => formatJobPay(job, locale, defaultCurrency),
+    payCompact: (job: PayFields) =>
+      formatJobPayCompact(job, locale, defaultCurrency),
     date: (value: DateInput) => formatDate(value, settings),
     dateTime: (value: DateInput) => formatDateTime(value, settings),
     time: (value: DateInput) => formatTime(value, settings),

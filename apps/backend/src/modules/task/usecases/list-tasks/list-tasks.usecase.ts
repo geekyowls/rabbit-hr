@@ -19,6 +19,12 @@ export class ListTasks {
   async execute(command: ListTasksCommand) {
     const qb = buildTaskQuery(this.taskRepository, command.organizationId);
 
+    if (command.search) {
+      qb.andWhere(
+        '(task.title ILIKE :search OR task.description ILIKE :search)',
+        { search: `%${command.search}%` },
+      );
+    }
     if (command.status) {
       qb.andWhere('task.status = :status', { status: command.status });
     }

@@ -167,7 +167,7 @@ const buildColumns = (fmt: Formatters): DataGridColumn<CandidateListItem>[] => [
   },
   {
     key: 'rightToWork',
-    header: 'Right to work',
+    header: 'Work eligibility',
     width: 150,
     render: (r) => (
       <StatusPill tone={RIGHT_TO_WORK_TONE[r.rightToWork]}>
@@ -375,7 +375,7 @@ export default function CandidatesPage() {
       { header: 'Skills', value: (c) => c.skills.join('; ') },
       { header: 'Source', value: (c) => SOURCE_LABEL[c.source] },
       {
-        header: 'Right to work',
+        header: 'Work eligibility',
         value: (c) => RIGHT_TO_WORK_LABEL[c.rightToWork],
       },
       {

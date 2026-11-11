@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 
 const QUICK_REASONS = [
   'Not enough relevant experience',
-  'No right to work',
+  'Not eligible to work',
   'Salary expectations too high',
   'Position filled',
   'Candidate not responsive',

@@ -1,14 +1,8 @@
 'use client';
 
 import { useFormatters } from '@/hooks/use-formatters';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  getCoreRowModel,
-  useReactTable,
-  type ColumnDef,
-  type PaginationState,
-} from '@tanstack/react-table';
 import {
   CheckCircle2,
   ListTodo,
@@ -20,6 +14,7 @@ import {
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useSession } from '@/contexts/session-context';
 import { useBreadcrumb } from '@/contexts/breadcrumb-context';
 import {
@@ -31,29 +26,24 @@ import {
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
-import { ListPageSkeleton } from '@/components/ui/list-page-skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { ConfirmDialog } from '@/components/jobs/confirm-dialog';
+import { ListFooter } from '@/components/jobs/list-footer';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  DataTable,
-  DataTablePagination,
+  DataGrid,
   EmptyState,
   FilterBar,
   FilterDropdown,
   RowActions,
+  SearchInput,
   SegmentedControl,
   StatusPill,
   ToolbarButton,
+  TruncatedText,
+  type DataGridColumn,
   type RowAction,
 } from '@/components/patterns';
+
 import { TaskFormDialog } from '@/components/tasks/task-form-dialog';
 import {
   TASK_DUE_CLASS,
@@ -72,6 +62,8 @@ import type {
 type Owner = 'mine' | 'everyone';
 type StatusFilter = TaskStatus | 'all';
 type DueFilter = TaskDueFilter | 'any';
+
+const LIMIT = 25;
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
@@ -102,17 +94,21 @@ function TasksContent() {
   const [owner, setOwner] = useState<Owner>('mine');
   const [status, setStatus] = useState<StatusFilter>('open');
   const [due, setDue] = useState<DueFilter>('any');
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 20,
-  });
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const debouncedSearch = useDebounce(search, 500);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, owner, status, due]);
 
   const params: ListTasksRequest = {
-    page: pagination.pageIndex + 1,
-    limit: pagination.pageSize,
+    page,
+    limit: LIMIT,
+    ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
     ...(owner === 'mine' && { mine: true }),
     ...(status !== 'all' && { status }),
     ...(due !== 'any' && { due }),
@@ -122,8 +118,6 @@ function TasksContent() {
   const completeTask = useCompleteTaskMutation();
   const updateTask = useUpdateTaskMutation();
   const deleteTask = useDeleteTaskMutation();
-
-  const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
   const openCreate = () => {
     setEditing(null);
@@ -160,81 +154,125 @@ function TasksContent() {
       toast.success('Task deleted');
     } catch (err) {
       toast.error(errorText(err, 'Could not delete task'));
-    } finally {
-      setDeleteTarget(null);
+      throw err;
     }
   };
 
-  const columns: ColumnDef<Task>[] = [
+  const rowActions = (task: Task): RowAction[] => [
+    ...(canUpdate && task.status === 'open'
+      ? [
+          {
+            label: 'Mark done',
+            icon: <CheckCircle2 className="h-4 w-4" />,
+            onSelect: () => handleComplete(task),
+          },
+        ]
+      : []),
+    ...(canUpdate && task.status === 'done'
+      ? [
+          {
+            label: 'Reopen',
+            icon: <RotateCcw className="h-4 w-4" />,
+            onSelect: () => handleReopen(task),
+          },
+        ]
+      : []),
+    ...(canUpdate
+      ? [
+          {
+            label: 'Edit',
+            icon: <Pencil className="h-4 w-4" />,
+            onSelect: () => openEdit(task),
+          },
+        ]
+      : []),
+    ...(canDelete
+      ? [
+          {
+            label: 'Delete',
+            icon: <Trash2 className="h-4 w-4" />,
+            onSelect: () => setDeleteTarget(task),
+            destructive: true,
+          },
+        ]
+      : []),
+  ];
+
+  const columns: DataGridColumn<Task>[] = [
     {
-      id: 'title',
+      key: 'title',
       header: 'Task',
-      cell: ({ row }) => (
-        <div className="min-w-0 max-w-md">
-          <p
+      width: 320,
+      render: (r) => (
+        <div className="min-w-0">
+          <TruncatedText
+            text={r.title}
             className={cn(
-              'truncate font-medium',
-              row.original.status === 'done' &&
-                'text-muted-foreground line-through',
+              'font-medium',
+              r.status === 'done' && 'text-muted-foreground line-through',
             )}
-          >
-            {row.original.title}
-          </p>
-          {row.original.description && (
-            <p className="truncate text-xs text-muted-foreground">
-              {row.original.description}
-            </p>
-          )}
+          />
+          <TruncatedText
+            text={r.description}
+            className="text-xs text-muted-foreground"
+          />
         </div>
       ),
     },
     {
-      id: 'linked',
+      key: 'linked',
       header: 'Linked to',
-      cell: ({ row }) => {
-        const label = taskLinkLabel(row.original);
-        const href = taskLinkHref(row.original);
+      width: 240,
+      render: (r) => {
+        const label = taskLinkLabel(r);
+        const href = taskLinkHref(r);
         if (!label) return <span className="text-muted-foreground">None</span>;
         return href ? (
           <Link
             href={href}
             onClick={(e) => e.stopPropagation()}
-            className="text-sm hover:underline"
+            className="block truncate hover:underline"
+            title={label}
           >
             {label}
           </Link>
         ) : (
-          <span className="text-sm">{label}</span>
+          <TruncatedText text={label} />
         );
       },
     },
     {
-      id: 'assignee',
+      key: 'assignee',
       header: 'Assignee',
-      cell: ({ row }) => {
-        const name = userDisplayName(row.original.assignee);
+      width: 180,
+      render: (r) => {
+        const name = userDisplayName(r.assignee);
         if (!name)
           return <span className="text-muted-foreground">Unassigned</span>;
         return (
-          <span className="flex items-center gap-2">
-            <InitialsAvatar name={name} className="h-6 w-6 text-[10px]" />
-            <span className="truncate text-sm">{name}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <InitialsAvatar
+              name={name}
+              className="h-6 w-6 shrink-0 text-[10px]"
+            />
+            <span className="truncate">{name}</span>
           </span>
         );
       },
     },
     {
-      id: 'due',
+      key: 'due',
       header: 'Due',
-      cell: ({ row }) => {
-        const state = getTaskDueState(row.original);
-        const label = fmt.date(row.original.dueAt);
+      width: 120,
+      render: (r) => {
+        const state = getTaskDueState(r);
+        const label = fmt.date(r.dueAt);
         if (!label)
           return <span className="text-muted-foreground">No date</span>;
         return (
           <span
             className={cn(
-              'tabular-nums text-sm',
+              'tabular-nums',
               state ? TASK_DUE_CLASS[state] : 'text-muted-foreground',
             )}
           >
@@ -244,17 +282,17 @@ function TasksContent() {
       },
     },
     {
-      id: 'status',
+      key: 'status',
       header: 'Status',
-      cell: ({ row }) => {
-        const state = getTaskDueState(row.original);
-        if (row.original.status === 'done')
+      width: 110,
+      render: (r) => {
+        if (r.status === 'done')
           return (
             <StatusPill tone="success" dot>
               Done
             </StatusPill>
           );
-        if (state === 'overdue')
+        if (getTaskDueState(r) === 'overdue')
           return (
             <StatusPill tone="danger" dot>
               Overdue
@@ -268,47 +306,15 @@ function TasksContent() {
       },
     },
     {
-      id: 'actions',
+      key: 'actions',
       header: '',
-      size: 48,
-      cell: ({ row }) => {
-        const task = row.original;
-        const actions: RowAction[] = [];
-        if (canUpdate && task.status === 'open') {
-          actions.push({
-            label: 'Mark done',
-            icon: <CheckCircle2 className="h-4 w-4" />,
-            onSelect: () => handleComplete(task),
-          });
-        }
-        if (canUpdate && task.status === 'done') {
-          actions.push({
-            label: 'Reopen',
-            icon: <RotateCcw className="h-4 w-4" />,
-            onSelect: () => handleReopen(task),
-          });
-        }
-        if (canUpdate) {
-          actions.push({
-            label: 'Edit',
-            icon: <Pencil className="h-4 w-4" />,
-            onSelect: () => openEdit(task),
-          });
-        }
-        if (canDelete) {
-          actions.push({
-            label: 'Delete',
-            icon: <Trash2 className="h-4 w-4" />,
-            onSelect: () => setDeleteTarget(task),
-            destructive: true,
-          });
-        }
+      width: 56,
+      align: 'center',
+      render: (r) => {
+        const actions = rowActions(r);
         if (actions.length === 0) return null;
         return (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex justify-end"
-          >
+          <div onClick={(e) => e.stopPropagation()}>
             <RowActions actions={actions} />
           </div>
         );
@@ -316,46 +322,30 @@ function TasksContent() {
     },
   ];
 
-  const table = useReactTable({
-    data: data?.data ?? [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    manualPagination: true,
-    pageCount: data?.totalPages ?? 0,
-    state: { pagination },
-    onPaginationChange: setPagination,
-  });
+  const rows = data?.data ?? [];
+  const hasFilters =
+    !!debouncedSearch.trim() ||
+    status !== 'open' ||
+    due !== 'any' ||
+    owner !== 'mine';
 
-  if (isLoading && !data) {
-    return <ListPageSkeleton filters={3} />;
-  }
-
-  const total = data?.total ?? 0;
-  const hasFilters = status !== 'open' || due !== 'any' || owner !== 'mine';
+  const newTaskButton = canCreate ? (
+    <ToolbarButton variant="primary" icon={Plus} onClick={openCreate}>
+      New task
+    </ToolbarButton>
+  ) : undefined;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Tasks</h1>
-          <p className="text-sm text-muted-foreground">
-            Follow-ups across candidates, jobs and clients
-          </p>
-        </div>
-        {canCreate && (
-          <ToolbarButton variant="primary" icon={Plus} onClick={openCreate}>
-            New task
-          </ToolbarButton>
-        )}
-      </div>
-
-      <FilterBar>
+    <div className="-m-4 flex h-[calc(100vh-6rem)] flex-col gap-3 p-4">
+      <FilterBar end={newTaskButton}>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search tasks..."
+        />
         <SegmentedControl
           value={owner}
-          onChange={(v) => {
-            setOwner(v);
-            resetPage();
-          }}
+          onChange={setOwner}
           options={[
             { value: 'mine', label: 'Mine' },
             { value: 'everyone', label: 'Everyone' },
@@ -365,73 +355,65 @@ function TasksContent() {
           label="Status"
           value={status}
           options={STATUS_OPTIONS}
-          onChange={(v) => {
-            setStatus(v as StatusFilter);
-            resetPage();
-          }}
+          onChange={(v) => setStatus(v as StatusFilter)}
         />
         <FilterDropdown
           label="Due"
           value={due}
           options={DUE_OPTIONS}
-          onChange={(v) => {
-            setDue(v as DueFilter);
-            resetPage();
-          }}
+          onChange={(v) => setDue(v as DueFilter)}
         />
       </FilterBar>
 
-      {error ? (
-        <EmptyState
-          icon={<ListTodo className="h-8 w-8" />}
-          title="Could not load tasks"
-          description={errorText(error, 'Please try again in a moment')}
-        />
-      ) : total === 0 && !isFetching ? (
-        <div className="rounded-lg border border-border bg-card">
-          <EmptyState
-            icon={<ListTodo className="h-8 w-8" />}
-            title={
-              hasFilters
-                ? 'No tasks match these filters'
-                : 'You are all caught up'
-            }
-            description={
-              hasFilters
-                ? 'Try a different status or due date'
-                : 'Tasks assigned to you will appear here'
-            }
-            action={
-              canCreate ? (
-                <ToolbarButton
-                  variant="primary"
-                  icon={Plus}
-                  onClick={openCreate}
-                >
-                  New task
-                </ToolbarButton>
-              ) : undefined
-            }
-          />
-        </div>
-      ) : (
-        <div>
-          <div className="rounded-lg border border-border bg-card">
-            <DataTable
-              table={table}
-              isLoading={isFetching && !data}
-              onRowClick={canUpdate ? openEdit : undefined}
-              getRowClassName={() => (canUpdate ? 'cursor-pointer' : '')}
-              emptyMessage="No tasks found"
-            />
+      <div className="flex min-h-0 flex-1 flex-col">
+        {isLoading ? (
+          <TableSkeleton />
+        ) : error || rows.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center rounded-md border border-border">
+            {error ? (
+              <EmptyState
+                icon={<ListTodo className="h-8 w-8" />}
+                title="Could not load tasks"
+                description={errorText(error, 'Please try again in a moment')}
+              />
+            ) : (
+              <EmptyState
+                icon={<ListTodo className="h-8 w-8" />}
+                title={
+                  hasFilters
+                    ? 'No tasks match these filters'
+                    : 'You are all caught up'
+                }
+                description={
+                  hasFilters
+                    ? 'Try a different search, status or due date'
+                    : 'Tasks assigned to you will appear here'
+                }
+                action={newTaskButton}
+              />
+            )}
           </div>
-          <DataTablePagination
-            table={table}
-            totalItems={total}
-            pageSizeOptions={[10, 20, 50, 100]}
-          />
-        </div>
-      )}
+        ) : (
+          <>
+            <DataGrid
+              columns={columns}
+              rows={rows}
+              getRowId={(r) => r.id}
+              onRowClick={canUpdate ? openEdit : undefined}
+              pinFirstColumn
+              maxHeight="100%"
+              className={isFetching ? 'flex-1 opacity-70' : 'flex-1'}
+            />
+            <ListFooter
+              page={data?.page ?? page}
+              limit={LIMIT}
+              total={data?.total ?? 0}
+              totalPages={data?.totalPages ?? 1}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </div>
 
       <TaskFormDialog
         open={formOpen}
@@ -440,24 +422,17 @@ function TasksContent() {
         currentUserId={user?.userId}
       />
 
-      <AlertDialog
+      <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete task</AlertDialogTitle>
-            <AlertDialogDescription>
-              &quot;{deleteTarget?.title}&quot; will be removed permanently.
-              This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="Delete task"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.title}" will be removed permanently. This cannot be undone.`
+            : undefined
+        }
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

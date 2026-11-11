@@ -61,6 +61,7 @@ import {
   ToolbarButton,
   EmptyState,
   NotIntegratedBadge,
+  DrawerNavControls,
 } from '@/components/patterns';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -582,131 +583,125 @@ export function CandidateDetailDrawer({
       <SheetContent
         side="right"
         hideClose
-        className="flex w-full flex-col gap-0 overflow-visible bg-background p-0 sm:max-w-[min(1440px,97vw)]"
+        className="flex w-full flex-col gap-0 bg-background p-0 sm:max-w-[min(1440px,97vw)]"
       >
         <SheetTitle className="sr-only">{name || 'Candidate'}</SheetTitle>
-
-        <div className="absolute left-0 top-4 z-50 flex -translate-x-[calc(100%+8px)] flex-col overflow-hidden rounded-md border border-border bg-background shadow-md">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <div className="h-px bg-border" />
-          <button
-            type="button"
-            onClick={onPrev}
-            disabled={!hasPrev}
-            aria-label="Previous candidate"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-          >
-            <ChevronUp className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={!hasNext}
-            aria-label="Next candidate"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
-        </div>
 
         <div className="flex items-center gap-1 border-b border-border px-4 py-2.5">
           <span className="text-sm font-medium">{name}</span>
           {focused && <StagePill stage={focused.stage} className="ml-2" />}
-          {c && (
-            <span className="ml-auto flex items-center gap-1.5">
-              {userMailbox.canSend ? (
-                <ToolbarButton icon={Mail} onClick={() => startEmail(focused)}>
-                  Email
-                </ToolbarButton>
-              ) : (
-                canSystemEmail &&
-                !userMailbox.loading && (
+          <span className="ml-auto flex items-center gap-1.5">
+            {c && (
+              <>
+                {userMailbox.canSend ? (
                   <ToolbarButton
                     icon={Mail}
-                    disabled={!focused}
-                    title={focused ? undefined : 'Add to a job to send email'}
                     onClick={() => startEmail(focused)}
                   >
                     Email
                   </ToolbarButton>
-                )
-              )}
-              <PermissionGuard permissions={PERMISSIONS_ENUM.CALL_CREATE}>
-                <IfIntegration capability="calls">
-                  <ToolbarButton
-                    icon={Phone}
-                    disabled={!c.phone}
-                    title={c.phone ? undefined : 'Add a phone number to call'}
-                    onClick={() => setCallOpen(true)}
-                  >
-                    Call
-                  </ToolbarButton>
-                </IfIntegration>
-              </PermissionGuard>
-              <PermissionGuard permissions={PERMISSIONS_ENUM.WHATSAPP_SEND}>
-                <IfIntegration capability="whatsapp">
-                  <ToolbarButton
-                    icon={MessageCircle}
-                    disabled={!c.phone}
-                    title={
-                      c.phone ? undefined : 'Add a phone number to message'
-                    }
-                    onClick={() => setWhatsappOpen(true)}
-                  >
-                    WhatsApp
-                  </ToolbarButton>
-                </IfIntegration>
-              </PermissionGuard>
-              <PermissionGuard
-                permissions={PERMISSIONS_ENUM.APPLICATION_CREATE}
-              >
-                <ToolbarButton
-                  icon={Plus}
-                  onClick={() => setAddToJobOpen(true)}
-                >
-                  Add to job
-                </ToolbarButton>
-              </PermissionGuard>
-              <PermissionGuard permissions={PERMISSIONS_ENUM.CANDIDATE_UPDATE}>
-                <ToolbarButton icon={Pencil} onClick={() => setEditOpen(true)}>
-                  Edit
-                </ToolbarButton>
-              </PermissionGuard>
-              <PermissionGuard permissions={PERMISSIONS_ENUM.INTERVIEW_CREATE}>
-                <ToolbarButton
-                  icon={CalendarDays}
-                  disabled={!focused}
-                  title={focused ? undefined : 'Add to a job to schedule'}
-                  onClick={() => focused && openSchedule(focused)}
-                >
-                  Schedule
-                </ToolbarButton>
-              </PermissionGuard>
-              <PermissionGuard permissions={PERMISSIONS_ENUM.CANDIDATE_DELETE}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <ToolbarButton icon={MoreHorizontal} aria-label="More" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => setDeleteOpen(true)}
-                      className="text-red-600 focus:text-red-600 dark:text-red-400"
+                ) : (
+                  canSystemEmail &&
+                  !userMailbox.loading && (
+                    <ToolbarButton
+                      icon={Mail}
+                      disabled={!focused}
+                      title={focused ? undefined : 'Add to a job to send email'}
+                      onClick={() => startEmail(focused)}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete candidate
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </PermissionGuard>
-            </span>
-          )}
+                      Email
+                    </ToolbarButton>
+                  )
+                )}
+                <PermissionGuard permissions={PERMISSIONS_ENUM.CALL_CREATE}>
+                  <IfIntegration capability="calls">
+                    <ToolbarButton
+                      icon={Phone}
+                      disabled={!c.phone}
+                      title={c.phone ? undefined : 'Add a phone number to call'}
+                      onClick={() => setCallOpen(true)}
+                    >
+                      Call
+                    </ToolbarButton>
+                  </IfIntegration>
+                </PermissionGuard>
+                <PermissionGuard permissions={PERMISSIONS_ENUM.WHATSAPP_SEND}>
+                  <IfIntegration capability="whatsapp">
+                    <ToolbarButton
+                      icon={MessageCircle}
+                      disabled={!c.phone}
+                      title={
+                        c.phone ? undefined : 'Add a phone number to message'
+                      }
+                      onClick={() => setWhatsappOpen(true)}
+                    >
+                      WhatsApp
+                    </ToolbarButton>
+                  </IfIntegration>
+                </PermissionGuard>
+                <PermissionGuard
+                  permissions={PERMISSIONS_ENUM.APPLICATION_CREATE}
+                >
+                  <ToolbarButton
+                    icon={Plus}
+                    onClick={() => setAddToJobOpen(true)}
+                  >
+                    Add to job
+                  </ToolbarButton>
+                </PermissionGuard>
+                <PermissionGuard
+                  permissions={PERMISSIONS_ENUM.CANDIDATE_UPDATE}
+                >
+                  <ToolbarButton
+                    icon={Pencil}
+                    onClick={() => setEditOpen(true)}
+                  >
+                    Edit
+                  </ToolbarButton>
+                </PermissionGuard>
+                <PermissionGuard
+                  permissions={PERMISSIONS_ENUM.INTERVIEW_CREATE}
+                >
+                  <ToolbarButton
+                    icon={CalendarDays}
+                    disabled={!focused}
+                    title={focused ? undefined : 'Add to a job to schedule'}
+                    onClick={() => focused && openSchedule(focused)}
+                  >
+                    Schedule
+                  </ToolbarButton>
+                </PermissionGuard>
+                <PermissionGuard
+                  permissions={PERMISSIONS_ENUM.CANDIDATE_DELETE}
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <ToolbarButton icon={MoreHorizontal} aria-label="More" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => setDeleteOpen(true)}
+                        className="text-red-600 focus:text-red-600 dark:text-red-400"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete candidate
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </PermissionGuard>
+              </>
+            )}
+            <span className="mx-1 h-5 w-px bg-border" />
+            <DrawerNavControls
+              onClose={() => onOpenChange(false)}
+              onPrev={onPrev}
+              onNext={onNext}
+              hasPrev={hasPrev}
+              hasNext={hasNext}
+              prevLabel="Previous candidate"
+              nextLabel="Next candidate"
+            />
+          </span>
         </div>
 
         {isLoading && <DrawerSkeleton />}

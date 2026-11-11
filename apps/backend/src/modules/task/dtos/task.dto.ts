@@ -16,6 +16,11 @@ import { Trim } from '@shared/transformers/trim';
 import { TaskDueFilter, TaskStatus } from '@db/enums';
 
 export class ListTasksDto extends ListPaginationDto {
+  @ApiPropertyOptional({ example: 'call' })
+  @IsString()
+  @IsOptional()
+  search?: string;
+
   @ApiPropertyOptional({ enum: TaskStatus })
   @IsEnum(TaskStatus)
   @IsOptional()

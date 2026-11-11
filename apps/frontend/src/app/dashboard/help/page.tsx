@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageCircle } from 'lucide-react';
 import {
@@ -10,30 +9,31 @@ import {
 
 export default function HelpPage() {
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-2xl mx-auto">
-      <div className="space-y-1 mb-6">
-        <h1 className="text-2xl font-bold">Help &amp; Support</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-lg font-semibold">Help and support</h1>
         <p className="text-sm text-muted-foreground">
-          Need a hand? Reach out and we&apos;ll help you out.
+          Need a hand? Reach out and we will get back to you
         </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Support</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Message us on WhatsApp at {SUPPORT_WHATSAPP_DISPLAY} and we&apos;ll
-            get back to you.
-          </p>
-          <Button asChild>
-            <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noreferrer">
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Chat on WhatsApp
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex max-w-xl items-center justify-between gap-4 rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
+            <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Chat with support</p>
+            <p className="text-xs text-muted-foreground">
+              WhatsApp {SUPPORT_WHATSAPP_DISPLAY}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" asChild>
+          <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noreferrer">
+            Open WhatsApp
+          </a>
+        </Button>
+      </div>
     </div>
   );
 }

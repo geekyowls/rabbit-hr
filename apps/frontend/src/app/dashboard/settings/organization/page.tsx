@@ -80,7 +80,7 @@ function OrganizationSettingsContent() {
     reset,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
@@ -159,7 +159,7 @@ function OrganizationSettingsContent() {
         },
       });
 
-      setValue('logo', uploadUrlResponse.path);
+      setValue('logo', uploadUrlResponse.path, { shouldDirty: true });
       setLogoPreview(URL.createObjectURL(file));
       toast.success('Logo uploaded');
     } catch (err: unknown) {
@@ -173,7 +173,7 @@ function OrganizationSettingsContent() {
 
   function handleRemoveLogo() {
     if (!canEdit) return;
-    setValue('logo', null);
+    setValue('logo', null, { shouldDirty: true });
     setLogoPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -198,6 +198,7 @@ function OrganizationSettingsContent() {
         method: 'PUT',
         body: JSON.stringify(payload),
       });
+      reset(data);
       toast.success('Organization updated');
     } catch (err: unknown) {
       const message =
@@ -211,227 +212,232 @@ function OrganizationSettingsContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Organization" backHref="/dashboard/settings" />
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <Card>
-          <CardContent className="pt-6">
-            <fieldset disabled={!canEdit} className="space-y-6">
-              <div
-                className="grid gap-6 md:grid-cols-2"
-                data-tour="org-basic-info"
-              >
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <PageHeader
+        title="Organization"
+        description="Company name, logo, contact details and legal links"
+        backHref="/dashboard/settings"
+        actions={
+          canEdit ? (
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isSubmitting || isUploading || !isDirty}
+            >
+              Save changes
+            </Button>
+          ) : undefined
+        }
+      />
+      <Card>
+        <CardContent className="pt-6">
+          <fieldset disabled={!canEdit} className="space-y-6">
+            <div
+              className="grid gap-6 md:grid-cols-2"
+              data-tour="org-basic-info"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="name">Organization name</Label>
+                <Input
+                  id="name"
+                  {...register('name')}
+                  placeholder="Enter organization name"
+                />
+                {errors.name && (
+                  <p className="text-sm text-destructive">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Logo</Label>
+                <div className="flex items-center gap-4">
+                  {logoPreview ? (
+                    <div className="relative">
+                      <img
+                        src={logoPreview}
+                        alt="Organization logo"
+                        className="h-16 w-16 rounded-lg object-cover border"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed">
+                      <Building2 className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoUpload(file);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {isUploading ? 'Uploading' : 'Upload logo'}
+                    </Button>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      PNG, JPG up to 5MB
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-6" data-tour="org-contact-info">
+              <h3 className="mb-4 text-sm font-medium">Contact details</h3>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Organization name</Label>
+                  <Label htmlFor="phone">Phone</Label>
                   <Input
-                    id="name"
-                    {...register('name')}
-                    placeholder="Enter organization name"
+                    id="phone"
+                    {...register('phone')}
+                    placeholder="+1 (555) 123-4567"
                   />
-                  {errors.name && (
+                  {errors.phone && (
                     <p className="text-sm text-destructive">
-                      {errors.name.message}
+                      {errors.phone.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Logo</Label>
-                  <div className="flex items-center gap-4">
-                    {logoPreview ? (
-                      <div className="relative">
-                        <img
-                          src={logoPreview}
-                          alt="Organization logo"
-                          className="h-16 w-16 rounded-lg object-cover border"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleRemoveLogo}
-                          className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed">
-                        <Building2 className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleLogoUpload(file);
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isUploading}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {isUploading ? 'Uploading' : 'Upload logo'}
-                      </Button>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        PNG, JPG up to 5MB
-                      </p>
-                    </div>
-                  </div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    placeholder="contact@example.com"
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-destructive">
+                      {errors.email.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    {...register('website')}
+                    placeholder="https://example.com"
+                  />
+                  {errors.website && (
+                    <p className="text-sm text-destructive">
+                      {errors.website.message}
+                    </p>
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div className="border-t pt-6" data-tour="org-contact-info">
-                <h3 className="mb-4 text-sm font-medium">Contact details</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      {...register('phone')}
-                      placeholder="+1 (555) 123-4567"
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-destructive">
-                        {errors.phone.message}
-                      </p>
-                    )}
-                  </div>
+            <div className="border-t pt-6" data-tour="org-address">
+              <h3 className="mb-4 text-sm font-medium">Address</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="street">Street address</Label>
+                  <Input
+                    id="street"
+                    {...register('address.street')}
+                    placeholder="123 Main Street"
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register('email')}
-                      placeholder="contact@example.com"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">
-                        {errors.email.message}
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    {...register('address.city')}
+                    placeholder="City"
+                  />
+                </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      {...register('website')}
-                      placeholder="https://example.com"
-                    />
-                    {errors.website && (
-                      <p className="text-sm text-destructive">
-                        {errors.website.message}
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State or region</Label>
+                  <Input
+                    id="state"
+                    {...register('address.state')}
+                    placeholder="State"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">Postal code</Label>
+                  <Input
+                    id="zipCode"
+                    {...register('address.zipCode')}
+                    placeholder="12345"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    {...register('address.country')}
+                    placeholder="Country"
+                  />
                 </div>
               </div>
+            </div>
 
-              <div className="border-t pt-6" data-tour="org-address">
-                <h3 className="mb-4 text-sm font-medium">Address</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="street">Street address</Label>
-                    <Input
-                      id="street"
-                      {...register('address.street')}
-                      placeholder="123 Main Street"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      {...register('address.city')}
-                      placeholder="City"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State or region</Label>
-                    <Input
-                      id="state"
-                      {...register('address.state')}
-                      placeholder="State"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="zipCode">Postal code</Label>
-                    <Input
-                      id="zipCode"
-                      {...register('address.zipCode')}
-                      placeholder="12345"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input
-                      id="country"
-                      {...register('address.country')}
-                      placeholder="Country"
-                    />
-                  </div>
+            <div className="border-t pt-6" data-tour="org-legal">
+              <h3 className="mb-1 text-sm font-medium">Legal links</h3>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Your privacy policy and terms of use
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="privacyPolicyUrl">Privacy policy URL</Label>
+                  <Input
+                    id="privacyPolicyUrl"
+                    {...register('privacyPolicyUrl')}
+                    placeholder="https://example.com/privacy"
+                  />
+                  {errors.privacyPolicyUrl && (
+                    <p className="text-sm text-destructive">
+                      {errors.privacyPolicyUrl.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="termsAndConditionsUrl">Terms URL</Label>
+                  <Input
+                    id="termsAndConditionsUrl"
+                    {...register('termsAndConditionsUrl')}
+                    placeholder="https://example.com/terms"
+                  />
+                  {errors.termsAndConditionsUrl && (
+                    <p className="text-sm text-destructive">
+                      {errors.termsAndConditionsUrl.message}
+                    </p>
+                  )}
                 </div>
               </div>
-
-              <div className="border-t pt-6" data-tour="org-legal">
-                <h3 className="mb-1 text-sm font-medium">Legal links</h3>
-                <p className="mb-4 text-xs text-muted-foreground">
-                  Your privacy policy and terms of use
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="privacyPolicyUrl">Privacy policy URL</Label>
-                    <Input
-                      id="privacyPolicyUrl"
-                      {...register('privacyPolicyUrl')}
-                      placeholder="https://example.com/privacy"
-                    />
-                    {errors.privacyPolicyUrl && (
-                      <p className="text-sm text-destructive">
-                        {errors.privacyPolicyUrl.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="termsAndConditionsUrl">Terms URL</Label>
-                    <Input
-                      id="termsAndConditionsUrl"
-                      {...register('termsAndConditionsUrl')}
-                      placeholder="https://example.com/terms"
-                    />
-                    {errors.termsAndConditionsUrl && (
-                      <p className="text-sm text-destructive">
-                        {errors.termsAndConditionsUrl.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {canEdit && (
-                <div className="flex justify-end border-t pt-6">
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving' : 'Save changes'}
-                  </Button>
-                </div>
-              )}
-            </fieldset>
-          </CardContent>
-        </Card>
-      </form>
-    </div>
+            </div>
+          </fieldset>
+        </CardContent>
+      </Card>
+    </form>
   );
 }
 

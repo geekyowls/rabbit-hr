@@ -18,10 +18,10 @@ import { CreateCandidateDocumentCommand } from './create-candidate-document.comm
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   [DocumentType.CV]: 'CV',
   [DocumentType.ID]: 'ID document',
-  [DocumentType.RIGHT_TO_WORK]: 'Right to work',
+  [DocumentType.RIGHT_TO_WORK]: 'Work eligibility',
   [DocumentType.REFERENCE]: 'Reference',
   [DocumentType.CERTIFICATE]: 'Certificate',
-  [DocumentType.DBS]: 'DBS certificate',
+  [DocumentType.DBS]: 'Background check',
   [DocumentType.OTHER]: 'Document',
 };
 

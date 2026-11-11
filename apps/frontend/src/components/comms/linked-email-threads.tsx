@@ -3,14 +3,21 @@
 import { useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
-import { ChevronDown, ChevronRight, Mail, Paperclip, Send } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Info,
+  Mail,
+  Paperclip,
+  Send,
+} from 'lucide-react';
 import { zodResolver } from '@/lib/zod-resolver';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EmptyState, StatusPill } from '@/components/patterns';
+import { EmptyState } from '@/components/patterns';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { useFormatters } from '@/hooks/use-formatters';
@@ -45,8 +52,13 @@ function participantLabel(p: EmailParticipant) {
   return p.name || p.email;
 }
 
-function DemoPill() {
-  return <StatusPill tone="warning">Demo inbox, not sent</StatusPill>;
+function DemoNote() {
+  return (
+    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+      <Info className="h-3.5 w-3.5 shrink-0" />
+      Demo inbox, emails are not really sent
+    </span>
+  );
 }
 
 function MessageBody({ message }: { message: InboxMessage }) {
@@ -164,7 +176,11 @@ function ThreadMessages({
               )}
             </div>
             <div className="flex items-center gap-2">
-              {m.deliveryStatus === 'demo' && <DemoPill />}
+              {m.deliveryStatus === 'demo' && (
+                <span className="text-xs text-muted-foreground">
+                  Demo, not sent
+                </span>
+              )}
               {m.hasAttachments && (
                 <Paperclip
                   className="h-3.5 w-3.5 text-muted-foreground"
@@ -228,7 +244,6 @@ function ThreadRow({
                 {thread.messageCount}
               </span>
             )}
-            {thread.mailbox?.isDemo && <DemoPill />}
           </div>
           <p className="truncate text-xs text-muted-foreground">
             {thread.participants.map(participantLabel).join(', ')}
@@ -280,17 +295,21 @@ export function LinkedEmailThreads({
     ...target,
   });
   const threads = data?.data ?? [];
+  const hasDemo = threads.some((t) => t.mailbox?.isDemo);
 
   return (
     <div className={cn('space-y-3', className)}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">
-          {data
-            ? data.total === 1
-              ? '1 conversation'
-              : `${data.total} conversations`
-            : 'Conversations'}
-        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm font-medium">
+            {data
+              ? data.total === 1
+                ? '1 conversation'
+                : `${data.total} conversations`
+              : 'Conversations'}
+          </p>
+          {hasDemo && <DemoNote />}
+        </div>
         {actions}
       </div>
       {isLoading ? (

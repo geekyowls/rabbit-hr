@@ -183,7 +183,7 @@ export const RIGHT_TO_WORK_TONE: Record<RightToWork, PillTone> = {
 export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
   cv: 'CV',
   id: 'ID',
-  right_to_work: 'Right to work',
+  right_to_work: 'Work eligibility',
   reference: 'Reference',
   certificate: 'Certificate',
   dbs: 'Background check',

@@ -398,9 +398,9 @@ function InboxContent() {
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
               {showDemo && (
-                <div className="flex shrink-0 items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0" />
-                  Demo inbox, messages are not sent
+                  Demo inbox, emails are not really sent
                 </div>
               )}
 

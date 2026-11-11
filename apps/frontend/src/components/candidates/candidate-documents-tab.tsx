@@ -511,7 +511,7 @@ export function CandidateDocumentsTab({
             className="flex-1"
             icon={<FileText className="h-5 w-5" />}
             title="No document selected"
-            description="Upload a CV, ID, right to work or DBS document to keep it on file"
+            description="Upload a CV, ID, work eligibility or background check document to keep it on file"
           />
         ) : (
           <>

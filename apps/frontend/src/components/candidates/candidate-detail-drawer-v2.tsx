@@ -39,6 +39,7 @@ import {
   MetricRing,
   ToolbarButton,
   type PillTone,
+  DrawerNavControls,
 } from '@/components/patterns';
 import { DocxViewer } from './docx-viewer';
 import {
@@ -241,39 +242,9 @@ export function CandidateDetailDrawerV2({
       <SheetContent
         side="right"
         hideClose
-        className="flex w-full flex-col gap-0 overflow-visible bg-background p-0 sm:max-w-[min(1280px,95vw)]"
+        className="flex w-full flex-col gap-0 bg-background p-0 sm:max-w-[min(1280px,95vw)]"
       >
         <SheetTitle className="sr-only">{c?.name ?? 'Candidate'}</SheetTitle>
-
-        <div className="absolute left-0 top-4 z-50 flex -translate-x-[calc(100%+8px)] flex-col overflow-hidden rounded-md border border-border bg-background shadow-md">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <div className="h-px bg-border" />
-          <button
-            type="button"
-            onClick={onPrev}
-            disabled={!hasPrev}
-            aria-label="Previous"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-          >
-            <ChevronUp className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={!hasNext}
-            aria-label="Next"
-            className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
-        </div>
 
         {c && (
           <>
@@ -317,6 +288,14 @@ export function CandidateDetailDrawerV2({
                 </ToolbarButton>
                 <ToolbarButton icon={CalendarDays}>Schedule</ToolbarButton>
                 <ToolbarButton icon={MoreHorizontal} aria-label="More" />
+                <span className="mx-1 h-5 w-px bg-border" />
+                <DrawerNavControls
+                  onClose={() => onOpenChange(false)}
+                  onPrev={onPrev}
+                  onNext={onNext}
+                  hasPrev={hasPrev}
+                  hasNext={hasNext}
+                />
               </div>
             </div>
 

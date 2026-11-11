@@ -1,38 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { ClipboardList } from 'lucide-react';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ListPageSkeleton } from '@/components/ui/list-page-skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useDebounce } from '@/hooks/use-debounce';
+import { formatDateTime } from '@/lib/utils';
 import { toast } from '@/lib/toast';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { ListFooter } from '@/components/jobs/list-footer';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  ColumnDef,
-} from '@tanstack/react-table';
-import {
-  DataTable,
-  DataTablePagination,
-} from '@/components/patterns/data-table';
-import { X } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+  DataGrid,
+  DetailDrawer,
+  DetailPanel,
+  EmptyState,
+  FilterBar,
+  FilterDropdown,
+  PanelSection,
+  SearchInput,
+  StatusPill,
+  type DataGridColumn,
+  type PillTone,
+} from '@/components/patterns';
+import type { PaginatedResponse } from '@/types/common.type';
 
 interface AuditLogActor {
   id: string;
@@ -57,373 +48,282 @@ interface AuditLog {
   createdAt: string;
 }
 
-interface PaginatedResponse {
-  data: AuditLog[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
+const LIMIT = 25;
+const ALL = 'all';
+const METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
+const METHOD_TONE: Record<string, PillTone> = {
+  POST: 'success',
+  PUT: 'info',
+  PATCH: 'warning',
+  DELETE: 'danger',
+};
+
+function statusTone(code: number): PillTone {
+  return code >= 200 && code < 300 ? 'success' : 'danger';
 }
-
-const methodColors: Record<string, string> = {
-  POST: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  PUT: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  PATCH:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-};
-
-const statusColors: Record<string, string> = {
-  success:
-    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-};
 
 function getActorName(actor?: AuditLogActor | null): string {
   if (!actor) return 'System';
-  if (actor.firstName || actor.lastName) {
-    return `${actor.firstName || ''} ${actor.lastName || ''}`.trim();
-  }
-  return actor.email;
+  const name = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
+  return name || actor.email;
+}
+
+function DetailRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-4 py-1.5 text-sm">
+      <span className="w-24 shrink-0 text-muted-foreground">{label}</span>
+      <div className="min-w-0 flex-1 break-all">{children}</div>
+    </div>
+  );
 }
 
 export function AuditLogView() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [method, setMethod] = useState(ALL);
+  const debouncedSearch = useDebounce(search, 500);
+  const [result, setResult] = useState<PaginatedResponse<AuditLog> | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [isFetching, setIsFetching] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
-  const [actionFilter, setActionFilter] = useState<string>('');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
-  const [appliedFilters, setAppliedFilters] = useState<{
-    action: string;
-    method: string;
-  }>({ action: '', method: 'all' });
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, method]);
 
   const loadLogs = useCallback(async () => {
-    setIsLoading(true);
+    setIsFetching(true);
     try {
-      const body: Record<string, unknown> = {
-        page: pagination.pageIndex + 1,
-        limit: pagination.pageSize,
-      };
-      if (appliedFilters.action) body.action = appliedFilters.action;
-      if (appliedFilters.method && appliedFilters.method !== 'all')
-        body.method = appliedFilters.method;
-
-      const response = await fetchApi<PaginatedResponse>(
+      const response = await fetchApi<PaginatedResponse<AuditLog>>(
         API_ROUTES.AUDIT.LIST,
         {
           method: 'POST',
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            page,
+            limit: LIMIT,
+            ...(debouncedSearch.trim()
+              ? { action: debouncedSearch.trim() }
+              : {}),
+            ...(method !== ALL ? { method } : {}),
+          }),
         },
       );
-
-      setLogs(response?.data || []);
-      setTotal(response?.total || 0);
-      setTotalPages(response?.totalPages || 0);
+      setResult(response);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to load audit logs';
-      toast.error(message);
+      toast.error(
+        'Could not load audit logs',
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
       setIsLoading(false);
+      setIsFetching(false);
     }
-  }, [pagination.pageIndex, pagination.pageSize, appliedFilters]);
+  }, [page, debouncedSearch, method]);
 
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
 
-  const handleSearch = () => {
-    setAppliedFilters({ action: actionFilter, method: methodFilter });
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  };
+  const rows = result?.data ?? [];
+  const hasFilters = !!debouncedSearch.trim() || method !== ALL;
 
-  const clearFilters = () => {
-    setActionFilter('');
-    setMethodFilter('all');
-    setAppliedFilters({ action: '', method: 'all' });
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  };
-
-  const columns = useMemo<ColumnDef<AuditLog>[]>(
-    () => [
-      {
-        accessorKey: 'action',
-        header: 'Action',
-        cell: ({ row }) => (
-          <span className="font-medium font-mono text-sm">
-            {row.original.action}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'path',
-        header: 'Path',
-        cell: ({ row }) => (
-          <span className="block truncate max-w-[220px] font-mono text-xs text-muted-foreground">
-            {row.original.path}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'method',
-        header: 'Method',
-        size: 80,
-        cell: ({ row }) => (
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${methodColors[row.original.method] || ''}`}
-          >
-            {row.original.method}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'actor',
-        header: 'Actor',
-        cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="text-sm">{getActorName(row.original.actor)}</span>
-            {row.original.actor?.email && (
-              <span className="text-xs text-muted-foreground">
-                {row.original.actor.email}
-              </span>
-            )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'statusCode',
-        header: 'Status',
-        size: 80,
-        cell: ({ row }) => {
-          const isSuccess =
-            row.original.statusCode >= 200 && row.original.statusCode < 300;
-          return (
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${isSuccess ? statusColors.success : statusColors.error}`}
-            >
-              {row.original.statusCode}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: 'createdAt',
-        header: 'Time',
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDistanceToNow(new Date(row.original.createdAt), {
-              addSuffix: true,
-            })}
-          </span>
-        ),
-      },
-      {
-        id: 'actions',
-        header: '',
-        size: 60,
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedLog(row.original)}
-          >
-            View
-          </Button>
-        ),
-      },
-    ],
-    [],
-  );
-
-  const table = useReactTable({
-    data: logs,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    pageCount: totalPages,
-    state: {
-      pagination,
+  const columns: DataGridColumn<AuditLog>[] = [
+    {
+      key: 'action',
+      header: 'Action',
+      width: 240,
+      render: (r) => <span className="font-medium">{r.action}</span>,
     },
-    onPaginationChange: setPagination,
-  });
-
-  const hasFilters =
-    appliedFilters.action ||
-    (appliedFilters.method && appliedFilters.method !== 'all');
-
-  if (isLoading && logs.length === 0) {
-    return <ListPageSkeleton actionButton={false} filters={2} />;
-  }
+    {
+      key: 'actor',
+      header: 'Actor',
+      width: 200,
+      render: (r) => (
+        <span className="min-w-0">
+          <span className="block truncate">{getActorName(r.actor)}</span>
+          {r.actor?.email && (
+            <span className="block truncate text-xs text-muted-foreground">
+              {r.actor.email}
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'method',
+      header: 'Method',
+      width: 100,
+      render: (r) => (
+        <StatusPill tone={METHOD_TONE[r.method] ?? 'neutral'}>
+          {r.method}
+        </StatusPill>
+      ),
+    },
+    {
+      key: 'path',
+      header: 'Path',
+      width: 260,
+      render: (r) => (
+        <span className="block truncate text-xs text-muted-foreground">
+          {r.path}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: 90,
+      render: (r) => (
+        <StatusPill tone={statusTone(r.statusCode)} dot>
+          {r.statusCode}
+        </StatusPill>
+      ),
+    },
+    {
+      key: 'createdAt',
+      header: 'Time',
+      width: 140,
+      render: (r) => (
+        <span className="text-muted-foreground">
+          {formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}
+        </span>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2 lg:gap-4">
-        <div className="w-full sm:w-auto">
-          <Input
-            placeholder="Filter by action (e.g. users.invite)"
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="w-full sm:w-72"
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            data-tour="audit-action-filter"
+    <>
+      <FilterBar>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Filter by action, e.g. users.invite"
+        />
+        <FilterDropdown
+          label="Method"
+          value={method}
+          options={[
+            { label: 'All', value: ALL },
+            ...METHODS.map((m) => ({ label: m, value: m })),
+          ]}
+          onChange={setMethod}
+        />
+      </FilterBar>
+
+      {isLoading ? (
+        <TableSkeleton />
+      ) : rows.length === 0 ? (
+        <div className="rounded-md border border-border">
+          <EmptyState
+            icon={<ClipboardList className="h-8 w-8" />}
+            title={
+              hasFilters
+                ? 'No activity matches these filters'
+                : 'No activity yet'
+            }
+            description={
+              hasFilters
+                ? 'Try a different action or method'
+                : 'Changes made by your team will show up here'
+            }
           />
         </div>
-        <div className="w-full grid grid-cols-[1fr_auto_auto] sm:contents gap-2">
-          <Select value={methodFilter} onValueChange={setMethodFilter}>
-            <SelectTrigger
-              className="w-full sm:w-[120px]"
-              data-tour="audit-method-filter"
-            >
-              <SelectValue placeholder="Method" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Methods</SelectItem>
-              <SelectItem value="POST">POST</SelectItem>
-              <SelectItem value="PUT">PUT</SelectItem>
-              <SelectItem value="PATCH">PATCH</SelectItem>
-              <SelectItem value="DELETE">DELETE</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleSearch} variant="secondary">
-            Search
-          </Button>
-          {hasFilters && (
-            <Button
-              onClick={clearFilters}
-              variant="ghost"
-              className="h-10 w-fit"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Clear
-            </Button>
-          )}
+      ) : (
+        <div data-tour="audit-table">
+          <DataGrid
+            columns={columns}
+            rows={rows}
+            getRowId={(r) => r.id}
+            onRowClick={setSelectedLog}
+            pinFirstColumn
+            maxHeight="calc(100vh - 16rem)"
+            className={isFetching ? 'opacity-70' : undefined}
+          />
+          <ListFooter
+            page={result?.page ?? page}
+            limit={LIMIT}
+            total={result?.total ?? 0}
+            totalPages={result?.totalPages ?? 1}
+            onPageChange={setPage}
+          />
         </div>
-      </div>
+      )}
 
-      <div data-tour="audit-table">
-        <DataTable
-          table={table}
-          isLoading={isLoading}
-          emptyMessage="No audit logs found"
-          onRowClick={(row) => setSelectedLog(row)}
-        />
-      </div>
-
-      <DataTablePagination table={table} totalItems={total} />
-
-      <Dialog
+      <DetailDrawer
         open={!!selectedLog}
-        onOpenChange={(open: boolean) => !open && setSelectedLog(null)}
+        onOpenChange={(open) => !open && setSelectedLog(null)}
+        title={selectedLog?.action ?? 'Activity'}
+        chips={
+          selectedLog && (
+            <StatusPill tone={statusTone(selectedLog.statusCode)} dot>
+              {selectedLog.statusCode}
+            </StatusPill>
+          )
+        }
       >
-        <DialogContent className="sm:max-w-lg overflow-hidden p-0">
-          <div className="max-h-[90vh] overflow-y-auto p-6">
-            <DialogHeader>
-              <DialogTitle>Audit Log Details</DialogTitle>
-            </DialogHeader>
-            {selectedLog && (
-              <div className="mt-4 space-y-6">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Action</span>
-                    <p className="font-mono font-medium">
-                      {selectedLog.action}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Method</span>
-                    <p>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${methodColors[selectedLog.method] || ''}`}
-                      >
-                        {selectedLog.method}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Status</span>
-                    <div>
-                      <Badge
-                        variant={
-                          selectedLog.statusCode >= 200 &&
-                          selectedLog.statusCode < 300
-                            ? 'default'
-                            : 'destructive'
-                        }
-                      >
-                        {selectedLog.statusCode}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Duration</span>
-                    <p>
-                      {selectedLog.duration ? `${selectedLog.duration}ms` : '-'}
-                    </p>
-                  </div>
-                </div>
+        {selectedLog && (
+          <DetailPanel>
+            <PanelSection title="Request">
+              <div className="divide-y divide-border">
+                <DetailRow label="Method">
+                  <StatusPill
+                    tone={METHOD_TONE[selectedLog.method] ?? 'neutral'}
+                  >
+                    {selectedLog.method}
+                  </StatusPill>
+                </DetailRow>
+                <DetailRow label="Path">
+                  <span className="text-xs">{selectedLog.path}</span>
+                </DetailRow>
+                <DetailRow label="Duration">
+                  {selectedLog.duration ? `${selectedLog.duration}ms` : '-'}
+                </DetailRow>
+                <DetailRow label="Time">
+                  {formatDateTime(selectedLog.createdAt)}
+                </DetailRow>
+              </div>
+            </PanelSection>
 
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Path</span>
-                  <p className="font-mono text-xs bg-muted p-2 rounded mt-1 break-all">
-                    {selectedLog.path}
-                  </p>
-                </div>
-
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Actor</span>
-                  <p className="mt-1">
-                    {getActorName(selectedLog.actor)}
-                    {selectedLog.actor?.email && (
-                      <span className="text-muted-foreground ml-2">
-                        ({selectedLog.actor.email})
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="text-sm">
-                  <span className="text-muted-foreground">IP Address</span>
-                  <p className="font-mono">{selectedLog.ipAddress || '-'}</p>
-                </div>
-
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Time</span>
-                  <p>{new Date(selectedLog.createdAt).toLocaleString()}</p>
-                </div>
-
-                {selectedLog.metadata && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Metadata</span>
-                    <pre className="mt-1 bg-muted p-3 rounded text-xs overflow-auto max-h-64">
-                      {JSON.stringify(selectedLog.metadata, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
+            <PanelSection title="Actor">
+              <div className="divide-y divide-border">
+                <DetailRow label="Name">
+                  {getActorName(selectedLog.actor)}
+                </DetailRow>
+                <DetailRow label="Email">
+                  {selectedLog.actor?.email ?? '-'}
+                </DetailRow>
+                <DetailRow label="IP address">
+                  {selectedLog.ipAddress ?? '-'}
+                </DetailRow>
                 {selectedLog.userAgent && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">User Agent</span>
-                    <p className="text-xs text-muted-foreground mt-1 break-all">
+                  <DetailRow label="User agent">
+                    <span className="text-xs text-muted-foreground">
                       {selectedLog.userAgent}
-                    </p>
-                  </div>
+                    </span>
+                  </DetailRow>
                 )}
               </div>
+            </PanelSection>
+
+            {selectedLog.metadata && (
+              <PanelSection title="Metadata">
+                <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">
+                  {JSON.stringify(selectedLog.metadata, null, 2)}
+                </pre>
+              </PanelSection>
             )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DetailPanel>
+        )}
+      </DetailDrawer>
+    </>
   );
 }

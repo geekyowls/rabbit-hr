@@ -1,1 +1,6 @@
-export { DetailDrawer, DetailPanel, PanelSection } from './detail-drawer';
+export {
+  DetailDrawer,
+  DetailPanel,
+  DrawerNavControls,
+  PanelSection,
+} from './detail-drawer';

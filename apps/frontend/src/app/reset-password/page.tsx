@@ -9,7 +9,7 @@ export default function ResetPasswordPage() {
       <div className="mx-auto flex w-full flex-col justify-center sm:w-96 space-y-6">
         <div className="flex flex-col space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Reset Password
+            Reset password
           </h1>
           <p className="text-sm text-muted-foreground">
             Create a new password for your account
