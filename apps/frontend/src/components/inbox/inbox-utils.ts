@@ -1,3 +1,11 @@
+import {
+  Archive,
+  File,
+  Inbox,
+  Send,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react';
 import type {
   EmailFolder,
   EmailParticipant,
@@ -5,34 +13,19 @@ import type {
   InboxLinkedFilter,
   InboxMessage,
   InboxSearchIn,
+  InboxThread,
 } from '@/types/inbox.type';
 
-export type InboxLayout = 'side' | 'stacked';
-
-const LAYOUT_KEY = 'inbox-layout';
-
-export function readInboxLayout(): InboxLayout {
-  try {
-    return localStorage.getItem(LAYOUT_KEY) === 'stacked' ? 'stacked' : 'side';
-  } catch {
-    return 'side';
-  }
-}
-
-export function saveInboxLayout(layout: InboxLayout) {
-  try {
-    localStorage.setItem(LAYOUT_KEY, layout);
-  } catch {
-    return;
-  }
-}
-
-export const FOLDERS: { value: EmailFolder; label: string }[] = [
-  { value: 'inbox', label: 'Inbox' },
-  { value: 'sent', label: 'Sent' },
-  { value: 'drafts', label: 'Drafts' },
-  { value: 'archive', label: 'Archive' },
-  { value: 'trash', label: 'Trash' },
+export const FOLDERS: {
+  value: EmailFolder;
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { value: 'inbox', label: 'Inbox', icon: Inbox },
+  { value: 'sent', label: 'Sent', icon: Send },
+  { value: 'drafts', label: 'Drafts', icon: File },
+  { value: 'archive', label: 'Archive', icon: Archive },
+  { value: 'trash', label: 'Trash', icon: Trash2 },
 ];
 
 export const SEARCH_IN_OPTIONS: { value: InboxSearchIn; label: string }[] = [
@@ -131,4 +124,44 @@ export function formatWaitHours(hours: number | null) {
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
   if (hours < 48) return `${Math.round(hours * 10) / 10} h`;
   return `${Math.round((hours / 24) * 10) / 10} d`;
+}
+
+export function isOwnAddress(email: string, ownAddress: string | undefined) {
+  return !!ownAddress && email.toLowerCase() === ownAddress.toLowerCase();
+}
+
+function firstName(p: EmailParticipant) {
+  const name = p.name?.trim();
+  return name ? name.split(/\s+/)[0] : p.email.split('@')[0];
+}
+
+export function threadSenders(thread: InboxThread) {
+  const own = thread.mailbox?.emailAddress;
+  const others = thread.participants.filter((p) => !isOwnAddress(p.email, own));
+  const hasOwn = others.length < thread.participants.length;
+  if (others.length === 0) return hasOwn ? 'me' : '(no sender)';
+  const names =
+    others.length === 1 && !hasOwn
+      ? [participantLabel(others[0])]
+      : others.map(firstName);
+  return [...names, ...(hasOwn ? ['me'] : [])].join(', ');
+}
+
+export function threadRecipients(thread: InboxThread) {
+  const own = thread.mailbox?.emailAddress;
+  const others = thread.participants.filter((p) => !isOwnAddress(p.email, own));
+  return others.length > 0
+    ? `To: ${others.map(participantLabel).join(', ')}`
+    : 'To: me';
+}
+
+export function recipientNames(
+  list: EmailParticipant[],
+  ownAddress: string | undefined,
+) {
+  return list
+    .map((p) =>
+      isOwnAddress(p.email, ownAddress) ? 'me' : participantLabel(p),
+    )
+    .join(', ');
 }

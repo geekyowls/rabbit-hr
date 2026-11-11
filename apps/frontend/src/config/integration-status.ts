@@ -122,11 +122,12 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
   '/dashboard/inbox': {
     level: 'integrated',
     live: [
-      'Stats, mailbox switcher, folders, search and filters',
-      'Thread list and reading pane with layout toggle',
+      'Gmail style layout with folders, mailbox switcher and reply stats',
+      'Search with filters, bulk actions and keyboard shortcuts',
+      'Thread list and conversation view with inline reply',
       'Read, unread, archive and trash',
       'Link and unlink candidate, unlink client',
-      'Reply, reply all and compose with templates',
+      'Reply, reply all and floating compose with templates',
       'Demo mailbox data',
     ],
     preview: ['Attachment download'],
