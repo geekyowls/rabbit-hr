@@ -30,7 +30,7 @@ export function JobFeedCard() {
                 <StatusPill tone="neutral">Off</StatusPill>
               ))}
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 line-clamp-2 min-h-[2rem] text-xs text-muted-foreground">
             Publish open jobs to Indeed, LinkedIn and other boards through an
             XML feed
           </p>

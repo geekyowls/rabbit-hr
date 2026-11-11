@@ -7,11 +7,15 @@ import { API_ROUTES } from '@/config/api-routes';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useBreadcrumb } from '@/contexts/breadcrumb-context';
-import { integrationCapabilitiesKeys } from '@/hooks/queries';
+import {
+  integrationCapabilitiesKeys,
+  useJobFeedSettingsQuery,
+  useMailboxesQuery,
+} from '@/hooks/queries';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/ui/page-header';
-import { SearchInput } from '@/components/patterns';
+import { CategoryChips, SearchInput } from '@/components/patterns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,31 +39,44 @@ import { JobFeedCard } from '@/components/integrations/job-feed-card';
 
 const WHATSAPP_SETTINGS_PATH = '/dashboard/settings/integrations/whatsapp';
 
-const CALENDAR_PROVIDERS = ['google_calendar', 'microsoft_teams', 'zoom'];
-const COMMUNICATION_PROVIDERS = ['wappcloud', 'plivo'];
-const GROUPED_PROVIDERS = new Set([
-  ...CALENDAR_PROVIDERS,
-  ...COMMUNICATION_PROVIDERS,
-]);
+type Category =
+  'all' | 'connected' | 'calendar' | 'communication' | 'hiring' | 'other';
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-3">
-      <div>
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
-    </section>
-  );
+const PROVIDER_CATEGORY: Record<
+  string,
+  Exclude<Category, 'all' | 'connected'>
+> = {
+  google_calendar: 'calendar',
+  microsoft_teams: 'calendar',
+  zoom: 'calendar',
+  wappcloud: 'communication',
+  plivo: 'communication',
+};
+
+const CATEGORY_LABEL: Record<Category, string> = {
+  all: 'All',
+  connected: 'Connected',
+  calendar: 'Calendar and meetings',
+  communication: 'Communication',
+  hiring: 'Hiring channels',
+  other: 'Other',
+};
+
+const CATEGORY_ORDER: Category[] = [
+  'all',
+  'connected',
+  'calendar',
+  'communication',
+  'hiring',
+  'other',
+];
+
+interface Entry {
+  key: string;
+  category: Exclude<Category, 'all' | 'connected'>;
+  connected: boolean;
+  searchText: string;
+  node: React.ReactNode;
 }
 
 function isNotConfiguredError(message: string) {
@@ -78,6 +95,7 @@ function IntegrationsContent() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<Category>('all');
   const [disconnectTarget, setDisconnectTarget] =
     useState<IntegrationListItem | null>(null);
   const [apiKeyDialogTarget, setApiKeyDialogTarget] =
@@ -286,26 +304,6 @@ function IntegrationsContent() {
     [query],
   );
 
-  const byProvider = useMemo(() => {
-    const map = new Map<string, IntegrationListItem>();
-    for (const i of integrations) map.set(i.provider, i);
-    return map;
-  }, [integrations]);
-
-  const pick = (providers: string[]) =>
-    providers
-      .map((p) => byProvider.get(p))
-      .filter(
-        (i): i is IntegrationListItem =>
-          !!i && matches(`${i.name} ${i.description ?? ''}`),
-      );
-
-  const others = integrations.filter(
-    (i) =>
-      !GROUPED_PROVIDERS.has(i.provider) &&
-      matches(`${i.name} ${i.description ?? ''}`),
-  );
-
   const renderCard = (integration: IntegrationListItem) => (
     <IntegrationCard
       key={integration.id}
@@ -322,94 +320,99 @@ function IntegrationsContent() {
     />
   );
 
-  const calendar = pick(CALENDAR_PROVIDERS);
-  const communication = pick(COMMUNICATION_PROVIDERS);
-  const showMailbox =
-    hasPermission(PERMISSIONS_ENUM.INBOX_READ) &&
-    matches('email inbox gmail outlook mailbox');
-  const showJobFeed =
-    hasPermission(PERMISSIONS_ENUM.JOB_FEED_MANAGE) &&
-    matches('job board feed indeed linkedin xml');
-  const connectedCount = integrations.filter((i) => i.isConnected).length;
+  const { data: mailboxes = [] } = useMailboxesQuery();
+  const { data: jobFeed } = useJobFeedSettingsQuery();
+
+  const entries: Entry[] = (() => {
+    const list: Entry[] = integrations.map((i) => ({
+      key: i.provider,
+      category: PROVIDER_CATEGORY[i.provider] ?? 'other',
+      connected: i.isConnected,
+      searchText: `${i.name} ${i.description ?? ''}`,
+      node: renderCard(i),
+    }));
+    if (hasPermission(PERMISSIONS_ENUM.INBOX_READ)) {
+      list.push({
+        key: 'mailbox',
+        category: 'communication',
+        connected: mailboxes.some((m) => m.status === 'connected'),
+        searchText: 'email inbox gmail outlook mailbox',
+        node: <MailboxCard key="mailbox" />,
+      });
+    }
+    if (hasPermission(PERMISSIONS_ENUM.JOB_FEED_MANAGE)) {
+      list.push({
+        key: 'job_feed',
+        category: 'hiring',
+        connected: !!jobFeed?.enabled,
+        searchText: 'job board feed indeed linkedin xml',
+        node: <JobFeedCard key="job_feed" />,
+      });
+    }
+    const order: Category[] = ['calendar', 'communication', 'hiring', 'other'];
+    return list.sort(
+      (a, b) => order.indexOf(a.category) - order.indexOf(b.category),
+    );
+  })();
+
+  const inCategory = (e: Entry, c: Category) =>
+    c === 'all' ? true : c === 'connected' ? e.connected : e.category === c;
+
+  const chips = CATEGORY_ORDER.map((c) => ({
+    value: c,
+    label: CATEGORY_LABEL[c],
+    count: entries.filter((e) => inCategory(e, c)).length,
+  })).filter((c) => c.value === 'all' || c.count > 0 || c.value === category);
+
+  const visible = entries.filter(
+    (e) => inCategory(e, category) && matches(e.searchText),
+  );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Integrations" backHref="/dashboard/settings" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-36 w-full rounded-md" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-md" />
           ))}
         </div>
       </div>
     );
   }
 
-  const nothing =
-    calendar.length === 0 &&
-    communication.length === 0 &&
-    others.length === 0 &&
-    !showMailbox &&
-    !showJobFeed;
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div data-tour="integrations-header">
-        <PageHeader
-          title="Integrations"
-          description={`${connectedCount} of ${integrations.length} connected`}
-          backHref="/dashboard/settings"
-          actions={
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search integrations"
-            />
-          }
+        <PageHeader title="Integrations" backHref="/dashboard/settings" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search integrations"
+          className="w-full sm:w-64"
+        />
+        <CategoryChips
+          value={category}
+          onChange={setCategory}
+          options={chips}
         />
       </div>
 
-      {nothing && (
-        <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-          No integrations match your search
+      {visible.length === 0 ? (
+        <div className="flex h-48 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+          No integrations match
+        </div>
+      ) : (
+        <div
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          data-tour="integrations-grid"
+        >
+          {visible.map((e) => e.node)}
         </div>
       )}
-
-      <div className="space-y-6" data-tour="integrations-grid">
-        {calendar.length > 0 && (
-          <Section
-            title="Calendar and meetings"
-            description="Sync interviews to calendars and create meeting links automatically"
-          >
-            {calendar.map(renderCard)}
-          </Section>
-        )}
-
-        {(showMailbox || communication.length > 0) && (
-          <Section
-            title="Communication"
-            description="Email, WhatsApp and calls with candidates and clients"
-          >
-            {showMailbox && <MailboxCard />}
-            {communication.map(renderCard)}
-          </Section>
-        )}
-
-        {showJobFeed && (
-          <Section
-            title="Hiring channels"
-            description="Share your open jobs with job boards"
-          >
-            <JobFeedCard />
-          </Section>
-        )}
-
-        {others.length > 0 && (
-          <Section title="Other" description="More connected services">
-            {others.map(renderCard)}
-          </Section>
-        )}
-      </div>
 
       <ApiKeyConnectionDialog
         integration={apiKeyDialogTarget}

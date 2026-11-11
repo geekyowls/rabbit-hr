@@ -7,6 +7,7 @@ export {
 } from './filter-bar';
 export { SearchInput } from './search-input';
 export { SegmentedControl, type SegmentOption } from './segmented-control';
+export { CategoryChips, type CategoryChip } from './category-chips';
 export {
   ToolbarButton,
   IconButton,

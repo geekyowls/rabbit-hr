@@ -2,17 +2,17 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import type { ComponentType, CSSProperties } from 'react';
 import {
   Calendar,
-  MessageCircle,
   MoreVertical,
   Phone,
   Puzzle,
   Slack,
   Users,
   Video,
-  type LucideIcon,
 } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/icons/brand-icons';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
 import { cn } from '@/lib/utils';
@@ -26,13 +26,18 @@ import {
 import { StatusPill } from '@/components/patterns';
 import type { IntegrationListItem } from '@/types/integration.type';
 
-const PROVIDER_ICON: Record<string, { icon: LucideIcon; color: string }> = {
+type IconComponent = ComponentType<{
+  className?: string;
+  style?: CSSProperties;
+}>;
+
+const PROVIDER_ICON: Record<string, { icon: IconComponent; color?: string }> = {
   google_calendar: { icon: Calendar, color: '#4285F4' },
   zoom: { icon: Video, color: '#2D8CFF' },
   slack: { icon: Slack, color: '#4A154B' },
   microsoft_teams: { icon: Users, color: '#6264A7' },
   plivo: { icon: Phone, color: '#43B02A' },
-  wappcloud: { icon: MessageCircle, color: '#25D366' },
+  wappcloud: { icon: WhatsAppIcon },
 };
 
 const ICON_FILE_PROVIDERS = new Set([
@@ -70,7 +75,7 @@ export function IntegrationIcon({
       ) : (
         <Icon
           className="h-5 w-5"
-          style={meta ? { color: meta.color } : undefined}
+          style={meta?.color ? { color: meta.color } : undefined}
         />
       )}
     </div>
@@ -156,7 +161,7 @@ export function IntegrationCard({
             <IntegrationStatusBadge integration={integration} />
           </div>
           {integration.description && (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            <p className="mt-1 line-clamp-2 min-h-[2rem] text-xs text-muted-foreground">
               {integration.description}
             </p>
           )}
@@ -210,12 +215,6 @@ export function IntegrationCard({
         {hasError && integration.errorMessage && (
           <p className="line-clamp-2 text-destructive">
             {integration.errorMessage}
-          </p>
-        )}
-        {!integration.isConfigured && !integration.isConnected && (
-          <p className="text-muted-foreground">
-            Configured on server, ask your administrator to add the app
-            credentials
           </p>
         )}
       </div>

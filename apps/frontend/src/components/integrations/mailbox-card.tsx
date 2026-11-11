@@ -21,6 +21,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -155,6 +162,7 @@ export function MailboxCard() {
   const [pending, setPending] = useState<MailboxProvider | null>(null);
   const [notConfigured, setNotConfigured] = useState<MailboxProvider[]>([]);
   const [target, setTarget] = useState<Mailbox | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
 
   const start = async (provider: MailboxProvider) => {
     setPending(provider);
@@ -199,8 +207,10 @@ export function MailboxCard() {
     (m) => m.status === 'connected',
   ).length;
 
+  const hasDemo = mailboxes.some((m) => m.isDemo);
+
   return (
-    <div className="flex h-full flex-col rounded-md border bg-card p-4 sm:col-span-2">
+    <div className="flex h-full flex-col rounded-md border bg-card p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-background">
           <Inbox className="h-5 w-5 text-[#3F6650] dark:text-[#8FBFA1]" />
@@ -213,77 +223,113 @@ export function MailboxCard() {
                 Connected
               </StatusPill>
             )}
+            {hasDemo && <StatusPill tone="purple">Demo data</StatusPill>}
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Connect your Gmail or Outlook mailbox to read and reply to candidate
-            and client emails in RabbitHR
+          <p className="mt-1 line-clamp-2 min-h-[2rem] text-xs text-muted-foreground">
+            Read and reply to candidate and client emails from Gmail or Outlook
           </p>
         </div>
+      </div>
+
+      <div className="mt-3 space-y-1 text-xs">
+        {isLoading ? (
+          <Skeleton className="h-4 w-32" />
+        ) : (
+          mailboxes.length > 0 && (
+            <p className="truncate text-muted-foreground">
+              {mailboxes.length === 1
+                ? mailboxes[0].emailAddress
+                : `${mailboxes.length} mailboxes`}
+            </p>
+          )
+        )}
+      </div>
+
+      <div className="mt-auto flex items-center justify-end gap-2 pt-3">
         {connectedCount > 0 && (
           <Button asChild size="sm" variant="outline" className="h-7 text-xs">
             <Link href="/dashboard/inbox">Open inbox</Link>
           </Button>
         )}
+        <Button
+          size="sm"
+          variant={mailboxes.length > 0 ? 'outline' : 'default'}
+          className="h-7 px-3 text-xs"
+          onClick={() => setManageOpen(true)}
+        >
+          {mailboxes.length > 0 ? 'Manage' : 'Connect'}
+        </Button>
       </div>
 
-      <div className="mt-3">
-        {isLoading ? (
-          <Skeleton className="h-12 w-full" />
-        ) : mailboxes.length > 0 ? (
-          <ul className="divide-y divide-border rounded-md border border-border">
-            {mailboxes.map((m) => (
-              <MailboxRow key={m.id} mailbox={m} onDisconnect={setTarget} />
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-            No mailbox connected yet
-          </p>
-        )}
-      </div>
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Email inbox</DialogTitle>
+            <DialogDescription>
+              Connect Gmail or Outlook to read and reply to emails in RabbitHR
+            </DialogDescription>
+          </DialogHeader>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        {canShare ? (
-          <div className="flex items-center gap-2">
-            <Switch
-              id="mailbox-shared"
-              checked={shared}
-              onCheckedChange={setShared}
-            />
-            <Label
-              htmlFor="mailbox-shared"
-              className="cursor-pointer text-xs font-normal"
-            >
-              Share with the team
-            </Label>
+          {isLoading ? (
+            <Skeleton className="h-12 w-full" />
+          ) : mailboxes.length > 0 ? (
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {mailboxes.map((m) => (
+                <MailboxRow key={m.id} mailbox={m} onDisconnect={setTarget} />
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+              No mailbox connected yet
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {canShare ? (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="mailbox-shared"
+                  checked={shared}
+                  onCheckedChange={setShared}
+                />
+                <Label
+                  htmlFor="mailbox-shared"
+                  className="cursor-pointer text-xs font-normal"
+                >
+                  Share with the team
+                </Label>
+              </div>
+            ) : (
+              <span />
+            )}
+            <div className="flex flex-wrap gap-2">
+              {(['gmail', 'outlook'] as MailboxProvider[]).map((provider) => (
+                <Button
+                  key={provider}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  disabled={
+                    pending !== null || notConfigured.includes(provider)
+                  }
+                  onClick={() => start(provider)}
+                >
+                  {pending === provider
+                    ? 'Redirecting'
+                    : provider === 'gmail'
+                      ? 'Connect Gmail'
+                      : 'Connect Outlook'}
+                </Button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <span />
-        )}
-        <div className="flex flex-wrap gap-2">
-          {(['gmail', 'outlook'] as MailboxProvider[]).map((provider) => (
-            <Button
-              key={provider}
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              disabled={pending !== null || notConfigured.includes(provider)}
-              onClick={() => start(provider)}
-            >
-              {pending === provider
-                ? 'Redirecting'
-                : provider === 'gmail'
-                  ? 'Connect Gmail'
-                  : 'Connect Outlook'}
-            </Button>
+          {notConfigured.map((provider) => (
+            <p key={provider} className="text-xs text-muted-foreground">
+              {notConfiguredMessage(provider)}
+            </p>
           ))}
-        </div>
-      </div>
-      {notConfigured.map((provider) => (
-        <p key={provider} className="mt-2 text-xs text-muted-foreground">
-          {notConfiguredMessage(provider)}
-        </p>
-      ))}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!target} onOpenChange={(o) => !o && setTarget(null)}>
         <AlertDialogContent>

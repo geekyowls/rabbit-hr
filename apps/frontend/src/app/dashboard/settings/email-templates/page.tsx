@@ -24,9 +24,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  CategoryChips,
   EmptyState,
   RowActions,
-  SegmentedControl,
+  SearchInput,
   StatusPill,
   ToolbarButton,
   type RowAction,
@@ -52,6 +53,7 @@ function EmailTemplatesContent() {
   const { hasPermission } = usePermissions();
   const canManage = hasPermission(PERMISSIONS_ENUM.EMAIL_TEMPLATE_MANAGE);
   const [category, setCategory] = useState<CategoryFilter>('all');
+  const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EmailTemplate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EmailTemplate | null>(null);
@@ -83,15 +85,12 @@ function EmailTemplatesContent() {
     }
   };
 
-  const visibleCategories = EMAIL_TEMPLATE_CATEGORIES.filter(
-    (c) => category === 'all' || c === category,
+  const query = search.trim().toLowerCase();
+  const visible = templates.filter(
+    (t) =>
+      (category === 'all' || t.category === category) &&
+      (!query || `${t.name} ${t.subject}`.toLowerCase().includes(query)),
   );
-  const groups = visibleCategories
-    .map((c) => ({
-      category: c,
-      items: templates.filter((t) => t.category === c),
-    }))
-    .filter((g) => g.items.length > 0);
 
   const counts = Object.fromEntries(
     EMAIL_TEMPLATE_CATEGORIES.map((c) => [
@@ -104,7 +103,6 @@ function EmailTemplatesContent() {
     <div className="space-y-4">
       <PageHeader
         title="Email templates"
-        description="Reusable emails for candidates, with merge fields filled in when sent"
         backHref="/dashboard/settings"
         actions={
           canManage ? (
@@ -115,24 +113,33 @@ function EmailTemplatesContent() {
         }
       />
 
-      <div className="overflow-x-auto">
-        <SegmentedControl
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search templates"
+          className="w-full sm:w-64"
+        />
+        <CategoryChips
           value={category}
           onChange={setCategory}
           options={[
-            { value: 'all', label: `All ${templates.length}` },
-            ...EMAIL_TEMPLATE_CATEGORIES.map((c) => ({
+            { value: 'all', label: 'All', count: templates.length },
+            ...EMAIL_TEMPLATE_CATEGORIES.filter(
+              (c) => counts[c] > 0 || c === category,
+            ).map((c) => ({
               value: c,
-              label: `${CATEGORY_LABEL[c]} ${counts[c]}`,
+              label: CATEGORY_LABEL[c],
+              count: counts[c],
             })),
           ]}
         />
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-16 w-full" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-md" />
           ))}
         </div>
       ) : error ? (
@@ -141,14 +148,12 @@ function EmailTemplatesContent() {
           title="Could not load templates"
           description={error.message || 'Please try again in a moment'}
         />
-      ) : groups.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="rounded-lg border border-border bg-card">
           <EmptyState
             icon={<Mail className="h-8 w-8" />}
             title={
-              category === 'all'
-                ? 'No templates yet'
-                : `No ${CATEGORY_LABEL[category].toLowerCase()} templates`
+              templates.length === 0 ? 'No templates yet' : 'No templates match'
             }
             description="Create a template to send consistent emails from the pipeline"
             action={
@@ -165,62 +170,58 @@ function EmailTemplatesContent() {
           />
         </div>
       ) : (
-        <div className="space-y-4">
-          {groups.map((group) => (
-            <section key={group.category} className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {CATEGORY_LABEL[group.category]}
-              </h3>
-              <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-                {group.items.map((template) => {
-                  const actions: RowAction[] = canManage
-                    ? [
-                        {
-                          label: 'Edit',
-                          icon: <Pencil className="h-4 w-4" />,
-                          onSelect: () => openEdit(template),
-                        },
-                        {
-                          label: 'Delete',
-                          icon: <Trash2 className="h-4 w-4" />,
-                          onSelect: () => setDeleteTarget(template),
-                          destructive: true,
-                        },
-                      ]
-                    : [];
-                  return (
-                    <li
-                      key={template.id}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40"
-                    >
-                      <button
-                        type="button"
-                        disabled={!canManage}
-                        onClick={() => openEdit(template)}
-                        className="min-w-0 flex-1 text-left disabled:cursor-default"
-                      >
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-medium">
-                            {template.name}
-                          </p>
-                          <StatusPill tone={CATEGORY_TONE[template.category]}>
-                            {CATEGORY_LABEL[template.category]}
-                          </StatusPill>
-                          {template.isDefault && (
-                            <StatusPill tone="success">Default</StatusPill>
-                          )}
-                        </div>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {template.subject}
-                        </p>
-                      </button>
-                      {actions.length > 0 && <RowActions actions={actions} />}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {visible.map((template) => {
+            const actions: RowAction[] = canManage
+              ? [
+                  {
+                    label: 'Edit',
+                    icon: <Pencil className="h-4 w-4" />,
+                    onSelect: () => openEdit(template),
+                  },
+                  {
+                    label: 'Delete',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    onSelect: () => setDeleteTarget(template),
+                    destructive: true,
+                  },
+                ]
+              : [];
+            return (
+              <div
+                key={template.id}
+                className="flex h-full flex-col rounded-md border bg-card p-4 transition-colors hover:border-[#3F6650]/40"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!canManage}
+                    onClick={() => openEdit(template)}
+                    className="min-w-0 flex-1 text-left disabled:cursor-default"
+                  >
+                    <p className="truncate text-sm font-semibold">
+                      {template.name}
+                    </p>
+                    <p className="mt-1 line-clamp-2 min-h-[2rem] text-xs text-muted-foreground">
+                      {template.subject}
+                    </p>
+                  </button>
+                  {actions.length > 0 && <RowActions actions={actions} />}
+                </div>
+                <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
+                  <StatusPill tone={CATEGORY_TONE[template.category]}>
+                    {CATEGORY_LABEL[template.category]}
+                  </StatusPill>
+                  {template.isDefault && (
+                    <StatusPill tone="success">Default</StatusPill>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
