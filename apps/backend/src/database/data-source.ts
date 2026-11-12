@@ -1,6 +1,6 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import * as dotenv from 'dotenv';
-import { join } from 'path';
+import { extname, join } from 'path';
 
 import {
   UserEntity,
@@ -92,7 +92,7 @@ export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: process.env.DB_URL,
   entities,
-  migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+  migrations: [join(__dirname, `migrations/*${extname(__filename)}`)],
   migrationsTransactionMode: 'each',
   synchronize: false,
   logging: isDev ? true : ['error', 'warn'],
