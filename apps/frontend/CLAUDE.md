@@ -313,7 +313,7 @@ Before building a new table, toolbar, drawer, card or chart, check the patterns 
 ### Feature Components
 
 - `src/components/auth/`: `AuthGuard`, `PermissionGuard`, `DemoGuard`, `LoginForm`, `SignupForm`, `SignupStepper`, `GoogleLoginButton`, `ForgotPasswordForm`, `ResetPasswordForm`
-- `src/components/dashboard/`: `DashboardHeader`, `DashboardNav`, `MobileNav`, `BrandLockup`, `ProtectedNavLink`, `NotificationsBell`, `WebPushToggle`, `SupportFooter`
+- `src/components/dashboard/`: `DashboardHeader`, `DashboardNav`, `MobileNav`, `BrandLockup`, `ProtectedNavLink`, `NotificationsBell`, `WebPushToggle`
 - `src/components/common/`: `CommandPalette`, `KeyboardShortcutsHelp`, `DisplaySettings`, `SavedViewsBar`, `AssignedToFilter`, `StickyTab`
 - `src/components/roles/`: `PermissionPicker`, `PermissionSection`, `PermissionSubGroup`, `ScopeSelector`, `NotificationDigestPanel`, `permission-ui-config.ts`
 - `src/components/users/`: `CreateUserDialog`, `EditUserDialog`, `SetManagerDialog`, `UserHierarchy` (xyflow tree)

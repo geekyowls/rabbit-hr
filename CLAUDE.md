@@ -39,7 +39,7 @@ Multi-tenant SaaS **boilerplate** (pnpm monorepo). It provides the product-agnos
 
 auth · user · role · organization · organization-config · system-admin · integration · audit · user-notifications (+ `NotificationsCoreModule`) · session · storage · mail · queue · events · shared.
 
-The HR product pages in the frontend (candidates, jobs, pipeline, interviews, offers, agents, reports) are UI built on sample data; they have no backend modules yet.
+ATS modules: client, job, candidate, application, pipeline-stage, activity, task, document, email-template, custom-field, interview, interview-booking, offer, report, ats-dashboard, ats-settings, careers, candidate-portal, mailbox, inbox, call, whatsapp, job-feed. The Agents page is still UI on sample data.
 
 ### Auth
 
