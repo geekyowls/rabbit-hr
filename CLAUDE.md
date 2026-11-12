@@ -87,7 +87,7 @@ pnpm --filter backend dev                         # :4000 (Swagger /api/docs)
 pnpm --filter frontend dev                        # :3000
 ```
 
-Dev creates tables via TypeORM `synchronize`. Generate a baseline migration before the first production deploy (`pnpm --filter backend migration:generate`).
+Dev creates tables via TypeORM `synchronize`. Production runs migrations from `apps/backend/src/database/migrations` on API start (the worker never runs them). Any entity change needs a migration: `pnpm --filter backend migration:generate src/database/migrations/<Name>` against a database already at the latest migration. Docker and self-hosting files live in `docker/`, `docker-compose.yml` and the root `.env.example`.
 
 ## Git
 
