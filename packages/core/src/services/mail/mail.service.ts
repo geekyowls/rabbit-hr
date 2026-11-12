@@ -1,4 +1,5 @@
 import { SendEmailCommand, SESClient } from '@aws-sdk/client-ses';
+import { Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 
 export interface SendEmailOptions {
@@ -17,6 +18,17 @@ export interface SendEmailResponse {
 
 export abstract class MailService {
   abstract sendEmail(options: SendEmailOptions): Promise<SendEmailResponse>;
+}
+
+export class DisabledMailService implements MailService {
+  private readonly logger = new Logger('MailService');
+
+  sendEmail(options: SendEmailOptions): Promise<SendEmailResponse> {
+    this.logger.warn(
+      `Email is not configured, skipped sending "${options.subject}"`,
+    );
+    return Promise.resolve({ messageId: 'mail-disabled', success: false });
+  }
 }
 
 export class SESMailService implements MailService {

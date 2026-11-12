@@ -28,19 +28,11 @@
   },
   "dependencies": {
     "date-fns": "^4.1.0",
-    "libphonenumber-js": "^1.12.40"
-  },
-  "peerDependencies": {
+    "libphonenumber-js": "^1.12.40",
     "zod": "^3.22.0"
-  },
-  "peerDependenciesMeta": {
-    "zod": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
-    "typescript": "^5.7.3",
-    "zod": "^3.22.0"
+    "typescript": "^5.7.3"
   }
 }
