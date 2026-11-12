@@ -1,10 +1,12 @@
 <div align="center">
 
+<img src="docs/logo.png" alt="RabbitHR logo" width="112" />
+
 # RabbitHR
 
-**Open source applicant tracking system (ATS) and recruitment CRM for staffing and recruitment agencies**
+**The open source ATS and recruitment CRM for staffing and recruitment agencies**
 
-Manage clients, jobs, candidates, pipelines, interviews, offers and email in one place. Give every candidate a branded self-service portal. Self-host it or run it as multi-tenant SaaS.
+An open source alternative to Bullhorn, Greenhouse, Ashby, Lever and Recruit CRM. Manage clients, jobs, candidates, pipelines, interviews, offers and email in one place, give every candidate a branded self-service portal, and self-host it or run it as multi-tenant SaaS.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
@@ -27,6 +29,19 @@ Most applicant tracking systems are built for in-house HR teams hiring for one c
 - **Global by default**: any currency, locale, time zone and date format, configured per organization
 - **Multi-tenant**: run one instance for many agencies, each with isolated data, roles and branding
 - **Own your data**: self-host on your own infrastructure under the AGPL-3.0 license
+
+### How it compares
+
+| | RabbitHR | Bullhorn | Greenhouse | Ashby | Lever |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Open source | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Self-hosted option | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Built for agencies (clients, placements) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Bring your own infrastructure and data residency | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Extend and customise the source code | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Pricing | Free | Paid | Paid | Paid | Paid |
+
+Comparison reflects publicly available information and may change. Product names are trademarks of their respective owners.
 
 ## Features
 
