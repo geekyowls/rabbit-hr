@@ -103,6 +103,8 @@ Comparison reflects publicly available information and may change. Product names
 - pnpm 9 (`corepack enable`)
 - PostgreSQL 14 or newer
 - Redis 6 or newer (queues, rate limits and caching)
+- S3 compatible storage (AWS S3, Cloudflare R2 or MinIO) for CVs and documents
+- An email provider (Resend or Amazon SES) for invites, login codes and notifications
 
 ### Run locally
 
@@ -114,7 +116,7 @@ pnpm build:packages
 
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.template apps/frontend/.env.local
-# edit apps/backend/.env: set DB_URL, JWT secrets and Redis connection
+# edit apps/backend/.env: set DB_URL, JWT secrets, Redis, storage and email
 
 pnpm --filter backend seed        # demo organization and sample recruiting data
 pnpm --filter backend dev         # API on http://localhost:4000 (Swagger at /api/docs)
