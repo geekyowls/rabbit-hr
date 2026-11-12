@@ -18,6 +18,8 @@ export interface CareersOrganization {
   slug: string;
   logo: string | null;
   website: string | null;
+  brandColor: string | null;
+  portalEnabled: boolean;
 }
 
 export interface CareersJobListItem {

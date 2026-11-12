@@ -40,6 +40,7 @@ import {
   WhatsappTemplateEntity,
   WhatsappMessageEntity,
   JobFeedEntity,
+  CandidatePortalSessionEntity,
 } from './entities';
 
 dotenv.config({ path: join(__dirname, '../../.env') });
@@ -82,6 +83,7 @@ const entities = [
   WhatsappTemplateEntity,
   WhatsappMessageEntity,
   JobFeedEntity,
+  CandidatePortalSessionEntity,
 ];
 
 const isDev = process.env.NODE_ENV === 'development';

@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Phone,
   UserPlus,
+  UserRound,
 } from 'lucide-react';
 import { zodResolver } from '@/lib/zod-resolver';
 import { toast } from '@/lib/toast';
@@ -69,7 +70,16 @@ const ACTIVITY_ICON: Record<ActivityType, { icon: ReactNode; color?: string }> =
       icon: <MessageCircle className="h-3.5 w-3.5" />,
       color: '#25A35A',
     },
+    portal: {
+      icon: <UserRound className="h-3.5 w-3.5" />,
+      color: '#0E7490',
+    },
   };
+
+function activityActor(a: Activity) {
+  const fallback = a.metadata?.source === 'portal' ? 'Candidate' : 'System';
+  return userLabel(a.actor) || fallback;
+}
 
 export function toTimelineEntry(
   a: Activity,
@@ -87,7 +97,7 @@ export function toTimelineEntry(
     color: meta.color,
     title: a.title,
     time: fmt.relative(a.createdAt),
-    meta: [userLabel(a.actor) || 'System', notSent].filter(Boolean).join(' · '),
+    meta: [activityActor(a), notSent].filter(Boolean).join(' · '),
     body:
       withBody && a.body ? (
         <p className="line-clamp-6 whitespace-pre-wrap text-sm text-muted-foreground">

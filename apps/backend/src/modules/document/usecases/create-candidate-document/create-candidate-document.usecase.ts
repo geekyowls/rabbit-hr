@@ -15,7 +15,7 @@ import { ActivityType, DocumentType } from '@db/enums';
 import { loadDocument } from '../document-query';
 import { CreateCandidateDocumentCommand } from './create-candidate-document.command';
 
-const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   [DocumentType.CV]: 'CV',
   [DocumentType.ID]: 'ID document',
   [DocumentType.RIGHT_TO_WORK]: 'Work eligibility',

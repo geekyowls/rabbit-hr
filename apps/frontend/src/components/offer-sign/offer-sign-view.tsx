@@ -65,11 +65,14 @@ function friendlyError(error: unknown) {
 
 function Shell({
   view,
+  embedded,
   children,
 }: {
   view?: PublicOfferSigning;
+  embedded?: boolean;
   children: ReactNode;
 }) {
+  if (embedded) return <>{children}</>;
   const company = view?.company;
   return (
     <div className="flex min-h-screen flex-col bg-muted/30 text-foreground dark:bg-background">
@@ -452,12 +455,18 @@ function Outcome({ view }: { view: PublicOfferSigning }) {
   );
 }
 
-export function OfferSignView({ token }: { token: string | null }) {
+export function OfferSignView({
+  token,
+  embedded,
+}: {
+  token: string | null;
+  embedded?: boolean;
+}) {
   const { data: view, isLoading, error, refetch } = useOfferSigningQuery(token);
 
   if (!token) {
     return (
-      <Shell>
+      <Shell embedded={embedded}>
         <StateCard
           icon={<Link2Off className="h-6 w-6 text-muted-foreground" />}
           title="Signing link not found"
@@ -469,7 +478,7 @@ export function OfferSignView({ token }: { token: string | null }) {
 
   if (isLoading) {
     return (
-      <Shell>
+      <Shell embedded={embedded}>
         <div className="space-y-4">
           <Skeleton className="h-40 w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
@@ -482,7 +491,7 @@ export function OfferSignView({ token }: { token: string | null }) {
   if (error || !view) {
     const notFound = statusCode(error) === 404 || statusCode(error) === 400;
     return (
-      <Shell>
+      <Shell embedded={embedded}>
         <StateCard
           icon={<Link2Off className="h-6 w-6 text-muted-foreground" />}
           title={
@@ -513,7 +522,7 @@ export function OfferSignView({ token }: { token: string | null }) {
   const open = view.status === 'pending' && view.canRespond;
 
   return (
-    <Shell view={view}>
+    <Shell view={view} embedded={embedded}>
       <div className="space-y-4">
         {!open && <Outcome view={view} />}
         <OfferSummary view={view} />

@@ -285,6 +285,29 @@ export const API_ROUTES = {
     UPLOAD_URL: (orgSlug: string) =>
       `/public/careers/${orgSlug}/upload-url` as const,
   },
+  PORTAL: {
+    BRANDING: (orgSlug: string) => `/portal/auth/${orgSlug}` as const,
+    REQUEST_OTP: (orgSlug: string) =>
+      `/portal/auth/${orgSlug}/otp/request` as const,
+    VERIFY_OTP: (orgSlug: string) =>
+      `/portal/auth/${orgSlug}/otp/verify` as const,
+    REFRESH: '/portal/auth/refresh',
+    LOGOUT: '/portal/auth/logout',
+    ME: '/portal/me',
+    OVERVIEW: '/portal/overview',
+    APPLICATIONS: '/portal/applications',
+    APPLICATION: (id: string) => `/portal/applications/${id}` as const,
+    WITHDRAW: (id: string) => `/portal/applications/${id}/withdraw` as const,
+    INTERVIEWS: '/portal/interviews',
+    OFFERS: '/portal/offers',
+    DOCUMENTS: '/portal/documents',
+    UPLOAD_URL: '/portal/documents/upload-url',
+    DOCUMENT_DOWNLOAD: (id: string) =>
+      `/portal/documents/${id}/download-url` as const,
+    PROFILE: '/portal/profile',
+    INVITE: (candidateId: string) =>
+      `/candidates/${candidateId}/portal-invite` as const,
+  },
   SYSTEM_ADMIN: {
     ORGANIZATIONS: {
       LIST: '/system-admin/organizations/list',

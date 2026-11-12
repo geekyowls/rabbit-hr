@@ -16,6 +16,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  UserRound,
 } from 'lucide-react';
 import {
   LinkedInIcon,
@@ -73,6 +74,8 @@ import {
   useCandidateWhatsappMessagesQuery,
   useDeleteCandidateMutation,
   useIntegrationCapabilities,
+  useInviteToPortalMutation,
+  useOrganizationAtsSettings,
   useUpdateCandidateMutation,
 } from '@/hooks/queries';
 import { IfIntegration } from '@/components/integrations/if-integration';
@@ -461,6 +464,8 @@ export function CandidateDetailDrawer({
   } = useCandidateQuery(open ? candidateId : null);
   const updateCandidate = useUpdateCandidateMutation();
   const deleteCandidate = useDeleteCandidateMutation();
+  const inviteToPortal = useInviteToPortalMutation();
+  const { portalEnabled } = useOrganizationAtsSettings();
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission(PERMISSIONS_ENUM.CANDIDATE_UPDATE);
   const fmt = useFormatters();
@@ -566,6 +571,20 @@ export function CandidateDetailDrawer({
 
   const editable = <T,>(fn: T) => (canEdit ? fn : undefined);
 
+  const sendPortalInvite = async () => {
+    if (!c) return;
+    try {
+      const result = await inviteToPortal.mutateAsync(c.id);
+      if (result.sent) {
+        toast.success('Portal invite sent');
+      } else {
+        toast.error('Invite not emailed', result.reason ?? undefined);
+      }
+    } catch (err) {
+      toast.error('Could not send invite', errorMessage(err));
+    }
+  };
+
   const confirmDelete = async () => {
     if (!c) return;
     try {
@@ -659,6 +678,19 @@ export function CandidateDetailDrawer({
                     Edit
                   </ToolbarButton>
                 </PermissionGuard>
+                {portalEnabled && (
+                  <PermissionGuard
+                    permissions={PERMISSIONS_ENUM.CANDIDATE_UPDATE}
+                  >
+                    <ToolbarButton
+                      icon={UserRound}
+                      disabled={inviteToPortal.isPending}
+                      onClick={sendPortalInvite}
+                    >
+                      Invite to portal
+                    </ToolbarButton>
+                  </PermissionGuard>
+                )}
                 <PermissionGuard
                   permissions={PERMISSIONS_ENUM.INTERVIEW_CREATE}
                 >
@@ -816,6 +848,13 @@ export function CandidateDetailDrawer({
                 <ReadField label="Source">{SOURCE_LABEL[c.source]}</ReadField>
                 <ReadField label="Owner">{userLabel(c.owner) || '-'}</ReadField>
                 <ReadField label="Added">{fmt.date(c.createdAt)}</ReadField>
+                <ReadField label="Last portal login">
+                  {c.portalLastLoginAt
+                    ? fmt.relative(c.portalLastLoginAt)
+                    : c.portalInvitedAt
+                      ? `Invited ${fmt.date(c.portalInvitedAt)}`
+                      : 'Never'}
+                </ReadField>
                 {focused && (
                   <ReadField label="In stage">
                     {daysSince(focused.stageChangedAt)}d

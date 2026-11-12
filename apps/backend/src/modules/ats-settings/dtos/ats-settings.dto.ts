@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsIn,
   IsISO31661Alpha2,
@@ -9,12 +10,15 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { AtsDateFormat, SalaryPeriod } from '@db/enums';
 
 export const MAX_DEPARTMENTS = 100;
+export const BRAND_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 export class UpdateAtsSettingsDto {
   @ApiPropertyOptional({ example: 'USD' })
@@ -70,6 +74,23 @@ export class UpdateAtsSettingsDto {
   @MaxLength(100, { each: true })
   @IsOptional()
   departments?: string[];
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  portalEnabled?: boolean;
+
+  @ApiPropertyOptional({ maxLength: 1000 })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MaxLength(1000)
+  @IsOptional()
+  portalWelcomeMessage?: string;
+
+  @ApiPropertyOptional({ example: '#3F6650', nullable: true })
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @Matches(BRAND_COLOR_PATTERN, { message: 'brandColor must be a hex colour' })
+  brandColor?: string | null;
 }
 
 export class AtsSettingsResponseDto {
@@ -96,4 +117,13 @@ export class AtsSettingsResponseDto {
 
   @ApiProperty({ type: [String] })
   departments!: string[];
+
+  @ApiProperty()
+  portalEnabled!: boolean;
+
+  @ApiProperty()
+  portalWelcomeMessage!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  brandColor!: string | null;
 }

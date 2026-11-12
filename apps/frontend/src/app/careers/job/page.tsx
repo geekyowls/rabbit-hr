@@ -22,6 +22,8 @@ import {
   formatClosingDate,
   postedLabel,
 } from '@/components/careers/careers-utils';
+import { DOCUMENT_TYPE_LABEL } from '@/components/applications/application-meta';
+import type { DocumentType } from '@/types/document.type';
 
 function JobDetailSkeleton() {
   return (
@@ -177,7 +179,9 @@ function CareersJobContent() {
                   </h2>
                   <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                     {job.requiredDocuments.map((doc) => (
-                      <li key={doc}>{doc}</li>
+                      <li key={doc}>
+                        {DOCUMENT_TYPE_LABEL[doc as DocumentType] ?? doc}
+                      </li>
                     ))}
                   </ul>
                 </section>

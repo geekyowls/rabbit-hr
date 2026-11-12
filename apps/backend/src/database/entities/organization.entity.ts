@@ -21,6 +21,9 @@ export interface OrganizationAtsSettings {
   weekStartsOn: 0 | 1;
   salaryPeriodDefault: SalaryPeriod;
   departments: string[];
+  portalEnabled: boolean;
+  portalWelcomeMessage: string;
+  brandColor: string | null;
 }
 
 export const DEFAULT_ATS_SETTINGS: OrganizationAtsSettings = {
@@ -32,6 +35,9 @@ export const DEFAULT_ATS_SETTINGS: OrganizationAtsSettings = {
   weekStartsOn: 0,
   salaryPeriodDefault: SalaryPeriod.YEAR,
   departments: [],
+  portalEnabled: false,
+  portalWelcomeMessage: '',
+  brandColor: null,
 };
 
 export function resolveAtsSettings(

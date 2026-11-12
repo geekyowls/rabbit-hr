@@ -27,6 +27,8 @@ const SENSITIVE_FIELDS = new Set([
   'accesstoken',
   'secret',
   'apikey',
+  'otp',
+  'code',
 ]);
 
 const SKIP_METHODS = ['GET', 'OPTIONS', 'HEAD'];

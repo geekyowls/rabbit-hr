@@ -89,6 +89,12 @@ export class CandidateEntity extends BaseEntity {
   @Column({ type: 'jsonb', default: () => "'{}'" })
   customFields: CustomFieldValues;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  portalInvitedAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  portalLastLoginAt: Date | null;
+
   @ManyToOne(() => OrganizationEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'organizationId' })
   organization: OrganizationEntity;

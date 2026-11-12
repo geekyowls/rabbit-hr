@@ -37,7 +37,7 @@ export async function findCareersOrganization(
 ): Promise<OrganizationEntity> {
   const organization = await organizationRepository.findOne({
     where: { slug: slug.toLowerCase(), status: OrganizationStatus.ACTIVE },
-    select: ['id', 'name', 'slug', 'logo', 'website'],
+    select: ['id', 'name', 'slug', 'logo', 'website', 'atsSettings'],
   });
   if (!organization) {
     throw new NotFoundException('Careers page not found');

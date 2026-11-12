@@ -45,6 +45,7 @@ import { InterviewBookingModule } from './modules/interview-booking/interview-bo
 import { CallModule } from './modules/call/call.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { JobFeedModule } from './modules/job-feed/job-feed.module';
+import { CandidatePortalModule } from './modules/candidate-portal/candidate-portal.module';
 
 @Module({
   imports: [
@@ -109,6 +110,7 @@ import { JobFeedModule } from './modules/job-feed/job-feed.module';
     CallModule,
     WhatsappModule,
     JobFeedModule,
+    CandidatePortalModule,
   ],
   controllers: [AppController],
   providers: [

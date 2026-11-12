@@ -16,6 +16,10 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { useSession } from '@/contexts/session-context';
 import { CountryCombobox } from '@/components/ui/country-combobox';
 import { TagInputWithSuggestions } from '@/components/ui/tag-input-with-suggestions';
 import {
@@ -52,6 +56,18 @@ const schema = z.object({
   weekStartsOn: z.enum(['0', '1']),
   salaryPeriodDefault: z.enum(SALARY_PERIODS),
   departments: z.string(),
+  portalEnabled: z.boolean(),
+  portalWelcomeMessage: z
+    .string()
+    .trim()
+    .max(1000, 'Keep the message under 1,000 characters'),
+  brandColor: z
+    .string()
+    .trim()
+    .refine(
+      (v) => !v || /^#[0-9a-fA-F]{6}$/.test(v),
+      'Use a hex colour like #3F6650',
+    ),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -76,6 +92,9 @@ function toFormValues(settings: AtsSettings): FormValues {
     weekStartsOn: String(settings.weekStartsOn) as FormValues['weekStartsOn'],
     salaryPeriodDefault: settings.salaryPeriodDefault,
     departments: settings.departments.join(', '),
+    portalEnabled: settings.portalEnabled,
+    portalWelcomeMessage: settings.portalWelcomeMessage,
+    brandColor: settings.brandColor ?? '',
   };
 }
 
@@ -115,6 +134,11 @@ function AtsSettingsContent() {
   const { data } = useAtsSettingsQuery();
   const settings = data ?? sessionSettings;
   const update = useUpdateAtsSettingsMutation();
+  const { organization } = useSession();
+  const portalUrl =
+    organization?.slug && typeof window !== 'undefined'
+      ? `${window.location.origin}/portal/login?org=${encodeURIComponent(organization.slug)}`
+      : null;
 
   const {
     control,
@@ -177,6 +201,9 @@ function AtsSettingsContent() {
         weekStartsOn: Number(v.weekStartsOn) as AtsSettings['weekStartsOn'],
         salaryPeriodDefault: v.salaryPeriodDefault,
         departments: splitList(v.departments),
+        portalEnabled: v.portalEnabled,
+        portalWelcomeMessage: v.portalWelcomeMessage.trim(),
+        brandColor: v.brandColor.trim() || null,
       });
       toast.success('Hiring preferences saved');
     } catch (err) {
@@ -329,6 +356,96 @@ function AtsSettingsContent() {
             />
           </Field>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Candidate portal"
+        subtitle="Let candidates sign in with an email code to track applications, interviews, offers and documents"
+        bodyClassName="p-4"
+        actions={
+          <Controller
+            name="portalEnabled"
+            control={control}
+            render={({ field }) => (
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  aria-label="Enable candidate portal"
+                />
+                {field.value ? 'On' : 'Off'}
+              </label>
+            )}
+          />
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
+          <Field
+            label="Welcome message"
+            hint="Shown on the portal home page and in invite emails"
+            error={errors.portalWelcomeMessage?.message}
+          >
+            <Controller
+              name="portalWelcomeMessage"
+              control={control}
+              render={({ field }) => (
+                <Textarea
+                  rows={3}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Welcome to your candidate portal"
+                />
+              )}
+            />
+          </Field>
+          <Field
+            label="Brand colour"
+            hint="Used for buttons and highlights in the portal"
+            error={errors.brandColor?.message}
+          >
+            <Controller
+              name="brandColor"
+              control={control}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    aria-label="Pick brand colour"
+                    value={field.value || '#3F6650'}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-input bg-background p-1"
+                  />
+                  <Input
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="#3F6650"
+                    className="h-9"
+                  />
+                </div>
+              )}
+            />
+          </Field>
+        </div>
+        {portalUrl && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <span className="shrink-0">Portal link</span>
+            <code className="min-w-0 flex-1 truncate text-foreground">
+              {portalUrl}
+            </code>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7"
+              onClick={() => {
+                void navigator.clipboard.writeText(portalUrl);
+                toast.success('Link copied');
+              }}
+            >
+              Copy
+            </Button>
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard

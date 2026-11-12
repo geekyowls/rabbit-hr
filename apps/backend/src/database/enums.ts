@@ -493,6 +493,7 @@ export enum ActivityType {
   INTERVIEW = 'interview',
   OFFER = 'offer',
   WHATSAPP = 'whatsapp',
+  PORTAL = 'portal',
 }
 
 export enum TaskStatus {

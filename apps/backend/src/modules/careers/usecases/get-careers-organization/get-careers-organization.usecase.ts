@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { resolveAtsSettings } from '@db/entities';
 import { OrganizationRepository } from '@db/repositories';
 import { findCareersOrganization } from '../careers-query';
 import { GetCareersOrganizationCommand } from './get-careers-organization.command';
@@ -14,11 +15,14 @@ export class GetCareersOrganization {
       this.organizationRepository,
       command.orgSlug,
     );
+    const settings = resolveAtsSettings(organization.atsSettings);
     return {
       name: organization.name,
       slug: organization.slug,
       logo: organization.logo,
       website: organization.website,
+      brandColor: settings.brandColor,
+      portalEnabled: settings.portalEnabled,
     };
   }
 }

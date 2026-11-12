@@ -36,7 +36,10 @@ const DEPARTMENT_BY_INDUSTRY: Record<string, string> = {
 
 const DEPARTMENTS = [...new Set(Object.values(DEPARTMENT_BY_INDUSTRY))];
 
-const SEEDED_ORG_SETTINGS: OrganizationAtsSettings = {
+const SEEDED_ORG_SETTINGS: Omit<
+  OrganizationAtsSettings,
+  'portalEnabled' | 'portalWelcomeMessage' | 'brandColor'
+> = {
   defaultCurrency: 'GBP',
   country: 'GB',
   timezone: 'Europe/London',

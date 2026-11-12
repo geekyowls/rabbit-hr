@@ -40,6 +40,7 @@ import {
   WhatsappTemplateEntity,
   WhatsappMessageEntity,
   JobFeedEntity,
+  CandidatePortalSessionEntity,
 } from './entities';
 import {
   UserRepository,
@@ -79,6 +80,7 @@ import {
   WhatsappTemplateRepository,
   WhatsappMessageRepository,
   JobFeedRepository,
+  CandidatePortalSessionRepository,
 } from './repositories';
 
 const entities = [
@@ -119,6 +121,7 @@ const entities = [
   WhatsappTemplateEntity,
   WhatsappMessageEntity,
   JobFeedEntity,
+  CandidatePortalSessionEntity,
 ];
 const repositories = [
   UserRepository,
@@ -158,6 +161,7 @@ const repositories = [
   WhatsappTemplateRepository,
   WhatsappMessageRepository,
   JobFeedRepository,
+  CandidatePortalSessionRepository,
 ];
 
 @Global()

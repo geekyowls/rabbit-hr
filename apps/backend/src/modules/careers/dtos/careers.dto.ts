@@ -164,6 +164,12 @@ export class CareersOrganizationDto {
 
   @ApiPropertyOptional({ nullable: true })
   website!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  brandColor!: string | null;
+
+  @ApiProperty()
+  portalEnabled!: boolean;
 }
 
 export class CareersJobListItemDto {

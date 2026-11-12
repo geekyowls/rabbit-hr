@@ -67,6 +67,8 @@ export interface Candidate {
   owner: UserSummary | null;
   rating: number | null;
   customFields: CustomFieldValues;
+  portalInvitedAt: string | null;
+  portalLastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

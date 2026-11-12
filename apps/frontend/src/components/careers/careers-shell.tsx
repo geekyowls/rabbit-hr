@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ExternalLink, SearchX } from 'lucide-react';
+import { ExternalLink, LogIn, SearchX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { EmptyState } from '@/components/patterns';
@@ -53,17 +53,28 @@ export function CareersShell({
           ) : (
             <span className="text-sm font-semibold">Careers</span>
           )}
-          {organization?.website && (
-            <a
-              href={organization.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Website
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
+          <div className="flex shrink-0 items-center gap-4">
+            {organization?.website && (
+              <a
+                href={organization.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground sm:inline-flex"
+              >
+                Website
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+            {organization?.portalEnabled && (
+              <Link
+                href={`/portal/login?org=${encodeURIComponent(organization.slug)}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium hover:bg-muted"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Candidate login
+              </Link>
+            )}
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">

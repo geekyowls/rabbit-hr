@@ -203,6 +203,62 @@ export const PAGE_INTEGRATION_STATUS: Record<string, PageIntegrationStatus> = {
   '/dashboard/settings/ats': SETTINGS_LIVE,
   '/dashboard/settings/pipeline': SETTINGS_LIVE,
   '/dashboard/settings/custom-fields': SETTINGS_LIVE,
+  '/portal/login': {
+    level: 'integrated',
+    live: [
+      'Branded sign in by company slug',
+      'Email one time code with rate limits and lockout',
+    ],
+  },
+  '/portal': {
+    level: 'integrated',
+    live: [
+      'Greeting and welcome message',
+      'Offers, booking links and document requests that need attention',
+      'Upcoming interviews',
+      'Applications with candidate friendly status',
+    ],
+  },
+  '/portal/applications': {
+    level: 'integrated',
+    live: [
+      'Active and closed applications',
+      'Detail with progress timeline, interviews and offers',
+      'Withdraw with confirmation',
+    ],
+  },
+  '/portal/interviews': {
+    level: 'integrated',
+    live: [
+      'Upcoming and past interviews',
+      'Location and meeting link when one exists',
+      'Booking links to pick a time',
+    ],
+  },
+  '/portal/offers': {
+    level: 'integrated',
+    live: ['Offer list', 'View, sign or decline with the e-sign flow'],
+  },
+  '/portal/documents': {
+    level: 'integrated',
+    live: [
+      'Documents requested for active applications',
+      'Upload and download own documents',
+      'Review status from the hiring team',
+    ],
+  },
+  '/portal/profile': {
+    level: 'integrated',
+    live: [
+      'Contact details, headline and LinkedIn',
+      'Candidate visible custom fields',
+      'CV upload',
+    ],
+  },
+  '/portal/jobs': {
+    level: 'integrated',
+    live: ['Open roles of the company', 'Apply with prefilled details'],
+  },
 };
 
 export const SHOW_INTEGRATION_STATUS =

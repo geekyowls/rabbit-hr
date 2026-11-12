@@ -82,6 +82,12 @@ export class CandidateResponseDto {
   })
   customFields!: Record<string, unknown>;
 
+  @ApiPropertyOptional({ nullable: true })
+  portalInvitedAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  portalLastLoginAt!: Date | null;
+
   @ApiProperty()
   createdAt!: Date;
 

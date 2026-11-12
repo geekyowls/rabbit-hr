@@ -8,6 +8,7 @@ import { seedAtsPhase2b } from './seed-ats-phase2b';
 import { seedAtsPhase3c } from './seed-ats-phase3c';
 import { seedAtsPhase3a } from './seed-ats-phase3a';
 import { seedAtsPhase3b } from './seed-ats-phase3b';
+import { seedAtsPhase4 } from './seed-ats-phase4';
 import {
   UserEntity,
   OrganizationEntity,
@@ -203,6 +204,7 @@ async function seed() {
       await seedAtsPhase3c(AppDataSource, atsContext);
       await seedAtsPhase3a(AppDataSource, atsContext);
       await seedAtsPhase3b(AppDataSource, atsContext);
+      await seedAtsPhase4(AppDataSource, atsContext);
 
       console.log(
         `Careers page slug: ${organization.slug} (GET /api/v1/public/careers/${organization.slug}/jobs)`,

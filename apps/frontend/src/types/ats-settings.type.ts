@@ -18,6 +18,9 @@ export interface AtsSettings {
   weekStartsOn: WeekStartsOn;
   salaryPeriodDefault: SalaryPeriod;
   departments: string[];
+  portalEnabled: boolean;
+  portalWelcomeMessage: string;
+  brandColor: string | null;
 }
 
 export type UpdateAtsSettingsRequest = Partial<AtsSettings>;
@@ -31,4 +34,7 @@ export const DEFAULT_ATS_SETTINGS: AtsSettings = {
   weekStartsOn: 0,
   salaryPeriodDefault: 'year',
   departments: [],
+  portalEnabled: false,
+  portalWelcomeMessage: '',
+  brandColor: null,
 };

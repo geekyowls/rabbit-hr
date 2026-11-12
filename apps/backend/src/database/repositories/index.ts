@@ -35,3 +35,4 @@ export * from './email-message.repository';
 export * from './interviewer-availability.repository';
 export * from './user-time-off.repository';
 export * from './interview-booking-link.repository';
+export * from './candidate-portal-session.repository';

@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 import { AlertCircle, CheckCircle2, FileText, Upload, X } from 'lucide-react';
 import { zodResolver } from '@/lib/zod-resolver';
-import { formatBytes } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import { ApiError } from '@/utils/error-class';
 import {
   useApplyToJobMutation,
@@ -22,6 +22,7 @@ import {
   type ApplyToJobRequest,
   type CareersJobDetail,
 } from '@/types/careers.type';
+import type { CustomFieldValues } from '@/types/custom-field.type';
 import { CustomFieldsForm } from '@/components/custom-fields/custom-fields-form';
 import {
   buildCustomFieldsSchema,
@@ -112,14 +113,32 @@ function FieldError({ message }: { message?: string }) {
   return <p className="text-sm text-destructive">{message}</p>;
 }
 
+export interface CareersApplyPrefill {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | null;
+  location?: string | null;
+  linkedinUrl?: string | null;
+  customFields?: CustomFieldValues;
+}
+
 export function CareersApplyForm({
   orgSlug,
   organizationName,
   job,
+  prefill,
+  lockEmail,
+  successAction,
+  onApplied,
 }: {
   orgSlug: string;
   organizationName: string;
   job: CareersJobDetail;
+  prefill?: CareersApplyPrefill;
+  lockEmail?: boolean;
+  successAction?: ReactNode;
+  onApplied?: () => void;
 }) {
   const schema = useMemo(() => buildSchema(job), [job]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,17 +155,20 @@ export function CareersApplyForm({
   } = useForm<ApplyFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      location: '',
-      linkedinUrl: '',
+      firstName: prefill?.firstName ?? '',
+      lastName: prefill?.lastName ?? '',
+      email: prefill?.email ?? '',
+      phone: prefill?.phone ?? '',
+      location: prefill?.location ?? '',
+      linkedinUrl: prefill?.linkedinUrl ?? '',
       coverNote: '',
       answers: job.screeningQuestions.map(() => ''),
       cv: null,
       gdprConsent: false,
-      customFields: toCustomFieldFormValues(job.customFields ?? []),
+      customFields: toCustomFieldFormValues(
+        job.customFields ?? [],
+        prefill?.customFields,
+      ),
     },
   });
 
@@ -204,6 +226,7 @@ export function CareersApplyForm({
         data: payload,
       });
       setSubmitted(result.jobTitle || job.title);
+      onApplied?.();
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 409) {
         setFormError(
@@ -234,9 +257,11 @@ export function CareersApplyForm({
           Thank you for applying for {submitted}. The {organizationName} team
           will review your application and be in touch.
         </p>
-        <Button asChild variant="outline" className="mt-6">
-          <Link href={careersListHref(orgSlug)}>See more roles</Link>
-        </Button>
+        {successAction ?? (
+          <Button asChild variant="outline" className="mt-6">
+            <Link href={careersListHref(orgSlug)}>See more roles</Link>
+          </Button>
+        )}
       </div>
     );
   }
@@ -282,6 +307,8 @@ export function CareersApplyForm({
             id="apply-email"
             type="email"
             autoComplete="email"
+            readOnly={lockEmail}
+            className={cn(lockEmail && 'bg-muted text-muted-foreground')}
             {...register('email')}
           />
           <FieldError message={errors.email?.message} />

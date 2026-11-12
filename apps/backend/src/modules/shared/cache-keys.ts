@@ -10,6 +10,8 @@ export const CACHE_TTL = {
   TEAM_DESCENDANTS: 300,
   COVERAGE_COVERED: 300,
   INTEGRATION_CAPABILITIES: 60,
+  PORTAL_OTP: 600,
+  PORTAL_OTP_RATE: 900,
 } as const;
 
 export const CACHE_KEYS = {
@@ -33,4 +35,8 @@ export const CACHE_KEYS = {
   teamOrgKeys: (organizationId: string) => `${organizationId}:team:org_keys`,
   coverageCovered: (organizationId: string, userId: string) =>
     `${organizationId}:coverage:covered:${userId}`,
+  portalOtp: (organizationId: string, emailHash: string) =>
+    `${organizationId}:portal:otp:${emailHash}`,
+  portalOtpRate: (organizationId: string, emailHash: string) =>
+    `${organizationId}:portal:otp-rate:${emailHash}`,
 } as const;
