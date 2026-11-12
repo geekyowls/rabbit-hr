@@ -2,12 +2,13 @@ import { Body, Controller, Get, Param, Put, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 import {
   UserSession,
   type UserSessionData,
 } from '@shared/decorators/user-session.decorator';
 import { RequirePermissions } from '@shared/decorators/require-permissions.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { ApiCommonResponses } from '@shared/decorators/api-common-responses.decorator';
 import { UpdateJobFeedSettingsDto } from './dtos/job-feed.dto';
 import { GetJobFeedSettings } from './usecases/get-job-feed-settings/get-job-feed-settings.usecase';
@@ -36,6 +37,7 @@ export class JobFeedController {
 
   @Get('job-feed/settings')
   @RequirePermissions(PERMISSIONS_ENUM.JOB_FEED_MANAGE)
+  @RequirePlanFeature(PlanFeature.JOB_FEED)
   @ApiOperation({ summary: 'Job board feed settings and feed URLs' })
   async settings(@UserSession() user: UserSessionData) {
     return this.getSettings.execute(
@@ -48,6 +50,7 @@ export class JobFeedController {
 
   @Put('job-feed/settings')
   @RequirePermissions(PERMISSIONS_ENUM.JOB_FEED_MANAGE)
+  @RequirePlanFeature(PlanFeature.JOB_FEED)
   @ApiOperation({ summary: 'Enable, disable or rotate the job board feed' })
   async update(
     @UserSession() user: UserSessionData,

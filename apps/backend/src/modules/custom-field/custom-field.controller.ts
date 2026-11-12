@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 import {
   UserSession,
   type UserSessionData,
@@ -19,6 +19,7 @@ import {
   RequireAnyPermission,
   RequirePermissions,
 } from '@shared/decorators/require-permissions.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { ApiResponse } from '@shared/decorators/api-response.decorator';
 import { ApiCommonResponses } from '@shared/decorators/api-common-responses.decorator';
 import { ATS_READ_PERMISSIONS } from '@shared/constants';
@@ -76,6 +77,7 @@ export class CustomFieldController {
 
   @Post()
   @RequirePermissions(PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Create a custom field definition' })
   @ApiResponse(CustomFieldResponseDto, 201)
   async create(
@@ -93,6 +95,7 @@ export class CustomFieldController {
 
   @Put('reorder')
   @RequirePermissions(PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Reorder custom fields of an entity' })
   @ApiResponse(CustomFieldResponseDto, 200, true)
   async reorder(
@@ -111,6 +114,7 @@ export class CustomFieldController {
 
   @Put(':id')
   @RequirePermissions(PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Update a custom field definition' })
   @ApiResponse(CustomFieldResponseDto)
   async update(
@@ -130,6 +134,7 @@ export class CustomFieldController {
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_FIELDS)
   @ApiOperation({
     summary: 'Delete a custom field, or deactivate it when values exist',
   })

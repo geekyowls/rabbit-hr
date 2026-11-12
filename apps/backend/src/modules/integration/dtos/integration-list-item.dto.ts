@@ -1,3 +1,4 @@
+import { PlanFeature } from '@boilerplate/core';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class IntegrationListItemDto {
@@ -45,4 +46,7 @@ export class IntegrationListItemDto {
 
   @ApiPropertyOptional()
   webhookToken?: string | null;
+
+  @ApiPropertyOptional({ enum: PlanFeature, nullable: true })
+  planFeature: PlanFeature | null;
 }

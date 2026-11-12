@@ -9,6 +9,7 @@ import { IntegrationCoreModule } from './modules/integration/core/integration-co
 import { InterviewCalendarSyncWorkerModule } from './modules/interview-calendar-sync/interview-calendar-sync-worker.module';
 import { CallWorkerModule } from './modules/call/call-worker.module';
 import { WhatsappWorkerModule } from './modules/whatsapp/whatsapp-worker.module';
+import { BillingCoreModule } from './modules/billing/core/billing-core.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { WhatsappWorkerModule } from './modules/whatsapp/whatsapp-worker.module'
     InterviewCalendarSyncWorkerModule,
     CallWorkerModule,
     WhatsappWorkerModule,
+    BillingCoreModule,
   ],
 })
 export class WorkerModule {}

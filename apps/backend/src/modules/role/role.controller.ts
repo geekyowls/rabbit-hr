@@ -10,7 +10,11 @@ import {
   Put,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { PERMISSIONS_ENUM, PERMISSION_BASE } from '@boilerplate/core';
+import {
+  PERMISSIONS_ENUM,
+  PERMISSION_BASE,
+  PlanFeature,
+} from '@boilerplate/core';
 
 import {
   UserSession,
@@ -20,6 +24,7 @@ import {
   RequirePermissions,
   RequireAnyPermission,
 } from '@shared/decorators/require-permissions.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { RoleResponseDto } from './dtos/role-response.dto';
 import { RoleDropdownDto } from './dtos/role-dropdown.dto';
 import { CreateRoleDto } from './dtos/create-role.dto';
@@ -50,6 +55,7 @@ export class RoleController {
 
   @Post()
   @RequirePermissions(PERMISSIONS_ENUM.ROLE_CREATE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_ROLES)
   @ApiOperation({ summary: 'Create a new role' })
   @ApiResponse({ status: 201, type: RoleResponseDto })
   async create(
@@ -114,6 +120,7 @@ export class RoleController {
 
   @Put(':id')
   @RequirePermissions(PERMISSIONS_ENUM.ROLE_UPDATE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_ROLES)
   @ApiOperation({ summary: 'Update a role' })
   @ApiResponse({ status: 200, type: RoleResponseDto })
   async update(
@@ -134,6 +141,7 @@ export class RoleController {
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS_ENUM.ROLE_UPDATE)
+  @RequirePlanFeature(PlanFeature.CUSTOM_ROLES)
   @ApiOperation({ summary: 'Delete a role' })
   @ApiResponse({ status: 200 })
   async delete(

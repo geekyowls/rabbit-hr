@@ -1,5 +1,7 @@
 'use client';
 
+import { PlanFeature } from '@boilerplate/shared';
+import { PlanFeatureGate } from '@/components/billing/plan-feature-gate';
 import { useState } from 'react';
 import {
   ArrowDown,
@@ -296,7 +298,9 @@ export default function CustomFieldsPage() {
         </div>
       }
     >
-      <CustomFieldsContent />
+      <PlanFeatureGate feature={PlanFeature.CUSTOM_FIELDS}>
+        <CustomFieldsContent />
+      </PlanFeatureGate>
     </PermissionGuard>
   );
 }

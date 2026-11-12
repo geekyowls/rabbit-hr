@@ -1,11 +1,12 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 import {
   UserSession,
   type UserSessionData,
 } from '@shared/decorators/user-session.decorator';
 import { RequirePermissions } from '@shared/decorators/require-permissions.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { ApiResponse } from '@shared/decorators/api-response.decorator';
 import { ApiCommonResponses } from '@shared/decorators/api-common-responses.decorator';
 import {
@@ -23,6 +24,7 @@ export class ReportController {
 
   @Get('summary')
   @RequirePermissions(PERMISSIONS_ENUM.REPORT_READ)
+  @RequirePlanFeature(PlanFeature.ADVANCED_REPORTS)
   @ApiOperation({ summary: 'Recruitment report summary for a date range' })
   @ApiResponse(ReportSummaryResponseDto)
   async summary(

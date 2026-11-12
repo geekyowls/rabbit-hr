@@ -125,8 +125,13 @@ All routes are defined in `src/config/api-routes.ts`. Here's what exists:
 **Storage** (authenticated)
 - `STORAGE.UPLOAD_URL`: `GET /storage/upload-url`
 
+**Billing** (authenticated)
+- `BILLING.SUMMARY`, `BILLING.CHECKOUT`, `BILLING.CHANGE_PLAN`, `BILLING.PORTAL`, `BILLING.CANCEL`, `BILLING.RESUME`, `BILLING.SYNC`
+- Hooks in `hooks/queries/use-billing-query.ts` (`useBillingSummary`, `usePlanFeature`); UI in `components/billing/` (`BillingGate` banner and plan redirect, `PlanPicker`, `UpgradeHint`, `PlanFeatureGate`)
+- Pages: `/dashboard/settings/billing`, `/dashboard/billing/choose` (reads `?plan=&billing=`, also saved from `/signup`)
+
 **System Admin** (authenticated, system org only)
-- `SYSTEM_ADMIN.ORGANIZATIONS.LIST` / `CREATE` / `UPDATE_STATUS(id)` / `ACCESS(id)`
+- `SYSTEM_ADMIN.ORGANIZATIONS.LIST` / `CREATE` / `UPDATE_STATUS(id)` / `ACCESS(id)` / `UPDATE_BILLING(id)`
 - `SYSTEM_ADMIN.RESET_LOGIN_LOCKOUT`
 - `SYSTEM_ADMIN.SYNC_PERMISSIONS`
 

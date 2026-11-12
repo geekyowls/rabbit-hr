@@ -1,5 +1,7 @@
 'use client';
 
+import { PlanFeature } from '@boilerplate/shared';
+import { PlanFeatureGate } from '@/components/billing/plan-feature-gate';
 import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { useBreadcrumb } from '@/contexts/breadcrumb-context';
 import { PermissionGuard } from '@/components/auth/permission-guard';
@@ -36,7 +38,9 @@ export default function AuditLogsPage() {
         </div>
       }
     >
-      <AuditLogsContent />
+      <PlanFeatureGate feature={PlanFeature.AUDIT_LOG}>
+        <AuditLogsContent />
+      </PlanFeatureGate>
     </PermissionGuard>
   );
 }

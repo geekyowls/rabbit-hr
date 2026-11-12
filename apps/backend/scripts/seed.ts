@@ -15,6 +15,7 @@ import {
   RoleEntity,
   SupportedIntegrationEntity,
 } from '../src/database/entities';
+import { BillingInterval, PlanId } from '@boilerplate/core';
 import {
   OrganizationStatus,
   OrgSubscriptionStatus,
@@ -175,6 +176,8 @@ async function seed() {
     console.log(`Created ${kind}: ${account.email} / ${account.password}`);
   }
 
+  await seedBilling();
+
   const systemAccount = ACCOUNTS.find((a) => a.isSystemOrg)!;
   const adminUser = await userRepo.findOne({
     where: { email: systemAccount.email },
@@ -214,6 +217,68 @@ async function seed() {
 
   console.log('Seed complete.');
   await AppDataSource.destroy();
+}
+
+const SEED_BILLING: Record<
+  string,
+  {
+    plan: PlanId;
+    interval: BillingInterval;
+    status: OrgSubscriptionStatus;
+    trialDays: number | null;
+    onlyIfUnset: boolean;
+  }
+> = {
+  rabbithr: {
+    plan: PlanId.SCALE,
+    interval: BillingInterval.YEAR,
+    status: OrgSubscriptionStatus.ACTIVE,
+    trialDays: null,
+    onlyIfUnset: false,
+  },
+  acme: {
+    plan: PlanId.STARTER,
+    interval: BillingInterval.MONTH,
+    status: OrgSubscriptionStatus.TRIAL,
+    trialDays: 10,
+    onlyIfUnset: true,
+  },
+};
+
+const FAR_FUTURE = new Date('2099-12-31T00:00:00.000Z');
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function seedBilling() {
+  const orgRepo = AppDataSource.getRepository(OrganizationEntity);
+  const roleRepo = AppDataSource.getRepository(RoleEntity);
+  for (const [slug, billing] of Object.entries(SEED_BILLING)) {
+    const organization = await orgRepo.findOne({ where: { slug } });
+    if (!organization) continue;
+    const adminRole = await roleRepo.findOne({
+      where: { organizationId: organization.id, isDefault: true },
+    });
+    if (adminRole) {
+      adminRole.permissions = ALL_PERMISSIONS;
+      await roleRepo.save(adminRole);
+    }
+    if (billing.onlyIfUnset && organization.plan) {
+      console.log(`Billing for ${slug} already set (${organization.plan})`);
+      continue;
+    }
+    organization.plan = billing.plan;
+    organization.billingInterval = billing.interval;
+    organization.subscriptionStatus = billing.status;
+    organization.pastDueSince = null;
+    organization.cancelAtPeriodEnd = false;
+    organization.trialEndsAt = billing.trialDays
+      ? new Date(Date.now() + billing.trialDays * DAY_MS)
+      : null;
+    organization.subscriptionEndsAt = billing.trialDays
+      ? organization.trialEndsAt
+      : FAR_FUTURE;
+    await orgRepo.save(organization);
+    console.log(`Billing for ${slug}: ${billing.plan} ${billing.status}`);
+  }
 }
 
 seed().catch((error) => {

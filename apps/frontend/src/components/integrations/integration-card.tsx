@@ -24,6 +24,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusPill } from '@/components/patterns';
+import { usePlanFeature } from '@/hooks/queries';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
 import type { IntegrationListItem } from '@/types/integration.type';
 
 type IconComponent = ComponentType<{
@@ -134,6 +136,8 @@ export function IntegrationCard({
   manageLabel?: string;
 }) {
   const { hasPermission } = usePermissions();
+  const { hasFeature } = usePlanFeature(integration.planFeature);
+  const planLocked = !hasFeature;
   const isApiKey = integration.authType === 'api_key';
   const canConnect = hasPermission(PERMISSIONS_ENUM.INTEGRATION_CONNECT);
   const canDisconnect = hasPermission(PERMISSIONS_ENUM.INTEGRATION_DISCONNECT);
@@ -225,7 +229,11 @@ export function IntegrationCard({
             <Link href={manageHref}>{manageLabel ?? 'Manage'}</Link>
           </Button>
         )}
-        {(!integration.isConnected || hasError) &&
+        {planLocked && integration.planFeature && (
+          <UpgradeHint feature={integration.planFeature} />
+        )}
+        {!planLocked &&
+          (!integration.isConnected || hasError) &&
           integration.isConfigured &&
           canConnect && (
             <Button

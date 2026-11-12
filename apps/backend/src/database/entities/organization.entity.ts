@@ -2,6 +2,7 @@ import { Entity, Column, OneToMany, Index } from 'typeorm';
 
 import {
   AtsDateFormat,
+  BillingInterval,
   OrganizationStatus,
   PdfTemplate,
   OrgSubscriptionStatus,
@@ -189,6 +190,24 @@ export class OrganizationEntity extends BaseEntity {
     nullable: true,
   })
   subscriptionEndsAt!: Date | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  plan!: string | null;
+
+  @Column({ type: 'enum', enum: BillingInterval, nullable: true })
+  billingInterval!: BillingInterval | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  dodoSubscriptionId!: string | null;
+
+  @Column({ type: 'integer', nullable: true })
+  memberLimitOverride!: number | null;
+
+  @Column({ type: 'boolean', default: false })
+  cancelAtPeriodEnd!: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  pastDueSince!: Date | null;
 
   @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
   featureControls!: OrgFeatureControls | null;

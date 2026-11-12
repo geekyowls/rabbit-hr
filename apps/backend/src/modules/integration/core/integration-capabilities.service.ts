@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { RedisCacheService } from '@boilerplate/core';
+import { PlanFeature, RedisCacheService } from '@boilerplate/core';
 import {
   JobFeedRepository,
   MailboxConnectionRepository,
@@ -12,8 +12,10 @@ import {
 } from '@db/enums';
 import { CACHE_KEYS, CACHE_TTL } from '@shared/cache-keys';
 import { ContextLogger } from '@shared/framework/context-logger';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import {
   CAPABILITY_LABELS,
+  CAPABILITY_PLAN_FEATURES,
   CapabilityKey,
   INTEGRATION_PROVIDERS,
   IntegrationCapabilities,
@@ -38,6 +40,7 @@ export class IntegrationCapabilitiesService {
     private readonly jobFeedRepository: JobFeedRepository,
     private readonly mailboxConnectionRepository: MailboxConnectionRepository,
     @Optional() private readonly cacheService?: RedisCacheService,
+    @Optional() private readonly entitlements?: BillingEntitlementsService,
   ) {}
 
   async getCapabilities(
@@ -55,6 +58,29 @@ export class IntegrationCapabilitiesService {
   async getOrganizationCapabilities(
     organizationId: string,
   ): Promise<OrganizationCapabilities> {
+    const [connected, features] = await Promise.all([
+      this.getConnectedCapabilities(organizationId),
+      this.getPlanFeatures(organizationId),
+    ]);
+    const calendarSync = features.includes(PlanFeature.CALENDAR_SYNC);
+    return {
+      calendar: {
+        google: connected.calendar.google && calendarSync,
+        microsoft: connected.calendar.microsoft && calendarSync,
+      },
+      meetings: {
+        googleMeet: connected.meetings.googleMeet && calendarSync,
+        zoom: connected.meetings.zoom && calendarSync,
+        teams: connected.meetings.teams && calendarSync,
+      },
+      calls: connected.calls && features.includes(PlanFeature.CALLS),
+      whatsapp: connected.whatsapp && features.includes(PlanFeature.WHATSAPP),
+    };
+  }
+
+  private async getConnectedCapabilities(
+    organizationId: string,
+  ): Promise<OrganizationCapabilities> {
     const key = CACHE_KEYS.integrationCapabilities(organizationId);
     const cached = await this.readCache(key);
     if (cached) return cached;
@@ -63,6 +89,14 @@ export class IntegrationCapabilitiesService {
     );
     await this.writeCache(key, capabilities);
     return capabilities;
+  }
+
+  private async getPlanFeatures(
+    organizationId: string,
+  ): Promise<PlanFeature[]> {
+    if (!this.entitlements) return Object.values(PlanFeature);
+    const state = await this.entitlements.getState(organizationId);
+    return this.entitlements.featuresFor(state);
   }
 
   async has(organizationId: string, key: CapabilityKey): Promise<boolean> {
@@ -90,6 +124,10 @@ export class IntegrationCapabilitiesService {
   }
 
   async require(organizationId: string, key: CapabilityKey): Promise<void> {
+    const feature = CAPABILITY_PLAN_FEATURES[key];
+    if (feature && this.entitlements) {
+      await this.entitlements.assertFeature(organizationId, feature);
+    }
     if (!(await this.has(organizationId, key))) {
       throw new IntegrationNotConnectedException(CAPABILITY_LABELS[key]);
     }
@@ -145,6 +183,8 @@ export class IntegrationCapabilitiesService {
   }
 
   private async isJobFeedEnabled(organizationId: string): Promise<boolean> {
+    const features = await this.getPlanFeatures(organizationId);
+    if (!features.includes(PlanFeature.JOB_FEED)) return false;
     const count = await this.jobFeedRepository.count({
       where: { organizationId, enabled: true },
     });

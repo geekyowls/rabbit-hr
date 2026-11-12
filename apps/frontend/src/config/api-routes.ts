@@ -253,6 +253,15 @@ export const API_ROUTES = {
   JOB_FEED: {
     SETTINGS: '/job-feed/settings',
   },
+  BILLING: {
+    SUMMARY: '/billing',
+    CHECKOUT: '/billing/checkout',
+    CHANGE_PLAN: '/billing/change-plan',
+    PORTAL: '/billing/portal',
+    CANCEL: '/billing/cancel',
+    RESUME: '/billing/resume',
+    SYNC: '/billing/sync',
+  },
   PUBLIC_OFFER_SIGN: {
     GET: (token: string) => `/public/offers/sign/${token}` as const,
     ACCEPT: (token: string) => `/public/offers/sign/${token}/accept` as const,
@@ -316,6 +325,8 @@ export const API_ROUTES = {
         `/system-admin/organizations/${id}/status` as const,
       ACCESS: (id: string) =>
         `/system-admin/organizations/${id}/access` as const,
+      UPDATE_BILLING: (id: string) =>
+        `/system-admin/organizations/${id}/billing` as const,
     },
     RESET_LOGIN_LOCKOUT: '/system-admin/reset-login-lockout',
     SYNC_PERMISSIONS: '/system-admin/sync-permissions',

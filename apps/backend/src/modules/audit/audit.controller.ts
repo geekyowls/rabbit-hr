@@ -8,13 +8,14 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 
 import {
   UserSession,
   type UserSessionData,
 } from '@shared/decorators/user-session.decorator';
 import { RequirePermissions } from '@shared/decorators/require-permissions.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { ApiOkPaginatedResponse } from '@shared/decorators/api-ok-paginated-response.decorator';
 import { PaginatedResponseDto } from '@shared/dtos/pagination-response';
 import { AuditLogResponseDto } from './dtos/audit-log-response.dto';
@@ -34,6 +35,7 @@ export class AuditController {
   @Post('list')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(PERMISSIONS_ENUM.AUDIT_LIST_READ)
+  @RequirePlanFeature(PlanFeature.AUDIT_LOG)
   @ApiOperation({ summary: 'List audit logs with pagination and filters' })
   @ApiOkPaginatedResponse(AuditLogResponseDto)
   async list(
@@ -57,6 +59,7 @@ export class AuditController {
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS_ENUM.AUDIT_READ)
+  @RequirePlanFeature(PlanFeature.AUDIT_LOG)
   @ApiOperation({ summary: 'Get a single audit log by ID' })
   @ApiResponse({ status: 200, type: AuditLogResponseDto })
   async get(

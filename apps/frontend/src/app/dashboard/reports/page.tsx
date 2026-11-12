@@ -1,5 +1,7 @@
 'use client';
 
+import { PlanFeature } from '@boilerplate/shared';
+import { PlanFeatureGate } from '@/components/billing/plan-feature-gate';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Award,
@@ -346,7 +348,7 @@ function previousWindow(from: Date, to: Date) {
   return { from: new Date(prevTo.getTime() - span), to: prevTo };
 }
 
-export default function ReportsPage() {
+function ReportsContent() {
   const f = useFormatters();
   const [reportId, setReportId] = useState('executive');
   const [preset, setPreset] = useState<RangePreset>('90d');
@@ -592,5 +594,13 @@ export default function ReportsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <PlanFeatureGate feature={PlanFeature.ADVANCED_REPORTS}>
+      <ReportsContent />
+    </PlanFeatureGate>
   );
 }

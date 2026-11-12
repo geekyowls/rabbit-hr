@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import {
   ALL_PERMISSIONS,
-  addDays,
   EventName,
   UserRegisteredEvent,
   OrganizationCreatedEvent,
@@ -19,7 +18,6 @@ import { AuthService } from '../../services/auth.service';
 import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
 import { GoogleLoginCommand } from './google-login.command';
 
-const TRIAL_PERIOD_DAYS = 14;
 import type { GoogleLoginResponseDto } from '../../dtos/google-login.dto';
 
 @Injectable()
@@ -163,7 +161,6 @@ export class GoogleLogin {
             slug,
             domain,
             subscriptionStatus: OrgSubscriptionStatus.TRIAL,
-            trialEndsAt: addDays(TRIAL_PERIOD_DAYS, new Date()),
           },
         );
         await manager.save(organization);

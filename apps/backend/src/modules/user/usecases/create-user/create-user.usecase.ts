@@ -10,6 +10,7 @@ import {
 } from '@boilerplate/core';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 
 import { CreateUserCommand } from './create-user.command';
 
@@ -28,6 +29,7 @@ export class CreateUser {
     private readonly roleRepository: RoleRepository,
     private readonly authService: AuthService,
     private readonly eventEmitter: AppEventEmitter,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: CreateUserCommand): Promise<CreateUserResult> {
@@ -42,6 +44,8 @@ export class CreateUser {
         'User with this email already exists in this organization',
       );
     }
+
+    await this.entitlements.assertMemberCapacity(command.organizationId);
 
     if (command.roleId) {
       const role = await this.roleRepository.findOne({

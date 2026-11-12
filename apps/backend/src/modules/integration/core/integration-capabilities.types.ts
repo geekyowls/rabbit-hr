@@ -1,4 +1,6 @@
 import { ConflictException } from '@nestjs/common';
+import { PlanFeature } from '@boilerplate/core';
+import { IntegrationCategory } from '@db/enums';
 
 export const INTEGRATION_PROVIDERS = {
   GOOGLE_CALENDAR: 'google_calendar',
@@ -49,6 +51,22 @@ export const CAPABILITY_LABELS: Record<CapabilityKey, string> = {
   mailbox: 'Mailbox',
 };
 
+export const CAPABILITY_PLAN_FEATURES: Record<
+  CapabilityKey,
+  PlanFeature | null
+> = {
+  calendar: PlanFeature.CALENDAR_SYNC,
+  googleCalendar: PlanFeature.CALENDAR_SYNC,
+  microsoftCalendar: PlanFeature.CALENDAR_SYNC,
+  googleMeet: PlanFeature.CALENDAR_SYNC,
+  zoom: PlanFeature.CALENDAR_SYNC,
+  teams: PlanFeature.CALENDAR_SYNC,
+  calls: PlanFeature.CALLS,
+  whatsapp: PlanFeature.WHATSAPP,
+  jobFeed: PlanFeature.JOB_FEED,
+  mailbox: null,
+};
+
 export const PROVIDER_LABELS: Record<string, string> = {
   [INTEGRATION_PROVIDERS.GOOGLE_CALENDAR]: 'Google Calendar',
   [INTEGRATION_PROVIDERS.MICROSOFT]: 'Microsoft 365',
@@ -58,5 +76,23 @@ export const PROVIDER_LABELS: Record<string, string> = {
 export class IntegrationNotConnectedException extends ConflictException {
   constructor(label: string) {
     super(`${label} is not connected`);
+  }
+}
+
+export function planFeatureForIntegration(integration: {
+  provider: string;
+  category: IntegrationCategory;
+}): PlanFeature | null {
+  if (WHATSAPP_PROVIDERS.includes(integration.provider)) {
+    return PlanFeature.WHATSAPP;
+  }
+  switch (integration.category) {
+    case IntegrationCategory.TELEPHONY:
+      return PlanFeature.CALLS;
+    case IntegrationCategory.CALENDAR:
+    case IntegrationCategory.VIDEO_CONFERENCING:
+      return PlanFeature.CALENDAR_SYNC;
+    default:
+      return null;
   }
 }

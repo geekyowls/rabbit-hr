@@ -7,6 +7,8 @@ import {
   OrganizationRepository,
 } from '@db/repositories';
 import { OrganizationStatus } from '@db/enums';
+import { PlanFeature } from '@boilerplate/core';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import {
   CAREERS_JOB_SELECT,
   buildOpenJobsQuery,
@@ -24,6 +26,7 @@ export class RenderJobFeed {
     private readonly organizationRepository: OrganizationRepository,
     private readonly jobRepository: JobRepository,
     private readonly config: ConfigService,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: RenderJobFeedCommand): Promise<string> {
@@ -35,7 +38,15 @@ export class RenderJobFeed {
       where: { id: feed.organizationId, status: OrganizationStatus.ACTIVE },
       select: ['id', 'name', 'slug', 'atsSettings'],
     });
-    if (!organization) throw new NotFoundException('Job feed not found');
+    if (
+      !organization ||
+      !(await this.entitlements.hasFeature(
+        organization.id,
+        PlanFeature.JOB_FEED,
+      ))
+    ) {
+      throw new NotFoundException('Job feed not found');
+    }
 
     const query = buildOpenJobsQuery(this.jobRepository, organization.id, [
       ...CAREERS_JOB_SELECT,

@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { Rss } from 'lucide-react';
-import { useJobFeedSettingsQuery } from '@/hooks/queries';
+import { PlanFeature } from '@boilerplate/shared';
+import { useJobFeedSettingsQuery, usePlanFeature } from '@/hooks/queries';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/patterns';
 
@@ -10,7 +12,8 @@ export const JOB_FEED_SETTINGS_PATH =
   '/dashboard/settings/integrations/job-feed';
 
 export function JobFeedCard() {
-  const { data } = useJobFeedSettingsQuery();
+  const { hasFeature } = usePlanFeature(PlanFeature.JOB_FEED);
+  const { data } = useJobFeedSettingsQuery(hasFeature);
 
   return (
     <div className="flex h-full flex-col rounded-md border bg-card p-4">
@@ -37,11 +40,15 @@ export function JobFeedCard() {
         </div>
       </div>
       <div className="mt-auto flex justify-end pt-3">
-        <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-          <Link href={JOB_FEED_SETTINGS_PATH}>
-            {data?.enabled ? 'Manage' : 'Set up'}
-          </Link>
-        </Button>
+        {hasFeature ? (
+          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+            <Link href={JOB_FEED_SETTINGS_PATH}>
+              {data?.enabled ? 'Manage' : 'Set up'}
+            </Link>
+          </Button>
+        ) : (
+          <UpgradeHint feature={PlanFeature.JOB_FEED} />
+        )}
       </div>
     </div>
   );
