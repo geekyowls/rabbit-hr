@@ -28,7 +28,7 @@ export class UpdatePagePreferences {
     }
 
     pagePreferences[command.page] = {
-      ...((pagePreferences[command.page] as Record<string, unknown>) || {}),
+      ...(pagePreferences[command.page] || {}),
       ...pageData,
     };
 

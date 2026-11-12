@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { format } from 'date-fns';
+import { Mail, UserPlus, Users } from 'lucide-react';
 import { fetchApi } from '@/utils/api-client';
 import { API_ROUTES } from '@/config/api-routes';
 import {
@@ -8,35 +10,24 @@ import {
   PERMISSION_BASE,
 } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useSession } from '@/contexts/session-context';
+import { useBreadcrumb } from '@/contexts/breadcrumb-context';
 import { useImpersonation } from '@/hooks/use-impersonation';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { CreateUserDialog } from '@/components/users/create-user-dialog';
 import { EditUserDialog } from '@/components/users/edit-user-dialog';
+import { UserHierarchy } from '@/components/users/user-hierarchy';
+import { SetManagerDialog } from '@/components/users/set-manager-dialog';
+import { ListFooter } from '@/components/jobs/list-footer';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ListPageSkeleton } from '@/components/ui/list-page-skeleton';
-import { toast } from '@/lib/toast';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/solid';
-import { Mail } from 'lucide-react';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  ColumnDef,
-  VisibilityState,
-} from '@tanstack/react-table';
-import { DataTable, DataTablePagination } from '@/components/common/data-table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -45,11 +36,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserHierarchy } from '@/components/users/user-hierarchy';
-import { SetManagerDialog } from '@/components/users/set-manager-dialog';
+import {
+  DataGrid,
+  EmptyState,
+  FilterBar,
+  FilterDropdown,
+  RowActions,
+  SearchInput,
+  SegmentedControl,
+  StatusPill,
+  ToolbarButton,
+  type DataGridColumn,
+  type PillTone,
+  type RowAction,
+} from '@/components/patterns';
+import { toast } from '@/lib/toast';
+
+function getDisplayName(user: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}) {
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+  return name || user.email;
+}
 
 interface UserListItem {
   id: string;
@@ -78,26 +88,51 @@ interface UserListItem {
   } | null;
 }
 
-const statusVariant: Record<
-  string,
-  'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-  active: 'default',
-  invited: 'secondary',
-  blocked: 'destructive',
-  inactive: 'outline',
+const LIMIT = 25;
+const ALL = 'all';
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Active',
+  invited: 'Invited',
+  blocked: 'Blocked',
+  inactive: 'Inactive',
 };
 
-function UsersContent() {
-  const [users, setUsers] = useState<UserListItem[]>([]);
+const STATUS_TONE: Record<string, PillTone> = {
+  active: 'success',
+  invited: 'info',
+  blocked: 'danger',
+  inactive: 'neutral',
+};
+
+interface UsersPage {
+  data: UserListItem[];
+  page: number;
+  total: number;
+  totalPages: number;
+}
+
+const EMPTY_PAGE: UsersPage = { data: [], page: 1, total: 0, totalPages: 1 };
+
+function UsersContent({
+  createOpen,
+  onCreateOpenChange,
+}: {
+  createOpen: boolean;
+  onCreateOpenChange: (open: boolean) => void;
+}) {
+  const [data, setData] = useState<UsersPage>(EMPTY_PAGE);
   const [isLoading, setIsLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<string>(ALL);
+  const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(search, 500);
   const [editTarget, setEditTarget] = useState<UserListItem | null>(null);
   const [impersonateTarget, setImpersonateTarget] =
     useState<UserListItem | null>(null);
   const [impersonationPassword, setImpersonationPassword] = useState('');
   const [isImpersonating, setIsImpersonating] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [setManagerTarget, setSetManagerTarget] = useState<UserListItem | null>(
     null,
   );
@@ -114,21 +149,32 @@ function UsersContent() {
     useImpersonation();
   const { trackUserEvent } = useAnalytics();
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, status]);
+
   const loadUsers = useCallback(async () => {
+    setIsFetching(true);
     try {
-      const data = await fetchApi<{ data: UserListItem[] }>(
-        API_ROUTES.USERS.LIST,
-        { method: 'POST', body: JSON.stringify({ page: 1, limit: 50 }) },
-      );
-      setUsers(data?.data || []);
+      const result = await fetchApi<UsersPage>(API_ROUTES.USERS.LIST, {
+        method: 'POST',
+        body: JSON.stringify({
+          page,
+          limit: LIMIT,
+          ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+          ...(status !== ALL ? { status } : {}),
+        }),
+      });
+      setData(result ?? EMPTY_PAGE);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to load users';
       toast.error(message);
     } finally {
       setIsLoading(false);
+      setIsFetching(false);
     }
-  }, []);
+  }, [page, debouncedSearch, status]);
 
   useEffect(() => {
     loadUsers();
@@ -199,7 +245,7 @@ function UsersContent() {
         body: JSON.stringify({ notifyUser: resetNotifyUser }),
       });
       setResetPasswordResult(result.generatedPassword);
-      toast.success('Password reset successfully');
+      toast.success('Password reset');
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to reset password';
@@ -221,16 +267,9 @@ function UsersContent() {
   const handleCopyResetPassword = useCallback(() => {
     if (resetPasswordResult) {
       navigator.clipboard.writeText(resetPasswordResult);
-      toast.success('Password copied to clipboard');
+      toast.success('Password copied');
     }
   }, [resetPasswordResult]);
-
-  const getDisplayName = (user: UserListItem) => {
-    if (user.firstName || user.lastName) {
-      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
-    }
-    return user.email;
-  };
 
   const handleImpersonateConfirm = useCallback(async () => {
     if (!impersonateTarget) return;
@@ -266,196 +305,199 @@ function UsersContent() {
     }
   }, []);
 
-  const columns = useMemo<ColumnDef<UserListItem>[]>(
-    () => [
-      {
-        accessorKey: 'email',
-        header: 'User',
-        enableHiding: false,
-        cell: ({ row }) => (
-          <div className="flex items-center gap-3">
-            <InitialsAvatar
-              name={getDisplayName(row.original)}
-              className="h-8 w-8 text-xs"
-            />
-            <div>
-              <div className="font-medium">{getDisplayName(row.original)}</div>
-              <div className="text-sm text-muted-foreground">
-                {row.original.email}
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'status',
-        header: 'Status',
-        enableHiding: true,
-        cell: ({ row }) => (
-          <Badge variant={statusVariant[row.original.status] || 'outline'}>
-            {row.original.status}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: 'role',
-        header: 'Role',
-        enableHiding: true,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.role?.name || 'No role'}
+  const canSeeActions =
+    hasPermission(PERMISSIONS_ENUM.USER_UPDATE_STATUS) ||
+    hasPermission(PERMISSIONS_ENUM.USER_CREATE) ||
+    hasPermission(PERMISSION_BASE.USER_UPDATE) ||
+    hasPermission(PERMISSIONS_ENUM.USER_IMPERSONATE) ||
+    hasPermission(PERMISSIONS_ENUM.TEAM_MANAGE);
+
+  const rowActions = (user: UserListItem): RowAction[] => {
+    const isSelf = user.id === currentUser?.userId;
+    const isActive = user.status === 'active';
+    const actions: RowAction[] = [];
+    if (hasPermission(PERMISSION_BASE.USER_UPDATE))
+      actions.push({ label: 'Edit', onSelect: () => setEditTarget(user) });
+    if (hasPermission(PERMISSIONS_ENUM.TEAM_MANAGE))
+      actions.push({
+        label: 'Set manager',
+        onSelect: () => setSetManagerTarget(user),
+      });
+    if (isActive && !isSelf && hasPermission(PERMISSION_BASE.USER_UPDATE))
+      actions.push({
+        label: 'Reset password',
+        onSelect: () => setResetPasswordTarget(user),
+      });
+    if (
+      user.status === 'invited' &&
+      hasPermission(PERMISSIONS_ENUM.USER_CREATE)
+    )
+      actions.push({
+        label: 'Resend invite',
+        onSelect: () => handleResendInvite(user.id),
+      });
+    if (
+      isActive &&
+      !isSelf &&
+      !hasActiveImpersonation &&
+      hasPermission(PERMISSIONS_ENUM.USER_IMPERSONATE)
+    )
+      actions.push({
+        label: 'Impersonate',
+        onSelect: () => setImpersonateTarget(user),
+      });
+    if (isActive && hasPermission(PERMISSIONS_ENUM.USER_UPDATE_STATUS))
+      actions.push({
+        label: 'Block',
+        destructive: true,
+        onSelect: () => handleBlock(user.id),
+      });
+    if (
+      user.status === 'blocked' &&
+      hasPermission(PERMISSIONS_ENUM.USER_UPDATE_STATUS)
+    )
+      actions.push({
+        label: 'Unblock',
+        onSelect: () => handleUnblock(user.id),
+      });
+    return actions;
+  };
+
+  const columns: DataGridColumn<UserListItem>[] = [
+    {
+      key: 'user',
+      header: 'User',
+      width: 280,
+      render: (r) => (
+        <span className="flex items-center gap-2">
+          <InitialsAvatar
+            name={getDisplayName(r)}
+            className="h-6 w-6 text-[10px]"
+          />
+          <span className="min-w-0">
+            <span className="block truncate font-medium">
+              {getDisplayName(r)}
+            </span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {r.email}
+            </span>
           </span>
+        </span>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      width: 160,
+      render: (r) =>
+        r.role?.name ?? <span className="text-muted-foreground">No role</span>,
+    },
+    {
+      key: 'manager',
+      header: 'Manager',
+      width: 180,
+      render: (r) =>
+        r.manager ? (
+          getDisplayName(r.manager)
+        ) : (
+          <span className="text-muted-foreground">-</span>
         ),
-      },
-      {
-        id: 'manager',
-        header: 'Manager',
-        enableHiding: true,
-        cell: ({ row }) => {
-          const mgr = row.original.manager;
-          if (!mgr)
-            return <span className="text-sm text-muted-foreground">-</span>;
-          const name =
-            [mgr.firstName, mgr.lastName].filter(Boolean).join(' ') ||
-            mgr.email;
-          return <span className="text-sm text-muted-foreground">{name}</span>;
-        },
-      },
-      {
-        id: 'actions',
-        header: '',
-        size: 48,
-        enableHiding: false,
-        cell: ({ row }) => {
-          const user = row.original;
-          const showActions =
-            hasPermission(PERMISSIONS_ENUM.USER_UPDATE_STATUS) ||
-            hasPermission(PERMISSIONS_ENUM.USER_CREATE) ||
-            hasPermission(PERMISSION_BASE.USER_UPDATE) ||
-            hasPermission(PERMISSIONS_ENUM.USER_IMPERSONATE) ||
-            hasPermission(PERMISSIONS_ENUM.TEAM_MANAGE);
-
-          if (!showActions) return null;
-
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <EllipsisVerticalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {hasPermission(PERMISSION_BASE.USER_UPDATE) && (
-                  <DropdownMenuItem onClick={() => setEditTarget(user)}>
-                    Edit
-                  </DropdownMenuItem>
-                )}
-                {hasPermission(PERMISSIONS_ENUM.TEAM_MANAGE) && (
-                  <DropdownMenuItem onClick={() => setSetManagerTarget(user)}>
-                    Set Manager
-                  </DropdownMenuItem>
-                )}
-                {user.status === 'active' &&
-                  user.id !== currentUser?.userId &&
-                  hasPermission(PERMISSION_BASE.USER_UPDATE) && (
-                    <DropdownMenuItem
-                      onClick={() => setResetPasswordTarget(user)}
-                    >
-                      Reset Password
-                    </DropdownMenuItem>
-                  )}
-                {user.status === 'invited' &&
-                  hasPermission(PERMISSIONS_ENUM.USER_CREATE) && (
-                    <DropdownMenuItem
-                      onClick={() => handleResendInvite(user.id)}
-                    >
-                      Resend Invite
-                    </DropdownMenuItem>
-                  )}
-                {user.status === 'active' &&
-                  user.id !== currentUser?.userId &&
-                  !hasActiveImpersonation &&
-                  hasPermission(PERMISSIONS_ENUM.USER_IMPERSONATE) && (
-                    <DropdownMenuItem
-                      onClick={() => setImpersonateTarget(user)}
-                    >
-                      Impersonate
-                    </DropdownMenuItem>
-                  )}
-                {user.status === 'active' &&
-                  hasPermission(PERMISSIONS_ENUM.USER_UPDATE_STATUS) && (
-                    <DropdownMenuItem
-                      onClick={() => handleBlock(user.id)}
-                      className="text-destructive"
-                    >
-                      Block
-                    </DropdownMenuItem>
-                  )}
-                {user.status === 'blocked' &&
-                  hasPermission(PERMISSIONS_ENUM.USER_UPDATE_STATUS) && (
-                    <DropdownMenuItem onClick={() => handleUnblock(user.id)}>
-                      Unblock
-                    </DropdownMenuItem>
-                  )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-      },
-    ],
-    [
-      hasPermission,
-      hasActiveImpersonation,
-      handleBlock,
-      handleUnblock,
-      handleResendInvite,
-      currentUser?.userId,
-    ],
-  );
-
-  const table = useReactTable({
-    data: users,
-    columns,
-    state: {
-      columnVisibility,
     },
-    onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
+    {
+      key: 'status',
+      header: 'Status',
+      width: 120,
+      render: (r) => (
+        <StatusPill tone={STATUS_TONE[r.status] ?? 'neutral'} dot>
+          {STATUS_LABEL[r.status] ?? r.status}
+        </StatusPill>
+      ),
     },
-  });
+    {
+      key: 'createdAt',
+      header: 'Added',
+      width: 130,
+      render: (r) => format(new Date(r.createdAt), 'd MMM yyyy'),
+    },
+    ...(canSeeActions
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            width: 56,
+            align: 'center' as const,
+            render: (r: UserListItem) => {
+              const actions = rowActions(r);
+              return actions.length > 0 ? (
+                <RowActions actions={actions} />
+              ) : null;
+            },
+          },
+        ]
+      : []),
+  ];
 
-  if (isLoading) {
-    return <ListPageSkeleton filters={1} />;
-  }
+  const hasFilters = !!debouncedSearch.trim() || status !== ALL;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Team Members"
-        backHref="/dashboard/settings"
-        actions={
-          hasPermission(PERMISSIONS_ENUM.USER_CREATE) ? (
-            <Button onClick={() => setCreateOpen(true)}>Create User</Button>
-          ) : undefined
-        }
-      />
+    <>
+      <FilterBar>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search users..."
+        />
+        <FilterDropdown
+          label="Status"
+          value={status}
+          options={[
+            { label: 'All', value: ALL },
+            ...Object.entries(STATUS_LABEL).map(([value, label]) => ({
+              label,
+              value,
+            })),
+          ]}
+          onChange={setStatus}
+        />
+      </FilterBar>
 
-      <DataTable
-        table={table}
-        isLoading={isLoading}
-        emptyMessage="No users found"
-      />
-
-      <DataTablePagination table={table} totalItems={users.length} />
+      {isLoading ? (
+        <TableSkeleton />
+      ) : data.data.length === 0 ? (
+        <div className="rounded-md border border-border">
+          <EmptyState
+            icon={<Users className="h-8 w-8" />}
+            title={hasFilters ? 'No users match these filters' : 'No users yet'}
+            description={
+              hasFilters
+                ? 'Try a different search or status'
+                : 'Add the people who work in this organization'
+            }
+          />
+        </div>
+      ) : (
+        <div>
+          <DataGrid
+            columns={columns}
+            rows={data.data}
+            getRowId={(r) => r.id}
+            pinFirstColumn
+            maxHeight="calc(100vh - 18rem)"
+            className={isFetching ? 'opacity-70' : undefined}
+          />
+          <ListFooter
+            page={data.page}
+            limit={LIMIT}
+            total={data.total}
+            totalPages={data.totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       <CreateUserDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={onCreateOpenChange}
         onSuccess={loadUsers}
       />
 
@@ -491,7 +533,7 @@ function UsersContent() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Impersonation</DialogTitle>
+            <DialogTitle>Confirm impersonation</DialogTitle>
             <DialogDescription>
               Enter your current password to impersonate{' '}
               {impersonateTarget ? getDisplayName(impersonateTarget) : 'user'}.
@@ -499,7 +541,7 @@ function UsersContent() {
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="impersonation-password">Current Password</Label>
+            <Label htmlFor="impersonation-password">Current password</Label>
             <Input
               id="impersonation-password"
               type="password"
@@ -530,7 +572,7 @@ function UsersContent() {
               onClick={() => void handleImpersonateConfirm()}
               disabled={isImpersonating}
             >
-              {isImpersonating ? 'Verifying...' : 'Impersonate'}
+              {isImpersonating ? 'Verifying' : 'Impersonate'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -544,7 +586,7 @@ function UsersContent() {
           {resetPasswordResult ? (
             <>
               <DialogHeader>
-                <DialogTitle>Password Reset</DialogTitle>
+                <DialogTitle>Password reset</DialogTitle>
                 <DialogDescription>
                   {resetNotifyUser
                     ? 'The new password has been sent to the user via email.'
@@ -552,7 +594,7 @@ function UsersContent() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-2">
-                <Label>New Password</Label>
+                <Label>New password</Label>
                 <div className="flex gap-2">
                   <Input
                     value={resetPasswordResult}
@@ -577,7 +619,7 @@ function UsersContent() {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Reset Password</DialogTitle>
+                <DialogTitle>Reset password</DialogTitle>
                 <DialogDescription>
                   Generate a new password for{' '}
                   {resetPasswordTarget
@@ -617,41 +659,79 @@ function UsersContent() {
                   onClick={() => void handleResetPassword()}
                   disabled={isResettingPassword}
                 >
-                  {isResettingPassword ? 'Resetting...' : 'Reset Password'}
+                  {isResettingPassword ? 'Resetting' : 'Reset password'}
                 </Button>
               </DialogFooter>
             </>
           )}
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+type UsersView = 'users' | 'hierarchy';
+
+function SettingsUsersContent() {
+  useBreadcrumb([
+    { label: 'Settings', href: '/dashboard/settings' },
+    { label: 'Users', active: true },
+  ]);
+  const { hasPermission } = usePermissions();
+  const [view, setView] = useState<UsersView>('users');
+  const [createOpen, setCreateOpen] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Users"
+        description="Team members, their roles and reporting lines"
+        backHref="/dashboard/settings"
+        actions={
+          hasPermission(PERMISSIONS_ENUM.USER_CREATE) ? (
+            <ToolbarButton
+              variant="primary"
+              icon={UserPlus}
+              onClick={() => setCreateOpen(true)}
+            >
+              New user
+            </ToolbarButton>
+          ) : undefined
+        }
+      />
+
+      <SegmentedControl
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'users', label: 'Users' },
+          { value: 'hierarchy', label: 'Hierarchy' },
+        ]}
+      />
+
+      {view === 'users' ? (
+        <UsersContent
+          createOpen={createOpen}
+          onCreateOpenChange={setCreateOpen}
+        />
+      ) : (
+        <UserHierarchy />
+      )}
     </div>
   );
 }
 
 export default function SettingsUsersPage() {
   return (
-    <div className="space-y-4">
-      <PermissionGuard
-        permissions={PERMISSION_BASE.USER_LIST_READ}
-        fallback={
-          <div className="flex items-center justify-center h-64 text-muted-foreground">
-            You don&apos;t have permission to view users
-          </div>
-        }
-      >
-        <Tabs defaultValue="users" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="hierarchy">Hierarchy</TabsTrigger>
-          </TabsList>
-          <TabsContent value="users">
-            <UsersContent />
-          </TabsContent>
-          <TabsContent value="hierarchy">
-            <UserHierarchy />
-          </TabsContent>
-        </Tabs>
-      </PermissionGuard>
-    </div>
+    <PermissionGuard
+      permissions={PERMISSION_BASE.USER_LIST_READ}
+      fallback={
+        <div className="flex h-64 items-center justify-center text-muted-foreground">
+          You don&apos;t have permission to view users
+        </div>
+      }
+    >
+      <SettingsUsersContent />
+    </PermissionGuard>
   );
 }

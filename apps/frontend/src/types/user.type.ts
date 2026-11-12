@@ -1,4 +1,5 @@
 import { Permission } from './permissions.type';
+import type { AtsSettings } from './ats-settings.type';
 
 export enum UserStatus {
   INVITED = 'invited',
@@ -24,6 +25,7 @@ export interface Organization {
   canUseDemoScreens?: boolean;
   coBrandingEnabled?: boolean;
   coBrandingOrder?: 'rabbithr-first' | 'partner-first' | 'partner-only';
+  atsSettings?: AtsSettings;
   address?: {
     street?: string;
     city?: string;

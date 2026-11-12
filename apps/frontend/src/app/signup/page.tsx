@@ -36,32 +36,21 @@ function SignupPageContent() {
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       <div className="relative hidden h-full flex-col p-10 text-white lg:flex dark:border-r border-border">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0e5c3e] to-[#062e1f]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#3F6650] to-[#16201A]" />
         <div className="relative z-20 flex items-center gap-2 text-lg font-medium">
-          <svg
-            className="h-8 w-8 text-white"
-            viewBox="0 0 32 32"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-label="RabbitHR logo"
-            role="img"
-          >
-            <circle cx="16" cy="16" r="14" fill="currentColor" />
-            <path
-              d="M10 16c0-3.314 2.686-6 6-6s6 2.686 6 6-2.686 6-6 6"
-              stroke="#0e5c3e"
-              strokeWidth="2"
-              strokeLinecap="round"
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
+            <img
+              src="/logo-r-64.png"
+              alt="RabbitHR logo"
+              className="h-6 w-6 object-contain brightness-0 invert"
             />
-            <circle cx="16" cy="16" r="2" fill="#0e5c3e" />
-          </svg>
+          </span>
           <span className="text-xl font-bold">RabbitHR</span>
         </div>
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              &ldquo;The complete CRM and diet management platform for
-              dietitians and health coaches.&rdquo;
+              &ldquo;Everything your team needs, in one place.&rdquo;
             </p>
             <footer className="text-sm text-zinc-400">
               Start your 14-day free trial today

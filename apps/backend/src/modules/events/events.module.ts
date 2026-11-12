@@ -6,12 +6,14 @@ import { UserEmailListener } from './listeners/user-email.listener';
 import { OrganizationEmailListener } from './listeners/organization-email.listener';
 import { RolePermissionListener } from './listeners/role-permission.listener';
 import { TeamHierarchyListener } from './listeners/team-hierarchy.listener';
+import { PipelineStageListener } from './listeners/pipeline-stage.listener';
 
 const LISTENERS = [
   UserEmailListener,
   OrganizationEmailListener,
   RolePermissionListener,
   TeamHierarchyListener,
+  PipelineStageListener,
 ];
 
 @Global()

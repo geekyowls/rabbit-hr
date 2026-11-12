@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
@@ -15,6 +15,17 @@ export class UserRepository extends Repository<UserEntity> {
 
   async findById(id: string): Promise<UserEntity | null> {
     return this.findOne({ where: { id } });
+  }
+
+  async assertInOrganization(
+    id: string | null | undefined,
+    organizationId: string,
+  ): Promise<void> {
+    if (!id) return;
+    const exists = await this.exists({ where: { id, organizationId } });
+    if (!exists) {
+      throw new BadRequestException('User not found in this organization');
+    }
   }
 
   async findByInviteToken(token: string): Promise<UserEntity | null> {

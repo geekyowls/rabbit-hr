@@ -42,6 +42,10 @@ import { HealthCheckIntegrationCommand } from './usecases/health-check-integrati
 import { HandleRazorpayWebhook } from './usecases/handle-razorpay-webhook/handle-razorpay-webhook.usecase';
 import { EnsureRazorpayWebhookToken } from './usecases/ensure-razorpay-webhook-token/ensure-razorpay-webhook-token.usecase';
 import { EnsureRazorpayWebhookTokenCommand } from './usecases/ensure-razorpay-webhook-token/ensure-razorpay-webhook-token.command';
+import { GetIntegrationCapabilities } from './usecases/get-integration-capabilities/get-integration-capabilities.usecase';
+import { GetIntegrationCapabilitiesCommand } from './usecases/get-integration-capabilities/get-integration-capabilities.command';
+import { IntegrationCapabilitiesDto } from './dtos/integration-capabilities.dto';
+import { RequireAuthentication } from '@shared/decorators/require-authentication.decorator';
 
 @ApiTags('Integrations')
 @Controller('integrations')
@@ -63,6 +67,7 @@ export class IntegrationController {
     private readonly healthCheckIntegration: HealthCheckIntegration,
     private readonly handleRazorpayWebhook: HandleRazorpayWebhook,
     private readonly ensureRazorpayWebhookToken: EnsureRazorpayWebhookToken,
+    private readonly getIntegrationCapabilities: GetIntegrationCapabilities,
     private readonly configService: ConfigService,
   ) {}
 
@@ -107,6 +112,24 @@ export class IntegrationController {
   ): Promise<IntegrationListItemDto[]> {
     return this.listIntegrations.execute(
       ListIntegrationsCommand.create({
+        userId: user.userId,
+        organizationId: user.organizationId,
+      }),
+    );
+  }
+
+  @Get('capabilities')
+  @RequireAuthentication()
+  @ApiOperation({
+    summary:
+      'Which integration powered features are available to the current user',
+  })
+  @ApiResponse({ status: 200, type: IntegrationCapabilitiesDto })
+  async capabilities(
+    @UserSession() user: UserSessionData,
+  ): Promise<IntegrationCapabilitiesDto> {
+    return this.getIntegrationCapabilities.execute(
+      GetIntegrationCapabilitiesCommand.create({
         userId: user.userId,
         organizationId: user.organizationId,
       }),

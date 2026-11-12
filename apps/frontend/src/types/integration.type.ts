@@ -10,10 +10,7 @@ export type IntegrationCategory =
 export type IntegrationAuthType = 'oauth' | 'api_key';
 
 export type IntegrationStatus =
-  | 'connected'
-  | 'disconnected'
-  | 'expired'
-  | 'error';
+  'connected' | 'disconnected' | 'expired' | 'error';
 
 export interface IntegrationListItem {
   id: string;

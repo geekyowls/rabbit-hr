@@ -9,6 +9,9 @@ export const CACHE_TTL = {
   DIET_SHARE_OTP_ATTEMPTS: 600,
   TEAM_DESCENDANTS: 300,
   COVERAGE_COVERED: 300,
+  INTEGRATION_CAPABILITIES: 60,
+  PORTAL_OTP: 600,
+  PORTAL_OTP_RATE: 900,
 } as const;
 
 export const CACHE_KEYS = {
@@ -18,6 +21,10 @@ export const CACHE_KEYS = {
   webhookDodo: (webhookId: string) => `webhook:dodo:${webhookId}`,
   webhookRazorpay: (webhookId: string) => `webhook:razorpay:${webhookId}`,
   oauthNonce: (nonce: string) => `oauth_nonce:${nonce}`,
+  integrationCapabilities: (organizationId: string) =>
+    `${organizationId}:integration:capabilities`,
+  mailboxOauthNonce: (organizationId: string, nonce: string) =>
+    `${organizationId}:mailbox-oauth-nonce:${nonce}`,
   dietShare: (organizationId: string, token: string) =>
     `${organizationId}:diet-share:${token}`,
   dietShareOtp: (token: string) => `diet-share-otp:${token}`,
@@ -28,4 +35,8 @@ export const CACHE_KEYS = {
   teamOrgKeys: (organizationId: string) => `${organizationId}:team:org_keys`,
   coverageCovered: (organizationId: string, userId: string) =>
     `${organizationId}:coverage:covered:${userId}`,
+  portalOtp: (organizationId: string, emailHash: string) =>
+    `${organizationId}:portal:otp:${emailHash}`,
+  portalOtpRate: (organizationId: string, emailHash: string) =>
+    `${organizationId}:portal:otp-rate:${emailHash}`,
 } as const;

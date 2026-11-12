@@ -22,6 +22,30 @@ import { SystemAdminModule } from './modules/system-admin/system-admin.module';
 import { UserNotificationsModule } from './modules/user-notifications/user-notifications.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SessionModule } from './modules/session/session.module';
+import { ClientModule } from './modules/client/client.module';
+import { JobModule } from './modules/job/job.module';
+import { CandidateModule } from './modules/candidate/candidate.module';
+import { ApplicationModule } from './modules/application/application.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { TaskModule } from './modules/task/task.module';
+import { DocumentModule } from './modules/document/document.module';
+import { EmailTemplateModule } from './modules/email-template/email-template.module';
+import { AtsDashboardModule } from './modules/ats-dashboard/ats-dashboard.module';
+import { CareersModule } from './modules/careers/careers.module';
+import { AtsSettingsModule } from './modules/ats-settings/ats-settings.module';
+import { PipelineStageModule } from './modules/pipeline-stage/pipeline-stage.module';
+import { CustomFieldModule } from './modules/custom-field/custom-field.module';
+import { InterviewModule } from './modules/interview/interview.module';
+import { OfferModule } from './modules/offer/offer.module';
+import { ReportModule } from './modules/report/report.module';
+import { MailboxModule } from './modules/mailbox/mailbox.module';
+import { InboxModule } from './modules/inbox/inbox.module';
+import { IntegrationCoreModule } from './modules/integration/core/integration-core.module';
+import { InterviewBookingModule } from './modules/interview-booking/interview-booking.module';
+import { CallModule } from './modules/call/call.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { JobFeedModule } from './modules/job-feed/job-feed.module';
+import { CandidatePortalModule } from './modules/candidate-portal/candidate-portal.module';
 
 @Module({
   imports: [
@@ -63,6 +87,30 @@ import { SessionModule } from './modules/session/session.module';
     UserNotificationsModule,
     QueueModule,
     SessionModule,
+    ClientModule,
+    JobModule,
+    CandidateModule,
+    ApplicationModule,
+    ActivityModule,
+    TaskModule,
+    DocumentModule,
+    EmailTemplateModule,
+    AtsDashboardModule,
+    CareersModule,
+    AtsSettingsModule,
+    PipelineStageModule,
+    CustomFieldModule,
+    InterviewModule,
+    OfferModule,
+    ReportModule,
+    MailboxModule,
+    InboxModule,
+    IntegrationCoreModule,
+    InterviewBookingModule,
+    CallModule,
+    WhatsappModule,
+    JobFeedModule,
+    CandidatePortalModule,
   ],
   controllers: [AppController],
   providers: [

@@ -7,6 +7,10 @@ export const QUEUE_NAMES = {
   DATA_EXPORT: 'data-export',
   RULE_EVAL: 'rule-eval',
   RULE_ACTION: 'rule-action',
+  INTERVIEW_CALENDAR_SYNC: 'interview-calendar-sync',
+  MAILBOX_SYNC: 'mailbox-sync',
+  CALL_RECORDING: 'call-recording',
+  WHATSAPP_SEND: 'whatsapp-send',
 } as const;
 
 @Global()
@@ -35,6 +39,10 @@ export const QUEUE_NAMES = {
     BullModule.registerQueue({ name: QUEUE_NAMES.DATA_EXPORT }),
     BullModule.registerQueue({ name: QUEUE_NAMES.RULE_EVAL }),
     BullModule.registerQueue({ name: QUEUE_NAMES.RULE_ACTION }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.INTERVIEW_CALENDAR_SYNC }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.MAILBOX_SYNC }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.CALL_RECORDING }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.WHATSAPP_SEND }),
   ],
   exports: [BullModule],
 })

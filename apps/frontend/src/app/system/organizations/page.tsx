@@ -37,7 +37,10 @@ import {
   ColumnDef,
   PaginationState,
 } from '@tanstack/react-table';
-import { DataTable, DataTablePagination } from '@/components/common/data-table';
+import {
+  DataTable,
+  DataTablePagination,
+} from '@/components/patterns/data-table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,7 +123,12 @@ export default function OrganizationsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, statusFilter]);
+  }, [
+    pagination.pageIndex,
+    pagination.pageSize,
+    debouncedSearch,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     loadOrganizations();
@@ -240,7 +248,9 @@ export default function OrganizationsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleAccessOrg(row.original.id)}>
+              <DropdownMenuItem
+                onClick={() => handleAccessOrg(row.original.id)}
+              >
                 Access Dashboard
               </DropdownMenuItem>
               <DropdownMenuSeparator />

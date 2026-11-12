@@ -87,4 +87,9 @@ export enum EventName {
   BILLING_PAYMENT_SUCCESS = 'billing.payment_success',
   BILLING_PAYMENT_FAILED = 'billing.payment_failed',
   BILLING_SUBSCRIPTION_EXPIRED = 'billing.subscription_expired',
+
+  INTERVIEW_SCHEDULED = 'interview.scheduled',
+  INTERVIEW_RESCHEDULED = 'interview.rescheduled',
+  INTERVIEW_UPDATED = 'interview.updated',
+  INTERVIEW_CANCELLED = 'interview.cancelled',
 }

@@ -11,6 +11,10 @@ import {
 // Services
 import { TeamScopeService } from './services/team-scope.service';
 import { DiscordNotifierService } from './services/discord-notifier.service';
+import { PipelineStageService } from './services/pipeline-stage.service';
+import { AtsSettingsService } from './services/ats-settings.service';
+import { CustomFieldValidator } from './services/custom-field-validator.service';
+import { ApplicationStageMover } from './services/application-stage-mover.service';
 
 // Interceptors & Middleware
 import { ResponseInterceptor } from './framework/response.interceptor';
@@ -30,6 +34,10 @@ const SHARED_PROVIDERS = [
   redisCacheService,
   TeamScopeService,
   DiscordNotifierService,
+  PipelineStageService,
+  AtsSettingsService,
+  CustomFieldValidator,
+  ApplicationStageMover,
   ResponseInterceptor,
   AuditInterceptor,
   RequestIdMiddleware,

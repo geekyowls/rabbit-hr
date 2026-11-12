@@ -1,14 +1,50 @@
 import { Entity, Column, OneToMany, Index } from 'typeorm';
 
 import {
+  AtsDateFormat,
   OrganizationStatus,
   PdfTemplate,
   OrgSubscriptionStatus,
+  SalaryPeriod,
 } from '../enums';
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
 import type { OrgFeatureControls } from '@boilerplate/core';
+
+export interface OrganizationAtsSettings {
+  defaultCurrency: string;
+  country: string;
+  timezone: string;
+  dateFormat: AtsDateFormat;
+  locale: string;
+  weekStartsOn: 0 | 1;
+  salaryPeriodDefault: SalaryPeriod;
+  departments: string[];
+  portalEnabled: boolean;
+  portalWelcomeMessage: string;
+  brandColor: string | null;
+}
+
+export const DEFAULT_ATS_SETTINGS: OrganizationAtsSettings = {
+  defaultCurrency: 'USD',
+  country: 'US',
+  timezone: 'UTC',
+  dateFormat: AtsDateFormat.MDY,
+  locale: 'en-US',
+  weekStartsOn: 0,
+  salaryPeriodDefault: SalaryPeriod.YEAR,
+  departments: [],
+  portalEnabled: false,
+  portalWelcomeMessage: '',
+  brandColor: null,
+};
+
+export function resolveAtsSettings(
+  stored: Partial<OrganizationAtsSettings> | null | undefined,
+): OrganizationAtsSettings {
+  return { ...DEFAULT_ATS_SETTINGS, ...(stored ?? {}) };
+}
 
 @Entity('organizations')
 @Index(['slug'], { unique: true })
@@ -168,6 +204,9 @@ export class OrganizationEntity extends BaseEntity {
     practiceType?: 'solo' | 'team';
     teamSize?: '2-5' | '6-10' | '11-25' | '25+';
   } | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  atsSettings!: Partial<OrganizationAtsSettings> | null;
 
   @Column({ type: 'text', nullable: true, select: false })
   appleIapSharedSecret!: string | null;

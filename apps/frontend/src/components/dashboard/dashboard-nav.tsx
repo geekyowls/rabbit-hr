@@ -10,6 +10,17 @@ import {
   HomeIcon,
   Cog6ToothIcon,
   QuestionMarkCircleIcon,
+  SwatchIcon,
+  BriefcaseIcon,
+  UserGroupIcon,
+  ViewColumnsIcon,
+  CalendarDaysIcon,
+  DocumentCheckIcon,
+  ChartBarIcon,
+  CpuChipIcon,
+  BuildingOffice2Icon,
+  ClipboardDocumentCheckIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/solid';
 import {
   Tooltip,
@@ -22,6 +33,11 @@ import {
   PERMISSION_BASE,
 } from '@/constants/permissions.constants';
 import { useSidebar } from '@/contexts/sidebar-context';
+import {
+  INBOX_PATH,
+  unreadLabel,
+  useInboxNav,
+} from '@/components/integrations/use-inbox-nav';
 import { ProtectedNavLink } from './protected-nav-link';
 
 interface VersionInfo {
@@ -38,6 +54,9 @@ interface NavLeaf {
   icon: IconType;
   activeMatch?: (pathname: string) => boolean;
   requiredPermissions?: string[];
+  devOnly?: boolean;
+  hidden?: boolean;
+  inbox?: boolean;
 }
 
 const NAV_ITEMS: NavLeaf[] = [
@@ -47,10 +66,80 @@ const NAV_ITEMS: NavLeaf[] = [
     icon: HomeIcon,
   },
   {
+    href: INBOX_PATH,
+    label: 'Inbox',
+    icon: EnvelopeIcon,
+    activeMatch: (p) => p.startsWith(INBOX_PATH),
+    inbox: true,
+  },
+  {
+    href: '/dashboard/jobs',
+    label: 'Jobs',
+    icon: BriefcaseIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/jobs'),
+  },
+  {
+    href: '/dashboard/clients',
+    label: 'Clients',
+    icon: BuildingOffice2Icon,
+    activeMatch: (p) => p.startsWith('/dashboard/clients'),
+  },
+  {
+    href: '/dashboard/candidates',
+    label: 'Candidates',
+    icon: UserGroupIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/candidates'),
+  },
+  {
+    href: '/dashboard/pipeline',
+    label: 'Pipeline',
+    icon: ViewColumnsIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/pipeline'),
+  },
+  {
+    href: '/dashboard/tasks',
+    label: 'Tasks',
+    icon: ClipboardDocumentCheckIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/tasks'),
+  },
+  {
+    href: '/dashboard/interviews',
+    label: 'Interviews',
+    icon: CalendarDaysIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/interviews'),
+  },
+  {
+    href: '/dashboard/offers',
+    label: 'Offers',
+    icon: DocumentCheckIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/offers'),
+  },
+  {
+    href: '/dashboard/reports',
+    label: 'Reports',
+    icon: ChartBarIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/reports'),
+  },
+  {
+    href: '/dashboard/agents',
+    label: 'Agents',
+    icon: CpuChipIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/agents'),
+  },
+  {
+    href: '/dashboard/components',
+    label: 'Components',
+    icon: SwatchIcon,
+    activeMatch: (p) => p.startsWith('/dashboard/components'),
+    devOnly: true,
+    hidden: true,
+  },
+  {
     href: '/dashboard/help',
     label: 'Help',
     icon: QuestionMarkCircleIcon,
     activeMatch: (p) => p.startsWith('/dashboard/help'),
+    hidden: true,
   },
   {
     href: '/dashboard/settings',
@@ -81,12 +170,20 @@ export function DashboardNav() {
   });
 
   const collapsed = mounted ? isCollapsed : true;
+  const inbox = useInboxNav();
 
-  const isLeafVisible = (leaf: NavLeaf) =>
-    !leaf.requiredPermissions || hasAnyPermission(leaf.requiredPermissions);
+  const isLeafVisible = (leaf: NavLeaf) => {
+    if (leaf.hidden) return false;
+    if (leaf.inbox && !inbox.visible) return false;
+    if (leaf.devOnly && process.env.NODE_ENV !== 'development') return false;
+    return (
+      !leaf.requiredPermissions || hasAnyPermission(leaf.requiredPermissions)
+    );
+  };
 
   const renderLeaf = (leaf: NavLeaf) => {
     const isActive = isLeafActive(leaf, pathname);
+    const badge = leaf.inbox && inbox.unread > 0 ? inbox.unread : 0;
 
     if (collapsed) {
       return (
@@ -96,16 +193,21 @@ export function DashboardNav() {
               <ProtectedNavLink
                 href={leaf.href}
                 className={cn(
-                  'flex items-center justify-center h-10 w-10 rounded-xl mx-auto relative',
+                  'flex items-center justify-center h-10 w-10 rounded-md mx-auto relative',
                   isActive
                     ? 'bg-white/25 text-white font-medium ring-1 ring-white/20'
                     : 'text-white/70 hover:bg-white/10 hover:text-white',
                 )}
               >
                 <leaf.icon className="h-5 w-5" />
+                {badge > 0 && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400" />
+                )}
               </ProtectedNavLink>
             </TooltipTrigger>
-            <TooltipContent side="right">{leaf.label}</TooltipContent>
+            <TooltipContent side="right">
+              {badge > 0 ? `${leaf.label} (${unreadLabel(badge)})` : leaf.label}
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
@@ -116,7 +218,7 @@ export function DashboardNav() {
         key={leaf.href}
         href={leaf.href}
         className={cn(
-          'flex items-center w-full h-10 px-3 py-2 rounded-xl relative',
+          'flex items-center w-full h-10 px-3 py-2 rounded-md relative',
           isActive
             ? 'bg-white/25 text-white font-medium ring-1 ring-white/20'
             : 'text-white/70 hover:bg-white/10 hover:text-white',
@@ -124,6 +226,11 @@ export function DashboardNav() {
       >
         <leaf.icon className="mr-3 shrink-0 h-4 w-4" />
         <span className="text-sm">{leaf.label}</span>
+        {badge > 0 && (
+          <span className="ml-auto rounded-full bg-white/20 px-1.5 text-[11px] font-semibold tabular-nums text-white">
+            {unreadLabel(badge)}
+          </span>
+        )}
       </ProtectedNavLink>
     );
   };
@@ -131,7 +238,7 @@ export function DashboardNav() {
   return (
     <nav
       className={cn(
-        'hidden lg:flex lg:flex-col shrink-0 bg-gradient-to-b from-[#0e5c3e] to-[#062e1f] h-full transition-all duration-300',
+        'hidden lg:flex lg:flex-col shrink-0 bg-gradient-to-b from-[#3F6650] to-[#16201A] h-full transition-all duration-300',
         collapsed ? 'w-16' : 'w-52',
       )}
     >

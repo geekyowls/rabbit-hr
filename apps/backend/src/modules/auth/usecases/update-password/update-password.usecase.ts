@@ -41,7 +41,7 @@ export class UpdatePassword {
     );
 
     if (!isCurrentPasswordValid) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new BadRequestException('Current password is incorrect');
     }
 
     // Hash and update new password

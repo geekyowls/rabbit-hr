@@ -102,6 +102,6 @@ export class EnsureRazorpayWebhookToken {
       await this.organizationIntegrationRepository.save(orgIntegration);
     }
 
-    return { webhookToken, webhookSecret: credentials.webhookSecret! };
+    return { webhookToken, webhookSecret: credentials.webhookSecret };
   }
 }

@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { google, Auth } from 'googleapis';
+import * as crypto from 'crypto';
+import { google, Auth, calendar_v3 } from 'googleapis';
 
 import { IntegrationProvider } from '../..';
+import { toZonedDateTimeStr } from '../../utils/zoned-time';
 
 import { OAuthTokens } from './integration.service';
 import {
@@ -18,18 +20,29 @@ export class GoogleCalendarService extends CalendarIntegrationService {
     'https://www.googleapis.com/auth/calendar',
   ];
   private readonly isConfigured: boolean;
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+  private readonly redirectUri: string;
 
   constructor(private readonly configService: ConfigService) {
     super();
 
-    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    const clientSecret = this.configService.get<string>('GOOGLE_CLIENT_SECRET');
-    const redirectUri = this.configService.get<string>('GOOGLE_REDIRECT_URI');
+    this.clientId = this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
+    this.clientSecret =
+      this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '';
+    this.redirectUri =
+      this.configService.get<string>('GOOGLE_REDIRECT_URI') ||
+      this.configService.get<string>('OAUTH_REDIRECT_URI') ||
+      '';
 
-    this.isConfigured = !!(clientId && clientSecret && redirectUri);
+    this.isConfigured = !!(this.clientId && this.clientSecret);
 
     if (this.isConfigured) {
-      this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+      this.oauth2Client = new google.auth.OAuth2(
+        this.clientId,
+        this.clientSecret,
+        this.redirectUri,
+      );
     }
   }
 
@@ -40,12 +53,15 @@ export class GoogleCalendarService extends CalendarIntegrationService {
   private ensureConfigured(): void {
     if (!this.isConfigured) {
       throw new Error(
-        'Google Calendar integration is not configured. Please set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI environment variables.'
+        'Google Calendar integration is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.',
       );
     }
   }
 
-  async getAuthorizationUrl(organizationId: string, userId: string): Promise<string> {
+  async getAuthorizationUrl(
+    organizationId: string,
+    userId: string,
+  ): Promise<string> {
     this.ensureConfigured();
     if (!this.oauth2Client) {
       throw new Error('OAuth2 client not initialized');
@@ -58,7 +74,7 @@ export class GoogleCalendarService extends CalendarIntegrationService {
           userId,
           provider: IntegrationProvider.GOOGLE_CALENDAR,
           timestamp: Date.now(),
-        })
+        }),
       ).toString('base64');
 
       const authUrl = this.oauth2Client.generateAuthUrl({
@@ -70,7 +86,9 @@ export class GoogleCalendarService extends CalendarIntegrationService {
 
       return authUrl;
     } catch (error: any) {
-      throw new Error(`Failed to generate Google authorization URL: ${error.message}`);
+      throw new Error(
+        `Failed to generate Google authorization URL: ${error.message}`,
+      );
     }
   }
 
@@ -83,7 +101,11 @@ export class GoogleCalendarService extends CalendarIntegrationService {
     try {
       const { tokens } = await this.oauth2Client.getToken(code);
 
-      if (!tokens.access_token || !tokens.refresh_token || !tokens.expiry_date) {
+      if (
+        !tokens.access_token ||
+        !tokens.refresh_token ||
+        !tokens.expiry_date
+      ) {
         throw new Error('Incomplete token response from Google');
       }
 
@@ -99,16 +121,16 @@ export class GoogleCalendarService extends CalendarIntegrationService {
 
   async refreshTokens(refreshToken: string): Promise<OAuthTokens> {
     this.ensureConfigured();
-    if (!this.oauth2Client) {
-      throw new Error('OAuth2 client not initialized');
-    }
 
     try {
-      this.oauth2Client.setCredentials({
-        refresh_token: refreshToken,
-      });
+      const client = new google.auth.OAuth2(
+        this.clientId,
+        this.clientSecret,
+        this.redirectUri,
+      );
+      client.setCredentials({ refresh_token: refreshToken });
 
-      const { credentials } = await this.oauth2Client.refreshAccessToken();
+      const { credentials } = await client.refreshAccessToken();
 
       if (!credentials.access_token || !credentials.expiry_date) {
         throw new Error('Incomplete token refresh response from Google');
@@ -124,74 +146,151 @@ export class GoogleCalendarService extends CalendarIntegrationService {
     }
   }
 
-  async createCalendarEvent(
-    tokens: OAuthTokens,
-    event: CalendarEvent
-  ): Promise<{ eventId: string; meetingLink?: string }> {
+  private clientFor(tokens: OAuthTokens): Auth.OAuth2Client {
     this.ensureConfigured();
-    if (!this.oauth2Client) {
-      throw new Error('OAuth2 client not initialized');
+    const client = new google.auth.OAuth2(
+      this.clientId,
+      this.clientSecret,
+      this.redirectUri,
+    );
+    client.setCredentials({
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+    });
+    return client;
+  }
+
+  private buildEventBody(event: CalendarEvent, includeConference: boolean) {
+    const timeZone = event.timeZone || 'UTC';
+    const body: calendar_v3.Schema$Event = {
+      summary: event.summary,
+      start: {
+        dateTime: toZonedDateTimeStr(event.startTime, timeZone),
+        timeZone,
+      },
+      end: {
+        dateTime: toZonedDateTimeStr(event.endTime, timeZone),
+        timeZone,
+      },
+      attendees: event.attendeeEmails.map((email) => ({ email })),
+      reminders: { useDefault: true },
+    };
+    const description = [
+      event.description,
+      event.meetingLink ? `Join: ${event.meetingLink}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    if (description) {
+      body.description = description;
     }
-
-    try {
-      this.oauth2Client.setCredentials({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
-      });
-
-      const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
-
-      const eventBody: any = {
-        summary: event.summary,
-        start: {
-          dateTime: event.startTime.toISOString(),
-          timeZone: 'UTC',
-        },
-        end: {
-          dateTime: event.endTime.toISOString(),
-          timeZone: 'UTC',
-        },
-        attendees: event.attendeeEmails.map((email) => ({ email })),
-        conferenceData: {
-          createRequest: {
-            requestId: `meet-${Date.now()}`,
-            conferenceSolutionKey: {
-              type: 'hangoutsMeet',
-            },
-          },
-        },
-        reminders: {
-          useDefault: true,
+    if (event.location || event.meetingLink) {
+      body.location = event.location || event.meetingLink;
+    }
+    if (includeConference) {
+      body.conferenceData = {
+        createRequest: {
+          requestId: `meet-${crypto.randomUUID()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       };
+    }
+    return body;
+  }
 
-      if (event.description) {
-        eventBody.description = event.description;
-      }
+  private toResult(eventData: calendar_v3.Schema$Event): {
+    eventId: string;
+    meetingLink?: string;
+  } {
+    if (!eventData?.id) {
+      throw new Error('No event ID returned from Google Calendar');
+    }
+    const meetingUri =
+      eventData.hangoutLink ||
+      eventData.conferenceData?.entryPoints?.find(
+        (entry) => entry.entryPointType === 'video',
+      )?.uri ||
+      undefined;
+    return meetingUri
+      ? { eventId: eventData.id, meetingLink: meetingUri }
+      : { eventId: eventData.id };
+  }
 
+  async createCalendarEvent(
+    tokens: OAuthTokens,
+    event: CalendarEvent,
+  ): Promise<{ eventId: string; meetingLink?: string }> {
+    try {
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: this.clientFor(tokens),
+      });
       const response = await calendar.events.insert({
         calendarId: 'primary',
         conferenceDataVersion: 1,
-        requestBody: eventBody,
+        sendUpdates: 'all',
+        requestBody: this.buildEventBody(
+          event,
+          event.withMeetingLink !== false && !event.meetingLink,
+        ),
       });
-
-      const eventData = response.data;
-      if (!eventData?.id) {
-        throw new Error('No event ID returned from Google Calendar');
-      }
-
-      const meetingUri = eventData.conferenceData?.entryPoints?.[0]?.uri;
-      const result: { eventId: string; meetingLink?: string } = {
-        eventId: eventData.id,
-      };
-
-      if (meetingUri) {
-        result.meetingLink = meetingUri;
-      }
-
-      return result;
+      return this.toResult(response.data);
     } catch (error: any) {
       throw new Error(`Failed to create calendar event: ${error.message}`);
+    }
+  }
+
+  async updateCalendarEvent(
+    tokens: OAuthTokens,
+    eventId: string,
+    event: CalendarEvent,
+  ): Promise<{ eventId: string; meetingLink?: string }> {
+    try {
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: this.clientFor(tokens),
+      });
+      const existing = await calendar.events.get({
+        calendarId: 'primary',
+        eventId,
+      });
+      const hasConference = !!existing.data.conferenceData;
+      const wantsConference =
+        event.withMeetingLink !== false && !event.meetingLink;
+      const response = await calendar.events.patch({
+        calendarId: 'primary',
+        eventId,
+        conferenceDataVersion: 1,
+        sendUpdates: 'all',
+        requestBody: this.buildEventBody(
+          event,
+          wantsConference && !hasConference,
+        ),
+      });
+      return this.toResult(response.data);
+    } catch (error: any) {
+      throw new Error(`Failed to update calendar event: ${error.message}`);
+    }
+  }
+
+  async deleteCalendarEvent(
+    tokens: OAuthTokens,
+    eventId: string,
+  ): Promise<void> {
+    try {
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: this.clientFor(tokens),
+      });
+      await calendar.events.delete({
+        calendarId: 'primary',
+        eventId,
+        sendUpdates: 'all',
+      });
+    } catch (error: any) {
+      const status = error?.code ?? error?.response?.status;
+      if (status === 404 || status === 410) return;
+      throw new Error(`Failed to delete calendar event: ${error.message}`);
     }
   }
 }

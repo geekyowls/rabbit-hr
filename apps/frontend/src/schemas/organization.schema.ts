@@ -42,16 +42,8 @@ export const organizationSchema = z.object({
   email: optionalTrimmedString(z.email('Invalid email address').max(200)),
   website: optionalTrimmedString(z.url('Invalid website URL').max(200)),
   address: addressSchema.nullable().optional(),
-  pdfTemplate: pdfTemplateSchema.optional(),
   privacyPolicyUrl: optionalTrimmedString(z.url('Invalid URL').max(500)),
   termsAndConditionsUrl: optionalTrimmedString(z.url('Invalid URL').max(500)),
-  showGoogleLogin: z.boolean().optional(),
-  showAppleLogin: z.boolean().optional(),
-  hideDietitianName: z.boolean().optional(),
-  reEngagementEmailsEnabled: z.boolean().optional(),
-  dailyDigestEnabled: z.boolean().optional(),
-  invoicePrefix: z.string().max(20).optional(),
-  invoiceDefaultNotes: z.string().max(2000).optional(),
 });
 
 export type OrganizationFormData = z.infer<typeof organizationSchema>;

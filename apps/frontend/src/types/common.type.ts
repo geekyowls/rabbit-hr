@@ -14,3 +14,10 @@ export interface PaginatedResponse<T> {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+export interface UserSummary {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}

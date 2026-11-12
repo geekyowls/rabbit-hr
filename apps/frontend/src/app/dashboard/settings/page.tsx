@@ -9,9 +9,13 @@ import {
   ClipboardList,
   Plug2,
   Building2,
+  Mail,
+  Globe2,
+  Workflow,
+  ListPlus,
+  CalendarClock,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/use-permissions';
-import { isSystemAdminAccess } from '@/utils/cookies';
 import {
   PERMISSIONS_ENUM,
   PERMISSION_BASE,
@@ -30,18 +34,10 @@ interface SettingsCard {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: string | string[];
-  systemAdminOnly?: boolean;
   tourId: string;
 }
 
 const settingsCards: SettingsCard[] = [
-  {
-    href: '/dashboard/settings/general',
-    title: 'General',
-    description: 'Account information and profile settings',
-    icon: User,
-    tourId: 'settings-general',
-  },
   {
     href: '/dashboard/settings/organization',
     title: 'Organization',
@@ -49,6 +45,53 @@ const settingsCards: SettingsCard[] = [
     icon: Building2,
     permission: PERMISSIONS_ENUM.ORGANIZATION_READ,
     tourId: 'settings-organization',
+  },
+  {
+    href: '/dashboard/settings/ats',
+    title: 'Hiring preferences',
+    description: 'Currency, region, date format and departments',
+    icon: Globe2,
+    permission: PERMISSIONS_ENUM.ATS_SETTINGS_MANAGE,
+    tourId: 'settings-ats',
+  },
+  {
+    href: '/dashboard/settings/pipeline',
+    title: 'Pipeline stages',
+    description: 'Stages, order and colours of your hiring pipeline',
+    icon: Workflow,
+    permission: PERMISSIONS_ENUM.PIPELINE_STAGE_MANAGE,
+    tourId: 'settings-pipeline',
+  },
+  {
+    href: '/dashboard/settings/custom-fields',
+    title: 'Custom fields',
+    description: 'Extra fields on candidates, jobs and the careers form',
+    icon: ListPlus,
+    permission: PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE,
+    tourId: 'settings-custom-fields',
+  },
+  {
+    href: '/dashboard/settings/email-templates',
+    title: 'Email templates',
+    description: 'Reusable candidate emails with merge fields',
+    icon: Mail,
+    permission: PERMISSIONS_ENUM.EMAIL_TEMPLATE_READ,
+    tourId: 'settings-email-templates',
+  },
+  {
+    href: '/dashboard/settings/integrations',
+    title: 'Integrations',
+    description: 'Connect third-party services',
+    icon: Plug2,
+    permission: PERMISSIONS_ENUM.INTEGRATION_LIST_READ,
+    tourId: 'settings-integrations',
+  },
+  {
+    href: '/dashboard/settings/availability',
+    title: 'My availability',
+    description: 'Working hours, time off and interview booking rules',
+    icon: CalendarClock,
+    tourId: 'settings-availability',
   },
   {
     href: '/dashboard/settings/users',
@@ -68,20 +111,18 @@ const settingsCards: SettingsCard[] = [
   },
   {
     href: '/dashboard/settings/audit',
-    title: 'Audit Logs',
-    description: 'Track all actions in your organization',
+    title: 'Audit log',
+    description: 'Every change made in your organization',
     icon: ClipboardList,
     permission: PERMISSIONS_ENUM.AUDIT_LIST_READ,
-    systemAdminOnly: true,
     tourId: 'settings-audit',
   },
   {
-    href: '/dashboard/settings/integrations',
-    title: 'Integrations',
-    description: 'Connect third-party services',
-    icon: Plug2,
-    permission: PERMISSIONS_ENUM.INTEGRATION_LIST_READ,
-    tourId: 'settings-integrations',
+    href: '/dashboard/settings/general',
+    title: 'My account',
+    description: 'Your profile and password',
+    icon: User,
+    tourId: 'settings-general',
   },
 ];
 
@@ -95,9 +136,7 @@ export default function SettingsPage() {
     return <SettingsPageSkeleton />;
   }
 
-  const inSystemAdminAccess = isSystemAdminAccess();
   const visibleCards = settingsCards.filter((card) => {
-    if (card.systemAdminOnly && !inSystemAdminAccess) return false;
     if (!card.permission) return true;
     const perms = Array.isArray(card.permission)
       ? card.permission

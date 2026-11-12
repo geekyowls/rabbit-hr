@@ -212,7 +212,7 @@ export class UserController {
   async getProfile(
     @UserSession() user: UserSessionData,
   ): Promise<UserResponseDto> {
-    return this.getCurrentUser.execute(user.userId) as any;
+    return this.getCurrentUser.execute(user.userId);
   }
 
   @Put('profile')

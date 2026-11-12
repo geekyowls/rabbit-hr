@@ -157,7 +157,7 @@ export default function ResetPasswordForm() {
           </div>
 
           <Button className="w-full" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Resetting...' : 'Reset Password'}
+            {isSubmitting ? 'Resetting...' : 'Reset password'}
           </Button>
 
           <div className="text-center">

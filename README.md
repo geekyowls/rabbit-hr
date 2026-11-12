@@ -1,391 +1,158 @@
-# Full-Stack Monorepo Boilerplate
+<div align="center">
 
-A production-ready monorepo with Next.js 15 frontend (shadcn/ui + authentication) and NestJS backend foundation. Built with pnpm workspaces, Docker support, and GitHub Actions CI.
+# RabbitHR
 
-## What's Included
+**Open source applicant tracking system (ATS) and recruitment CRM for staffing and recruitment agencies**
 
-### Frontend (Next.js 15)
-- **29 shadcn/ui components** - Complete design system with Radix UI
-- **Authentication pages** - Login, forgot password, reset password, access control
-- **Dashboard layout** - Responsive navigation, header, and content structure
-- **Dark mode** - Built-in theme switching
-- **TypeScript** - Full type safety
-- **Tailwind CSS** - Utility-first styling with custom animations
+Manage clients, jobs, candidates, pipelines, interviews, offers and email in one place. Give every candidate a branded self-service portal. Self-host it or run it as multi-tenant SaaS.
 
-### Backend (NestJS)
-- Ready to add your NestJS application
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-### Shared Package
-- **@boilerplate/core** - Unified package for frontend/backend utilities
-  - **Types**: Standardized `ApiResponse<T>` and `PaginatedResponse<T>` with `payload` + `metadata`
-  - **Pagination**: `createPaginationMetadata()` - Auto-calculates totalPages, hasNextPage, hasPreviousPage
-  - **Services**: Cache (Redis), Mail (SES/Resend), Storage (S3/GCS), AI
-  - **Integrations**: Zoom, Google Calendar, Slack, Messaging
-  - **Utils**: Date helpers, encryption, email validation, slug builder, token generator
-  - **Commands**: Base NestJS command patterns (authenticated, paginated, base)
+[Features](#features) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Architecture](#architecture) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
-### Infrastructure
-- **pnpm workspaces** - Efficient monorepo management
-- **Docker** - Multi-stage builds for production
-- **Docker Compose** - Development and production environments
-- **GitHub Actions** - Automated CI/CD pipeline
+![RabbitHR dashboard](docs/screenshots/dashboard.jpg)
 
-## Project Structure
+</div>
 
-```
-.
-├── apps/
-│   ├── frontend/          # Next.js 15 with shadcn/ui + auth
-│   └── backend/           # NestJS (empty, ready for your app)
-├── packages/
-│   └── core/              # @boilerplate/core - Shared utilities & types
-├── docker/
-│   ├── frontend.Dockerfile
-│   ├── backend.Dockerfile
-│   └── .dockerignore
-├── .github/workflows/ci.yml
-├── docker-compose.yml
-├── docker-compose.dev.yml
-├── pnpm-workspace.yaml
-├── tsconfig.json
-├── package.json
-├── .npmrc
-└── README.md
-```
+## Why RabbitHR
 
-## Frontend Structure
+Most applicant tracking systems are built for in-house HR teams hiring for one company. Recruitment and staffing agencies work differently: they hire **for many clients at once**, juggle permanent, contract and temporary roles, and live in their inbox. RabbitHR is an **agency-first ATS** built around that workflow, and it is fully open source.
 
-```
-apps/frontend/src/
-├── app/                   # Next.js App Router
-│   ├── dashboard/         # Dashboard layout & page
-│   ├── login/            # Authentication pages
-│   ├── forgot-password/
-│   ├── reset-password/
-│   ├── no-access/
-│   └── api/auth/         # Auth API routes
-├── components/
-│   ├── ui/               # 29 shadcn/ui components
-│   ├── auth/             # Auth forms & guards
-│   └── dashboard/        # Layout components
-├── lib/                  # Utilities (utils, toast)
-├── hooks/                # Custom hooks (use-debounce, use-permissions)
-├── utils/                # Auth & API utilities
-├── types/                # TypeScript types
-├── constants/            # App constants
-└── contexts/             # React contexts (session)
-```
+- **Agency native**: clients and contacts, jobs per client, placements, client interview stages
+- **Global by default**: any currency, locale, time zone and date format, configured per organization
+- **Multi-tenant**: run one instance for many agencies, each with isolated data, roles and branding
+- **Own your data**: self-host on your own infrastructure under the AGPL-3.0 license
 
-## Prerequisites
+## Features
 
-- Node.js >= 20.0.0 (LTS recommended)
-- pnpm >= 9.0.0 (install with `npm install -g pnpm` or `corepack enable`)
-- Docker & Docker Compose (for containerized deployment)
+### Recruiting core
+- **Clients and contacts**: client accounts, contacts, billing details, notes, jobs and email history per client
+- **Jobs**: permanent, contract and temporary roles with pay ranges, departments, hiring managers and openings
+- **Candidates**: searchable talent database with skills, tags, sources, ratings, documents and custom fields
+- **Pipeline**: drag and drop kanban board with configurable stages, time-in-stage targets and bulk actions
+- **Activity timeline**: every email, call, note, stage change and portal action on one timeline
+- **Tasks**: follow-ups linked to candidates, jobs and clients with due dates and owners
 
-## Getting Started
+### Interviews and offers
+- **Interview scheduling** with panels, scorecards and feedback tracking
+- **Self-scheduling booking links** based on each recruiter's availability
+- **Offers** with approval chains and **built-in e-signature** for candidates
 
-### 1. Clone and Install
+### Communication
+- **Gmail-style shared inbox**: connect Gmail or Outlook, threads are auto-linked to candidates and clients
+- **Email templates** with merge fields
+- **Calls and WhatsApp** (via Plivo and WappCloud), shown only when the integration is connected
+- **Calendar sync and meeting links** for Google Calendar, Microsoft 365 and Zoom
+
+### Candidate portal
+- **Passwordless sign in** with a one-time email code
+- **Branded per organization** with logo, name and brand colour
+- Candidates track applications, see interviews, **sign offers**, upload documents, update their profile and apply to more jobs
+
+### Distribution and insight
+- **Public careers page** with apply form, per organization
+- **Job board XML feed** for Indeed, LinkedIn and other boards
+- **Reports**: funnel and conversion, time to hire, source effectiveness, recruiter performance, offers and more
+- **Dashboard** with the day's priorities
+
+### Platform
+- **Role based access control** with own, team and all scopes
+- **Custom fields** on candidates and jobs, **custom pipeline stages**
+- **Audit log** of every change
+- **Dark mode**, keyboard shortcuts and a command palette
+
+## Screenshots
+
+| Pipeline | Candidate profile |
+| --- | --- |
+| ![Kanban hiring pipeline](docs/screenshots/pipeline.jpg) | ![Candidate profile drawer](docs/screenshots/candidate.jpg) |
+| **Shared inbox** | **Reports** |
+| ![Gmail style recruiter inbox](docs/screenshots/inbox.jpg) | ![Recruitment reports](docs/screenshots/reports.jpg) |
+
+<p align="center">
+  <img src="docs/screenshots/portal.jpg" alt="Candidate self-service portal" width="80%" />
+  <br />
+  <em>Candidate portal</em>
+</p>
+
+## Quick start
+
+### Prerequisites
+
+- Node.js 20 or newer
+- pnpm 9 (`corepack enable`)
+- PostgreSQL 14 or newer
+- Redis 6 or newer (queues, rate limits and caching)
+
+### Run locally
 
 ```bash
-# Install dependencies
+git clone https://github.com/geekyowls/rabbit-hr.git
+cd rabbit-hr
 pnpm install
+pnpm build:packages
+
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.template apps/frontend/.env.local
+# edit apps/backend/.env: set DB_URL, JWT secrets and Redis connection
+
+pnpm --filter backend seed        # demo organization and sample recruiting data
+pnpm --filter backend dev         # API on http://localhost:4000 (Swagger at /api/docs)
+pnpm --filter backend start:worker # background jobs (email sync, reminders)
+pnpm --filter frontend dev        # app on http://localhost:3000
 ```
 
-### 2. Configure Environment
+Sign in at `http://localhost:3000` with the seeded demo admin `admin@rabbithr.test` / `Admin@123`. Change it before exposing the app anywhere.
 
-Create `.env.local` in `apps/frontend/`:
+The careers page lives at `/careers?org=<slug>` and the candidate portal at `/portal/login?org=<slug>`.
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:4000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-SERVER_URL=http://localhost:4000
+### Integrations
 
-# Your environment variables
+Every integration is optional. Features that depend on one stay hidden until it is connected under **Settings > Integrations**. Provider credentials (Google, Microsoft, Zoom, Plivo, WappCloud) are configured through environment variables, see `apps/backend/.env.example`.
+
+## Architecture
+
+```
+apps/
+  backend/     NestJS 11 API and BullMQ worker, TypeORM, PostgreSQL
+  frontend/    Next.js 15 static export, fully client side
+packages/
+  shared/      frontend-safe types, permissions, utils and events
+  core/        backend services (mail, storage, cache, integrations)
 ```
 
-See `apps/frontend/.env.template` for all available variables.
+- **Backend**: command and use case pattern, JWT access and refresh tokens, separate candidate portal tokens, Redis backed queues and rate limits
+- **Frontend**: shadcn/ui, Radix and Tailwind CSS, TanStack Query and Table, react-hook-form and zod
+- **Processes**: one image runs as the API or the worker
+- **Database**: TypeORM `synchronize` in development; generate migrations before deploying to production
 
-### 3. Development
+Contributor conventions live in [`CLAUDE.md`](CLAUDE.md), [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md) and [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md).
 
-Run all apps in development mode:
-```bash
-pnpm dev
-```
+## Roadmap
 
-Run specific app:
-```bash
-pnpm dev:frontend
-pnpm dev:backend
-```
+- [x] Core ATS: clients, jobs, candidates, pipeline, tasks, documents, careers page
+- [x] Settings: custom stages, custom fields, hiring team, interviews, offers, reports
+- [x] Integrations: shared inbox, calendar sync, meeting and booking links, calls, WhatsApp, job feed, e-sign
+- [x] Candidate portal with passwordless sign in
+- [ ] Real-time chat between recruiters and candidates
+- [ ] Multilingual interface
+- [ ] AI resume parsing, candidate matching and automation agents
+- [ ] Per-job pipeline templates
+- [ ] Custom domains and subdomains per organization
 
-### 4. Build
+Have an idea? [Open a feature request](https://github.com/geekyowls/rabbit-hr/issues/new/choose).
 
-Build all apps:
-```bash
-pnpm build
-```
+## Contributing
 
-Build specific app:
-```bash
-pnpm build:frontend
-pnpm build:backend
-```
+Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md) to get set up, and please follow the [code of conduct](CODE_OF_CONDUCT.md).
 
-### 5. Linting and Testing
-
-```bash
-# Lint all apps
-pnpm lint
-
-# Run tests
-pnpm test
-```
-
-## Docker Deployment
-
-### Development Mode (with hot-reload)
-
-```bash
-pnpm docker:dev
-# or
-docker-compose -f docker-compose.dev.yml up
-```
-
-This will:
-- Mount your source code as volumes
-- Enable hot-reload for both frontend and backend
-- Install dependencies inside containers
-
-### Production Mode
-
-Build and run production containers:
-
-```bash
-# Build images
-pnpm docker:build
-
-# Start containers
-pnpm docker:up
-
-# Stop containers
-pnpm docker:down
-```
-
-Or using docker-compose directly:
-
-```bash
-docker-compose up --build
-```
-
-Access the applications:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:4000
-
-## Environment Variables
-
-Create `.env` files in each app directory:
-
-**apps/frontend/.env.local:**
-```env
-NEXT_PUBLIC_API_URL=http://localhost:4000
-```
-
-**apps/backend/.env:**
-```env
-PORT=4000
-DATABASE_URL=postgresql://...
-```
-
-For Docker deployment, update `docker-compose.yml` with your environment variables.
-
-## GitHub Actions CI
-
-The repository includes a CI workflow that:
-- Runs on push/PR to `main` and `develop` branches
-- Installs dependencies with pnpm
-- Lints both frontend and backend
-- Runs type checks
-- Builds both applications
-- Runs tests
-- Builds Docker images
-
-The workflow file is located at `.github/workflows/ci.yml`.
-
-## Workspace Commands
-
-The root `package.json` includes these workspace commands:
-
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Run all apps in dev mode |
-| `pnpm dev:frontend` | Run frontend only |
-| `pnpm dev:backend` | Run backend only |
-| `pnpm dev:packages` | Watch and rebuild packages on changes |
-| `pnpm build` | Build packages + all apps |
-| `pnpm build:packages` | Build shared packages only |
-| `pnpm build:frontend` | Build frontend only |
-| `pnpm build:backend` | Build backend only |
-| `pnpm start` | Start all apps in production mode |
-| `pnpm lint` | Lint all apps |
-| `pnpm test` | Test all apps |
-| `pnpm clean` | Clean all dependencies and build outputs |
-
-## Adding Shared Packages
-
-To create shared packages (e.g., shared UI components, utilities):
-
-1. Create a new package in `packages/`:
-```bash
-mkdir packages/shared-ui
-cd packages/shared-ui
-pnpm init
-```
-
-2. Update `pnpm-workspace.yaml` (already configured to include `packages/*`)
-
-3. Use the shared package in your apps:
-```json
-{
-  "dependencies": {
-    "shared-ui": "workspace:*"
-  }
-}
-```
-
-## Available UI Components
-
-The frontend includes 29 shadcn/ui components ready to use:
-
-**Layout & Navigation**
-- Card, Separator, Tabs, Scroll Area
-
-**Forms & Inputs**
-- Button, Input, Label, Checkbox, Switch, Select, Calendar, Date Picker
-
-**Feedback & Overlays**
-- Dialog, Alert Dialog, Toast, Tooltip, Popover
-
-**Data Display**
-- Table, Avatar, Badge, Skeleton
-
-**Advanced**
-- Command (⌘K menu), Dropdown Menu, Multi-Select
-
-**Custom**
-- Initials Avatar, Status Select, Table Skeleton
-
-All components support dark mode and are fully accessible.
-
-## Adding Your Backend
-
-To add your NestJS backend:
-
-1. Copy your NestJS project to `apps/backend/`
-2. Ensure `package.json` has:
-   ```json
-   {
-     "name": "backend",
-     "scripts": {
-       "dev": "nest start --watch",
-       "build": "nest build",
-       "start": "node dist/main",
-       "lint": "eslint \"{src,apps,libs,test}/**/*.ts\""
-     },
-     "dependencies": {
-       "@boilerplate/core": "workspace:*"
-     }
-   }
-   ```
-3. Run `pnpm install` from root
-4. Start development with `pnpm dev`
-
-### Using Shared Packages in Backend
-
-Import from shared packages in your NestJS code:
-
-```typescript
-// Import everything from @boilerplate/core
-import {
-  // Types
-  ApiResponse,
-  PaginatedResponse,
-  // Utilities
-  createPaginationMetadata,
-  // Services
-  MailService,
-  SESMailService,
-  StorageService,
-  RedisCacheService,
-} from '@boilerplate/core';
-
-// Example: Return standardized paginated API responses
-async findAll(page = 1, limit = 10): Promise<PaginatedResponse<User>> {
-  const total = await this.userRepository.count();
-  const users = await this.userRepository.find({
-    skip: (page - 1) * limit,
-    take: limit,
-  });
-
-  return {
-    success: true,
-    payload: users,
-    metadata: createPaginationMetadata(page, limit, total),
-  };
-}
-
-// Example: Simple API response
-async findOne(id: string): Promise<ApiResponse<User>> {
-  const user = await this.userRepository.findOne(id);
-  return {
-    success: true,
-    payload: user,
-  };
-}
-```
-
-## Tips
-
-- Use `pnpm --filter <package-name> <command>` to run commands in specific packages
-- Add `--parallel` flag to run commands in parallel: `pnpm --parallel dev`
-- Use `workspace:*` protocol for internal dependencies
-- The `.npmrc` file configures pnpm behavior for the monorepo
-
-## Customization
-
-### Adding More Components
-```bash
-cd apps/frontend
-npx shadcn@latest add [component-name]
-```
-
-### Extending the Dashboard
-- Edit `src/components/dashboard/dashboard-nav.tsx` for navigation
-- Edit `src/app/dashboard/page.tsx` for dashboard content
-- Add new routes in `src/app/dashboard/`
-
-### Customizing Authentication
-- Auth forms are in `src/components/auth/`
-- Auth API routes are in `src/app/api/auth/`
-- Update `src/contexts/session-context.tsx` for user session management
-
-## Troubleshooting
-
-**Issue: Module not found errors**
-```bash
-pnpm install
-```
-
-**Issue: Docker build fails**
-- Ensure your apps have proper `build` scripts in their package.json
-- For Next.js, ensure `output: 'standalone'` is set in `next.config.ts`
-
-**Issue: Hot reload not working in Docker dev mode**
-- Ensure WATCHPACK_POLLING is set to true in docker-compose.dev.yml
-
-**Issue: Peer dependency warnings**
-- The project uses React 19 RC which may show warnings with some packages
-- These are safe to ignore - all packages work correctly
+Found a security issue? Please report it privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT
+RabbitHR is licensed under the [GNU Affero General Public License v3.0](LICENSE). You can use, modify and self-host it freely. If you run a modified version as a network service, you must make your source code available to its users under the same license.

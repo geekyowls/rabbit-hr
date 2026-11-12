@@ -32,8 +32,7 @@ export function installChunkErrorRecovery() {
     'error',
     (event) => {
       const target = event.target as
-        | (HTMLElement & { href?: string; src?: string })
-        | null;
+        (HTMLElement & { href?: string; src?: string }) | null;
       if (
         target &&
         (target.tagName === 'LINK' || target.tagName === 'SCRIPT')

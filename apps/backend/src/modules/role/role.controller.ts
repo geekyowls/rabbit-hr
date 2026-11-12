@@ -63,7 +63,7 @@ export class RoleController {
         name: dto.name,
         permissions: dto.permissions,
       }),
-    ) as any;
+    );
   }
 
   @Get()
@@ -80,7 +80,7 @@ export class RoleController {
         userId: user.userId,
         organizationId: user.organizationId,
       }),
-    ) as any;
+    );
   }
 
   @Post('list')
@@ -98,7 +98,7 @@ export class RoleController {
         userId: user.userId,
         organizationId: user.organizationId,
       }),
-    ) as any;
+    );
   }
 
   @Get(':id')
@@ -109,7 +109,7 @@ export class RoleController {
     @UserSession() user: UserSessionData,
     @Param('id') roleId: string,
   ): Promise<RoleResponseDto> {
-    return this.getRole.execute(roleId, user.organizationId) as any;
+    return this.getRole.execute(roleId, user.organizationId);
   }
 
   @Put(':id')
@@ -129,7 +129,7 @@ export class RoleController {
         name: dto.name,
         permissions: dto.permissions,
       }),
-    ) as any;
+    );
   }
 
   @Delete(':id')

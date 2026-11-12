@@ -4,12 +4,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export type StickyTabColor =
-  | 'amber'
-  | 'emerald'
-  | 'yellow'
-  | 'blue'
-  | 'rose'
-  | 'violet';
+  'amber' | 'emerald' | 'yellow' | 'blue' | 'rose' | 'violet';
 
 const COLOR_MAP: Record<StickyTabColor, string> = {
   amber:
