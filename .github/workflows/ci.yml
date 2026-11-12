@@ -1,324 +1,43 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  changes:
+  check:
+    name: Typecheck and lint
     runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      website: ${{ steps.filter.outputs.website }}
-      client-sites: ${{ steps.filter.outputs.client-sites }}
+    timeout-minutes: 20
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Detect changes
-        uses: dorny/paths-filter@v3
-        id: filter
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
         with:
-          filters: |
-            backend:
-              - 'apps/backend/**'
-              - 'packages/shared/**'
-              - 'packages/core/**'
-              - 'docker/backend.Dockerfile'
-              - 'pnpm-lock.yaml'
-            website:
-              - 'apps/website/**'
-              - 'docker/website.Dockerfile'
-              - 'pnpm-lock.yaml'
-            client-sites:
-              - 'apps/client-sites/**'
-              - 'docker/client-sites.Dockerfile'
-              - 'pnpm-lock.yaml'
+          node-version: 22
+          cache: pnpm
 
-  check-version:
-    needs: [changes]
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.check.outputs.version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Check version bump
-        id: check
-        run: |
-          CURRENT_VERSION=$(node -p "require('./apps/backend/package.json').version")
-          PREVIOUS_VERSION=$(git show HEAD^:apps/backend/package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
+      - name: Build shared packages
+        run: pnpm build:packages
 
-          echo "Current version: $CURRENT_VERSION"
-          echo "Previous version: $PREVIOUS_VERSION"
+      - name: Typecheck backend
+        run: pnpm --filter backend exec tsc --noEmit
 
-          if [ "$CURRENT_VERSION" = "$PREVIOUS_VERSION" ]; then
-            echo "::error::Version not updated! Please bump version in apps/backend/package.json"
-            exit 1
-          fi
+      - name: Typecheck frontend
+        run: pnpm --filter frontend exec tsc --noEmit
 
-          echo "Version updated from $PREVIOUS_VERSION to $CURRENT_VERSION"
-          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-
-  build-backend:
-    needs: [changes, check-version]
-    if: needs.changes.outputs.backend == 'true' && needs.check-version.result == 'success'
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: smoketest
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/geekyowls/nutricrm/backend
-          tags: |
-            type=sha,prefix=,format=long
-            type=raw,value=latest
-            type=raw,value=${{ needs.check-version.outputs.version }}
-
-      - name: Build and push backend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/backend.Dockerfile
-          push: true
-          load: false
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            CACHE_BUST=${{ github.sha }}
-            BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp }}
-
-      - name: Pull image for smoke test
-        run: docker pull ghcr.io/geekyowls/nutricrm/backend:${{ github.sha }}
-
-      - name: Smoke test container
-        run: |
-          docker run --rm --network host \
-            -e DB_URL=postgres://test:test@localhost:5432/smoketest \
-            -e JWT_ACCESS_SECRET=smoke-test-secret \
-            -e JWT_REFRESH_SECRET=smoke-test-refresh-secret \
-            -e JWT_CLIENT_ACCESS_SECRET=smoke-test-client-access \
-            -e JWT_CLIENT_REFRESH_SECRET=smoke-test-client-refresh \
-            -e RESEND_API_KEY=smoke-test \
-            -e DODO_PAYMENTS_API_KEY=smoke-test \
-            -e RAZORPAY_KEY_ID=smoke-test \
-            -e RAZORPAY_KEY_SECRET=smoke-test \
-            -e REDIS_HOST=localhost \
-            -e REDIS_PORT=6379 \
-            -e API_SMOKE_TEST=1 \
-            ghcr.io/geekyowls/nutricrm/backend:${{ github.sha }}
-
-      - name: Trigger Dokploy webhook (Backend)
-        env:
-          WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_BACKEND }}
-        if: env.WEBHOOK_URL != ''
-        run: |
-          curl -X POST "$WEBHOOK_URL" \
-            -H "Content-Type: application/json"
-
-      - name: Trigger Dokploy webhook (Worker)
-        env:
-          WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_WORKER }}
-        if: env.WEBHOOK_URL != ''
-        run: |
-          curl -X POST "$WEBHOOK_URL" \
-            -H "Content-Type: application/json"
-
-  build-website:
-    needs: [changes]
-    if: needs.changes.outputs.website == 'true'
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for website
-        id: meta-website
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/geekyowls/nutricrm/website
-          tags: |
-            type=sha,prefix=,format=long
-            type=raw,value=latest
-
-      - name: Build and push website
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/website.Dockerfile
-          push: true
-          tags: ${{ steps.meta-website.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            CACHE_BUST=${{ github.sha }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
-            NEXT_PUBLIC_GA_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID }}
-            NEXT_PUBLIC_OPENPANEL_CLIENT_ID=${{ secrets.NEXT_PUBLIC_OPENPANEL_CLIENT_ID }}
-            NEXT_PUBLIC_GLITCHTIP_DSN=${{ secrets.NEXT_PUBLIC_GLITCHTIP_DSN }}
-            SENTRY_ORG=${{ secrets.SENTRY_ORG }}
-            SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT_WEBSITE }}
-            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
-
-      - name: Trigger Dokploy webhook (Website)
-        env:
-          WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_WEBSITE }}
-        if: env.WEBHOOK_URL != ''
-        run: |
-          curl -X POST "$WEBHOOK_URL" \
-            -H "Content-Type: application/json"
-
-  build-client-sites:
-    needs: [changes]
-    if: needs.changes.outputs.client-sites == 'true'
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for client-sites
-        id: meta-client-sites
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/geekyowls/nutricrm/client-sites
-          tags: |
-            type=sha,prefix=,format=long
-            type=raw,value=latest
-
-      - name: Build and push client-sites
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/client-sites.Dockerfile
-          push: true
-          tags: ${{ steps.meta-client-sites.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            CACHE_BUST=${{ github.sha }}
-
-      - name: Trigger Dokploy webhook (Client Sites)
-        env:
-          WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_CLIENT_SITES }}
-        if: env.WEBHOOK_URL != ''
-        run: |
-          curl -X POST "$WEBHOOK_URL" \
-            -H "Content-Type: application/json"
-
-  create-tag:
-    needs: [changes, check-version, build-backend, build-website, build-client-sites]
-    if: |
-      always() &&
-      (needs.check-version.result == 'success' || needs.check-version.result == 'skipped') &&
-      (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
-      (needs.build-website.result == 'success' || needs.build-website.result == 'skipped') &&
-      (needs.build-client-sites.result == 'success' || needs.build-client-sites.result == 'skipped') &&
-      (needs.build-backend.result == 'success' || needs.build-website.result == 'success' || needs.build-client-sites.result == 'success')
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create version tag
-        if: needs.check-version.result == 'success' && needs.check-version.outputs.version != ''
-        run: |
-          VERSION="${{ needs.check-version.outputs.version }}"
-          TAG="v$VERSION"
-
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
-            echo "Tag $TAG already exists, skipping"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag "$TAG"
-            git push origin "$TAG"
-            echo "Created and pushed tag $TAG"
-          fi
-
-      - name: Skip tag creation (website-only)
-        if: needs.check-version.result == 'skipped'
-        run: |
-          echo "Skipping tag creation - no backend changes (website-only deployment)"
+      - name: Lint
+        run: pnpm lint
