@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { validatePhoneForCountry } from '@boilerplate/shared';
+import { AGENCY_SIZES, validatePhoneForCountry } from '@boilerplate/shared';
 import { strongPasswordSchema } from './helpers';
 
 export const loginSchema = z.object({
@@ -58,15 +58,15 @@ export type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>;
 
 export const signupDetailsSchema = z
   .object({
-    firstName: z.string().min(1, 'First name is required'),
+    firstName: z.string().trim().min(1, 'First name is required'),
     lastName: z.string().optional(),
-    phoneCountryCode: z
+    organizationName: z
       .string()
-      .regex(/^[A-Z]{2}$/, 'Invalid country code format'),
-    phone: z.string().min(1, 'Phone number is required'),
+      .trim()
+      .min(1, 'Agency name is required')
+      .max(200, 'Keep it under 200 characters'),
     password: strongPasswordSchema,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
-    organizationName: z.string().min(1, 'Organization name is required'),
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
@@ -76,19 +76,37 @@ export const signupDetailsSchema = z
         path: ['confirmPassword'],
       });
     }
-    if (data.phone && data.phoneCountryCode) {
-      const result = validatePhoneForCountry(data.phoneCountryCode, data.phone);
-      if (!result.valid) {
-        ctx.addIssue({
-          code: 'custom',
-          message: result.error || 'Invalid phone number',
-          path: ['phone'],
-        });
-      }
-    }
   });
 
 export type SignupDetailsFormData = z.infer<typeof signupDetailsSchema>;
+
+export const signupContextSchema = z
+  .object({
+    agencySize: z.enum(AGENCY_SIZES, { message: 'Choose your agency size' }),
+    organizationName: z
+      .string()
+      .trim()
+      .min(1, 'Agency name is required')
+      .max(200, 'Keep it under 200 characters')
+      .optional(),
+    phoneCountryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/, 'Invalid country code format'),
+    phone: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.phone?.trim()) return;
+    const result = validatePhoneForCountry(data.phoneCountryCode, data.phone);
+    if (!result.valid) {
+      ctx.addIssue({
+        code: 'custom',
+        message: result.error || 'Invalid phone number',
+        path: ['phone'],
+      });
+    }
+  });
+
+export type SignupContextFormData = z.infer<typeof signupContextSchema>;
 
 export const signupSchema = z
   .object({

@@ -11,7 +11,20 @@ import {
 
 import { BaseEntity } from './base.entity';
 import { UserEntity } from './user.entity';
-import type { OrgFeatureControls } from '@boilerplate/core';
+import type { AgencySize, OrgFeatureControls } from '@boilerplate/core';
+
+export interface OrganizationMetadata {
+  agencySize?: AgencySize;
+  onboardingDismissedAt?: string;
+  sampleData?: OrganizationSampleData;
+}
+
+export interface OrganizationSampleData {
+  createdAt: string;
+  clientIds: string[];
+  jobIds: string[];
+  candidateIds: string[];
+}
 
 export interface OrganizationAtsSettings {
   defaultCurrency: string;
@@ -219,10 +232,7 @@ export class OrganizationEntity extends BaseEntity {
   } | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata!: {
-    practiceType?: 'solo' | 'team';
-    teamSize?: '2-5' | '6-10' | '11-25' | '25+';
-  } | null;
+  metadata!: OrganizationMetadata | null;
 
   @Column({ type: 'jsonb', nullable: true })
   atsSettings!: Partial<OrganizationAtsSettings> | null;

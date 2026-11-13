@@ -5,6 +5,7 @@ export * from './types/feature-controls';
 // Permissions
 export * from './permissions';
 export * from './billing';
+export * from './onboarding';
 
 // Constants
 export * from './constants';

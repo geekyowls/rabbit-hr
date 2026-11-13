@@ -5,6 +5,7 @@ import {
   UserRegisteredEvent,
   OrganizationCreatedEvent,
   UserLoggedInEvent,
+  PlanId,
 } from '@boilerplate/core';
 import type { UserEntity } from '@db/entities';
 import {
@@ -160,7 +161,8 @@ export class GoogleLogin {
             name: orgName,
             slug,
             domain,
-            subscriptionStatus: OrgSubscriptionStatus.TRIAL,
+            plan: PlanId.FREE,
+            subscriptionStatus: OrgSubscriptionStatus.ACTIVE,
           },
         );
         await manager.save(organization);
@@ -194,7 +196,7 @@ export class GoogleLogin {
       organizationId: savedUser.organizationId,
       createdBy: savedUser.id,
       triggeredBy: savedUser.id,
-      signupSource: 'free_trial',
+      signupSource: 'free_plan',
     });
 
     this.eventEmitter.emit<UserRegisteredEvent>({

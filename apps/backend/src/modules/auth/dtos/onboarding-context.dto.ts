@@ -4,31 +4,32 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  ValidateIf,
+  MaxLength,
 } from 'class-validator';
+import { AGENCY_SIZES, type AgencySize } from '@boilerplate/core';
 
 export class UpdateOnboardingContextBodyDto {
-  @ApiProperty({ enum: ['solo', 'team'] })
-  @IsString()
-  @IsNotEmpty()
-  @IsIn(['solo', 'team'])
-  practiceType!: 'solo' | 'team';
-
-  @ApiProperty({ enum: ['2-5', '6-10', '11-25', '25+'], required: false })
-  @ValidateIf((o: UpdateOnboardingContextBodyDto) => o.practiceType === 'team')
-  @IsString()
-  @IsNotEmpty()
-  @IsIn(['2-5', '6-10', '11-25', '25+'])
-  teamSize?: '2-5' | '6-10' | '11-25' | '25+';
+  @ApiProperty({ enum: AGENCY_SIZES })
+  @IsIn(AGENCY_SIZES)
+  agencySize!: AgencySize;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
+  organizationName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
   phone?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(8)
   phoneCountryCode?: string;
 }

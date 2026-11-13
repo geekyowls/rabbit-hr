@@ -27,10 +27,9 @@ export class UserRegisterCommand extends BaseCommand {
   @IsString()
   lastName?: string;
 
-  @IsDefined()
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  phone!: string;
+  phone?: string;
 
   @IsOptional()
   @IsString()

@@ -13,12 +13,18 @@ export interface SignupWaitlistVariables {
   email: string;
   firstName: string;
   lastName?: string | null;
-  phone: string;
-  phoneCountryCode: string;
+  phone: string | null;
+  phoneCountryCode: string | null;
   organizationName: string;
   userAgent?: string | null;
   ipAddress?: string | null;
   submittedAt: Date;
+}
+
+function displayPhone(vars: SignupWaitlistVariables): string {
+  return vars.phone
+    ? formatPhone(vars.phoneCountryCode ?? 'GB', vars.phone)
+    : 'Not provided';
 }
 
 export function signupWaitlistSubject(vars: SignupWaitlistVariables): string {
@@ -27,7 +33,7 @@ export function signupWaitlistSubject(vars: SignupWaitlistVariables): string {
 
 export function signupWaitlistText(vars: SignupWaitlistVariables): string {
   const fullName = [vars.firstName, vars.lastName].filter(Boolean).join(' ');
-  const phoneDisplay = formatPhone(vars.phoneCountryCode, vars.phone);
+  const phoneDisplay = displayPhone(vars);
   return `
 A new signup attempt was received while waitlist mode is active.
 
@@ -45,7 +51,7 @@ Reach out to onboard them manually.
 
 export function signupWaitlistHtml(vars: SignupWaitlistVariables): string {
   const fullName = [vars.firstName, vars.lastName].filter(Boolean).join(' ');
-  const phoneDisplay = formatPhone(vars.phoneCountryCode, vars.phone);
+  const phoneDisplay = displayPhone(vars);
   const phoneTel = phoneDisplay.replace(/[^\d+]/g, '');
   const rows: Array<[string, string]> = [
     ['Name', escapeHtml(fullName)],
