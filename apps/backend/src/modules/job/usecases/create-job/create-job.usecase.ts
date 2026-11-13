@@ -13,6 +13,7 @@ import {
   normalizeScreeningQuestions,
   uniqueIds,
 } from '../job-validation';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import { GetJob } from '../get-job/get-job.usecase';
 import { CreateJobCommand } from './create-job.command';
 
@@ -25,6 +26,7 @@ export class CreateJob {
     private readonly getJob: GetJob,
     private readonly atsSettingsService: AtsSettingsService,
     private readonly customFieldValidator: CustomFieldValidator,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: CreateJobCommand) {
@@ -47,6 +49,9 @@ export class CreateJob {
     ]);
 
     const status = payload.status ?? JobStatus.DRAFT;
+    if (this.entitlements.isActiveJobStatus(status)) {
+      await this.entitlements.assertActiveJobCapacity(command.organizationId);
+    }
     const reference = await this.jobRepository.nextReference(
       command.organizationId,
     );

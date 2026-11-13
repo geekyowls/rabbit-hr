@@ -13,10 +13,12 @@ import { BILLING_SETTINGS_PATH } from './billing-links';
 
 export function UpgradeHint({
   feature,
+  action,
   className,
   asLink = true,
 }: {
   feature: PlanFeature;
+  action?: string;
   className?: string;
   asLink?: boolean;
 }) {
@@ -28,8 +30,9 @@ export function UpgradeHint({
   );
 
   const canUpgrade = hasPermission(PERMISSIONS_ENUM.BILLING_MANAGE);
+  const suffix = action ? ` to ${action}` : '';
   const label = canUpgrade
-    ? `Upgrade to ${plan.name}`
+    ? `Upgrade to ${plan.name}${suffix}`
     : `Available on ${plan.name}`;
 
   if (!canUpgrade || !asLink) {

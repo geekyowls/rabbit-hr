@@ -20,15 +20,14 @@ export class UpdateOnboardingContext {
       throw new NotFoundException('Organization not found');
     }
 
-    const { teamSize: _prevTeamSize, ...restMetadata } =
-      organization.metadata || {};
     organization.metadata = {
-      ...restMetadata,
-      practiceType: command.practiceType,
-      ...(command.practiceType === 'team' && command.teamSize
-        ? { teamSize: command.teamSize }
-        : {}),
+      ...(organization.metadata ?? {}),
+      agencySize: command.agencySize,
     };
+    const organizationName = command.organizationName?.trim();
+    if (organizationName) {
+      organization.name = organizationName;
+    }
     await this.organizationRepository.save(organization);
 
     await this.userRepository.update(command.userId, {
@@ -36,7 +35,7 @@ export class UpdateOnboardingContext {
       ...(command.phone
         ? {
             phone: command.phone,
-            phoneCountryCode: command.phoneCountryCode || 'IN',
+            phoneCountryCode: command.phoneCountryCode || 'GB',
           }
         : {}),
     });

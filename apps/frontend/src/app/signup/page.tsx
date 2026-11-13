@@ -50,10 +50,11 @@ function SignupPageContent() {
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              &ldquo;Everything your team needs, in one place.&rdquo;
+              &ldquo;Jobs, candidates and clients for your agency, in one
+              place&rdquo;
             </p>
             <footer className="text-sm text-zinc-400">
-              Start your 14-day free trial today
+              Free for one recruiter, upgrade when your team grows
             </footer>
           </blockquote>
         </div>

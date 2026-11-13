@@ -282,7 +282,7 @@ export class AuthController {
   @RequireAuthentication()
   @Header('Cache-Control', 'no-store')
   @ApiOperation({
-    summary: 'Set onboarding context (practice type and team size)',
+    summary: 'Set onboarding context (agency size, name and phone)',
   })
   @ApiResponse(Object)
   async updateOnboardingContext(
@@ -293,8 +293,8 @@ export class AuthController {
       UpdateOnboardingContextCommand.create({
         userId: user.userId,
         organizationId: user.organizationId,
-        practiceType: body.practiceType,
-        teamSize: body.teamSize,
+        agencySize: body.agencySize,
+        organizationName: body.organizationName,
         phone: body.phone,
         phoneCountryCode: body.phoneCountryCode,
       }),

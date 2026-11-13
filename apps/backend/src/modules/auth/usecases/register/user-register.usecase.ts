@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ALL_PERMISSIONS } from '@boilerplate/core';
+import { ALL_PERMISSIONS, PlanId } from '@boilerplate/core';
 import {
   EventName,
   UserRegisteredEvent,
@@ -59,8 +59,8 @@ export class UserRegister {
         email,
         firstName: command.firstName,
         lastName: command.lastName || null,
-        phone: command.phone,
-        phoneCountryCode: command.phoneCountryCode || 'IN',
+        phone: command.phone ?? null,
+        phoneCountryCode: command.phoneCountryCode ?? null,
         organizationName: command.organizationName,
         userAgent: command.userAgent || null,
         ipAddress: command.ipAddress || null,
@@ -81,7 +81,8 @@ export class UserRegister {
       name: orgName,
       slug,
       domain,
-      subscriptionStatus: OrgSubscriptionStatus.TRIAL,
+      plan: PlanId.FREE,
+      subscriptionStatus: OrgSubscriptionStatus.ACTIVE,
     });
     await this.organizationRepository.save(organization);
 
@@ -97,8 +98,8 @@ export class UserRegister {
       email,
       firstName: command.firstName,
       lastName: command.lastName || null,
-      phone: command.phone,
-      phoneCountryCode: command.phoneCountryCode || 'IN',
+      phone: command.phone ?? null,
+      phoneCountryCode: command.phone ? command.phoneCountryCode || 'GB' : null,
       password: passwordHash,
       organizationId: organization.id,
       roleId: defaultRole.id,
@@ -113,7 +114,7 @@ export class UserRegister {
       organizationId: organization.id,
       createdBy: savedUser.id,
       triggeredBy: savedUser.id,
-      signupSource: 'free_trial',
+      signupSource: 'free_plan',
     });
 
     this.eventEmitter.emit<UserRegisteredEvent>({

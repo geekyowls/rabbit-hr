@@ -11,11 +11,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 import {
   UserSession,
   type UserSessionData,
 } from '@shared/decorators/user-session.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { RequirePermissions } from '@shared/decorators/require-permissions.decorator';
 import { ApiResponse } from '@shared/decorators/api-response.decorator';
 import { ApiCommonResponses } from '@shared/decorators/api-common-responses.decorator';
@@ -52,6 +53,7 @@ export class InboxController {
   @Post('threads/list')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(PERMISSIONS_ENUM.INBOX_READ)
+  @RequirePlanFeature(PlanFeature.INBOX)
   @ApiOperation({ summary: 'List email threads, newest first' })
   async list(
     @UserSession() user: UserSessionData,
@@ -94,6 +96,7 @@ export class InboxController {
 
   @Get('threads/:id')
   @RequirePermissions(PERMISSIONS_ENUM.INBOX_READ)
+  @RequirePlanFeature(PlanFeature.INBOX)
   @ApiOperation({ summary: 'Get a thread with its messages, oldest first' })
   async get(
     @UserSession() user: UserSessionData,
@@ -110,6 +113,7 @@ export class InboxController {
 
   @Patch('threads/:id')
   @RequirePermissions(PERMISSIONS_ENUM.INBOX_READ)
+  @RequirePlanFeature(PlanFeature.INBOX)
   @ApiOperation({ summary: 'Mark read, archive, move or link a thread' })
   async update(
     @UserSession() user: UserSessionData,
@@ -128,6 +132,7 @@ export class InboxController {
 
   @Post('messages/send')
   @RequirePermissions(PERMISSIONS_ENUM.INBOX_SEND)
+  @RequirePlanFeature(PlanFeature.INBOX)
   @ApiOperation({ summary: 'Send a new email or a reply from a mailbox' })
   async send(
     @UserSession() user: UserSessionData,

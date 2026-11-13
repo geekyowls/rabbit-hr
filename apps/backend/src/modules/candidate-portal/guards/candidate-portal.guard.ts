@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { CandidateRepository } from '@db/repositories';
-import { resolveAtsSettings } from '@db/entities';
 import { OrganizationStatus } from '@db/enums';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import { PortalTokenService } from '../services/portal-token.service';
 import type { PortalCandidateSession } from '../decorators/portal-candidate.decorator';
 
@@ -22,6 +22,7 @@ export class CandidatePortalGuard implements CanActivate {
   constructor(
     private readonly tokenService: PortalTokenService,
     private readonly candidateRepository: CandidateRepository,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -52,7 +53,7 @@ export class CandidatePortalGuard implements CanActivate {
     if (
       !candidate ||
       candidate.organization.status !== OrganizationStatus.ACTIVE ||
-      !resolveAtsSettings(candidate.organization.atsSettings).portalEnabled
+      !(await this.portalAvailability.isEnabled(candidate.organization))
     ) {
       throw new UnauthorizedException('Invalid session');
     }

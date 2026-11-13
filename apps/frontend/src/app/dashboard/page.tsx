@@ -55,6 +55,7 @@ import {
   Timeline,
   TrendStat,
 } from '@/components/patterns';
+import { OnboardingChecklistCard } from '@/components/onboarding/onboarding-checklist';
 
 type Range = '7d' | '14d' | '30d';
 
@@ -330,6 +331,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
+      <OnboardingChecklistCard />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">

@@ -97,8 +97,8 @@ export interface SignupWaitlistJoinedEvent extends BaseEvent {
   email: string;
   firstName: string;
   lastName: string | null;
-  phone: string;
-  phoneCountryCode: string;
+  phone: string | null;
+  phoneCountryCode: string | null;
   organizationName: string;
   userAgent: string | null;
   ipAddress: string | null;

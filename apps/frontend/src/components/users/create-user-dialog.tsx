@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { RoleDropdown } from '@/types/role.type';
+import { apiErrorDescription } from '@/components/billing/billing-error';
 
 interface CreateUserDialogProps {
   open: boolean;
@@ -129,9 +130,10 @@ export function CreateUserDialog({
         onSuccess();
       }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to create user';
-      toast.error(message);
+      toast.error(
+        'Could not add user',
+        apiErrorDescription(err, 'Failed to create user'),
+      );
     }
   };
 

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CreditCard, ExternalLink, Users } from 'lucide-react';
+import { Briefcase, CreditCard, ExternalLink, Users } from 'lucide-react';
 import {
   BillingAccess,
   BillingInterval,
@@ -49,13 +49,51 @@ import {
   SUBSCRIPTION_STATUS_TONES,
   describeBillingPeriod,
 } from '@/components/billing/billing-status';
-import type { BillingSummary, CheckoutOption } from '@/types/billing.type';
+import type {
+  BillingSummary,
+  BillingUsage,
+  CheckoutOption,
+} from '@/types/billing.type';
 
 const LIVE_STATUSES = [
   OrgSubscriptionStatus.ACTIVE,
   OrgSubscriptionStatus.TRIAL,
   OrgSubscriptionStatus.PAST_DUE,
 ];
+
+function UsageRow({
+  icon: Icon,
+  label,
+  usage,
+}: {
+  icon: typeof Users;
+  label: string;
+  usage: BillingUsage;
+}) {
+  const { count, limit } = usage;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <Icon className="h-4 w-4" />
+          {label}
+        </span>
+        <span
+          className={
+            limit !== null && count > limit
+              ? 'font-medium text-amber-700 dark:text-amber-400'
+              : 'font-medium'
+          }
+        >
+          {limit === null ? count : `${count} of ${limit}`}
+        </span>
+      </div>
+      {limit !== null && (
+        <Progress value={Math.min(100, (count / limit) * 100)} />
+      )}
+    </div>
+  );
+}
 
 function errorMessage(err: unknown): string | undefined {
   return err instanceof Error ? err.message : undefined;
@@ -89,10 +127,14 @@ function CurrentPlanCard({ summary }: { summary: BillingSummary }) {
   const cancel = useCancelSubscriptionMutation();
   const resume = useResumeSubscriptionMutation();
   const [cancelOpen, setCancelOpen] = useState(false);
-  const plan = summary.plan ? PLANS[summary.plan] : null;
+  const plan = summary.effectivePlan ? PLANS[summary.effectivePlan] : null;
+  const isFree = summary.effectivePlan === PlanId.FREE;
+  const lapsedPlan =
+    isFree && summary.plan && summary.plan !== PlanId.FREE
+      ? PLANS[summary.plan]
+      : null;
   const isLive = LIVE_STATUSES.includes(summary.status);
-  const { count, limit } = summary.members;
-  const period = describeBillingPeriod(summary);
+  const period = isFree ? null : describeBillingPeriod(summary);
 
   const openPortal = async () => {
     try {
@@ -147,31 +189,43 @@ function CurrentPlanCard({ summary }: { summary: BillingSummary }) {
           <span className="text-lg font-semibold">
             {plan?.name ?? 'No plan'}
           </span>
-          {plan && (
+          {plan && !isFree && (
             <StatusPill tone={SUBSCRIPTION_STATUS_TONES[summary.status]} dot>
               {SUBSCRIPTION_STATUS_LABELS[summary.status]}
             </StatusPill>
           )}
-          {summary.billingInterval && plan?.id !== PlanId.ENTERPRISE && (
-            <span className="text-xs text-muted-foreground">
-              {summary.billingInterval === BillingInterval.YEAR
-                ? 'Billed yearly'
-                : 'Billed monthly'}
-            </span>
-          )}
+          {summary.billingInterval &&
+            !isFree &&
+            plan?.id !== PlanId.ENTERPRISE && (
+              <span className="text-xs text-muted-foreground">
+                {summary.billingInterval === BillingInterval.YEAR
+                  ? 'Billed yearly'
+                  : 'Billed monthly'}
+              </span>
+            )}
         </div>
         {period && <p className="text-sm text-muted-foreground">{period}</p>}
+        {isFree && (
+          <p className="text-sm text-muted-foreground">
+            {lapsedPlan
+              ? `Your ${lapsedPlan.name} subscription has ended, so you are on the Free plan`
+              : 'Free forever, upgrade any time for more members and features'}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2 pt-2">
-          {summary.hasSubscription && isLive && !summary.cancelAtPeriodEnd && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-muted-foreground"
-              onClick={() => setCancelOpen(true)}
-            >
-              Cancel at period end
-            </Button>
-          )}
+          {summary.hasSubscription &&
+            isLive &&
+            !isFree &&
+            !summary.cancelAtPeriodEnd && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => setCancelOpen(true)}
+              >
+                Cancel at period end
+              </Button>
+            )}
           {summary.hasSubscription && isLive && summary.cancelAtPeriodEnd && (
             <Button
               size="sm"
@@ -185,21 +239,19 @@ function CurrentPlanCard({ summary }: { summary: BillingSummary }) {
           )}
         </div>
       </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Users className="h-4 w-4" />
-            Team members
-          </span>
-          <span className="font-medium">
-            {limit === null ? count : `${count} of ${limit}`}
-          </span>
-        </div>
-        {limit !== null && (
-          <Progress value={Math.min(100, (count / limit) * 100)} />
+      <div className="space-y-3">
+        <UsageRow icon={Users} label="Team members" usage={summary.members} />
+        {summary.activeJobs.limit !== null && (
+          <UsageRow
+            icon={Briefcase}
+            label="Active jobs"
+            usage={summary.activeJobs}
+          />
         )}
         <p className="text-xs text-muted-foreground">
-          Invited and active members count toward the limit
+          {summary.activeJobs.limit !== null
+            ? 'Invited and active members count toward the limit. Published and on hold jobs count as active, drafts do not.'
+            : 'Invited and active members count toward the limit'}
         </p>
       </div>
 
@@ -209,7 +261,8 @@ function CurrentPlanCard({ summary }: { summary: BillingSummary }) {
             <AlertDialogTitle>Cancel subscription</AlertDialogTitle>
             <AlertDialogDescription>
               You keep full access until the end of the current period. After
-              that RabbitHR becomes read only. Your data is never deleted.
+              that your workspace moves to the Free plan. Your data is never
+              deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -237,8 +290,11 @@ function ChangePlanCard({ summary }: { summary: BillingSummary }) {
   );
   const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
   const [confirm, setConfirm] = useState<CheckoutOption | null>(null);
+  const isFree = summary.effectivePlan === PlanId.FREE;
   const canSwitch =
-    summary.hasSubscription && LIVE_STATUSES.includes(summary.status);
+    summary.hasSubscription &&
+    !isFree &&
+    LIVE_STATUSES.includes(summary.status);
 
   const startCheckout = async (option: CheckoutOption) => {
     setPendingPlan(option.plan);
@@ -267,7 +323,7 @@ function ChangePlanCard({ summary }: { summary: BillingSummary }) {
 
   return (
     <SectionCard
-      title={canSwitch ? 'Change plan' : 'Choose a plan'}
+      title={canSwitch ? 'Change plan' : isFree ? 'Upgrade' : 'Choose a plan'}
       subtitle="Flat price per organization, not per user"
       actions={<IntervalToggle value={interval} onChange={setInterval} />}
       bodyClassName="p-4"
@@ -276,7 +332,7 @@ function ChangePlanCard({ summary }: { summary: BillingSummary }) {
         interval={interval}
         checkoutOptions={summary.checkoutOptions}
         currentPlan={
-          summary.access === BillingAccess.FULL ? summary.plan : null
+          summary.access === BillingAccess.FULL ? summary.effectivePlan : null
         }
         currentInterval={summary.billingInterval}
         pendingPlan={pendingPlan}
@@ -351,7 +407,7 @@ function BillingContent() {
         </SectionCard>
       ) : (
         <>
-          {data.plan ? (
+          {data.effectivePlan ? (
             <CurrentPlanCard summary={data} />
           ) : (
             <SectionCard title="No plan yet" bodyClassName="p-4">
@@ -366,7 +422,9 @@ function BillingContent() {
               </p>
             </SectionCard>
           )}
-          {data.plan !== PlanId.ENTERPRISE && <ChangePlanCard summary={data} />}
+          {data.effectivePlan !== PlanId.ENTERPRISE && (
+            <ChangePlanCard summary={data} />
+          )}
         </>
       )}
     </div>

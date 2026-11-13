@@ -2,20 +2,29 @@ import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { In } from 'typeorm';
 import {
+  ACTIVE_JOB_STATUSES,
   BILLING_DODO_PRODUCT_ENV,
   BillingAccess,
   BillingInterval,
+  getPlanActiveJobLimit,
   getPlanMemberLimit,
   OrgSubscriptionStatus,
   planHasFeature,
   PlanFeature,
+  PlanId,
   RedisCacheService,
   resolveBillingAccess,
+  resolveEffectivePlan,
 } from '@boilerplate/core';
-import { OrganizationRepository, UserRepository } from '@db/repositories';
-import { UserStatus } from '@db/enums';
+import {
+  JobRepository,
+  OrganizationRepository,
+  UserRepository,
+} from '@db/repositories';
+import { JobStatus, UserStatus } from '@db/enums';
 import { CACHE_KEYS, CACHE_TTL } from '@shared/cache-keys';
 import {
+  ActiveJobLimitReachedException,
   MemberLimitReachedException,
   PlanUpgradeRequiredException,
 } from './billing.errors';
@@ -35,12 +44,13 @@ export interface OrganizationBillingState {
   dodoSubscriptionId: string | null;
 }
 
-export interface MemberUsage {
+export interface UsageCount {
   count: number;
   limit: number | null;
 }
 
 const SEAT_STATUSES = [UserStatus.ACTIVE, UserStatus.INVITED];
+const ACTIVE_JOBS = ACTIVE_JOB_STATUSES.map((status) => status as JobStatus);
 const DODO_PRODUCT_ENV_KEYS = Object.keys(BILLING_DODO_PRODUCT_ENV);
 
 @Injectable()
@@ -49,6 +59,7 @@ export class BillingEntitlementsService {
     private readonly config: ConfigService,
     private readonly organizationRepository: OrganizationRepository,
     private readonly userRepository: UserRepository,
+    private readonly jobRepository: JobRepository,
     @Optional() private readonly cacheService?: RedisCacheService,
   ) {}
 
@@ -118,20 +129,33 @@ export class BillingEntitlementsService {
 
   accessFor(state: OrganizationBillingState): BillingAccess {
     if (this.isExempt(state)) return BillingAccess.FULL;
-    return resolveBillingAccess({
-      plan: state.plan,
-      status: state.status,
-      trialEndsAt: state.trialEndsAt,
-      subscriptionEndsAt: state.subscriptionEndsAt,
-      pastDueSince: state.pastDueSince,
-    });
+    return resolveBillingAccess(this.accessInput(state));
+  }
+
+  effectivePlanFor(state: OrganizationBillingState): PlanId | null {
+    return resolveEffectivePlan(this.accessInput(state));
   }
 
   featuresFor(state: OrganizationBillingState): PlanFeature[] {
     if (this.isExempt(state)) return Object.values(PlanFeature);
+    const plan = this.effectivePlanFor(state);
     return Object.values(PlanFeature).filter((feature) =>
-      planHasFeature(state.plan, feature),
+      planHasFeature(plan, feature),
     );
+  }
+
+  memberLimitFor(state: OrganizationBillingState): number | null {
+    if (this.isExempt(state)) return null;
+    const plan = this.effectivePlanFor(state);
+    return getPlanMemberLimit(
+      plan,
+      plan === state.plan ? state.memberLimitOverride : null,
+    );
+  }
+
+  activeJobLimitFor(state: OrganizationBillingState): number | null {
+    if (this.isExempt(state)) return null;
+    return getPlanActiveJobLimit(this.effectivePlanFor(state));
   }
 
   async hasFeature(
@@ -151,15 +175,47 @@ export class BillingEntitlementsService {
     }
   }
 
-  async getMemberUsage(organizationId: string): Promise<MemberUsage> {
+  async getMemberUsage(organizationId: string): Promise<UsageCount> {
     const state = await this.getState(organizationId);
     const count = await this.countMembers(organizationId);
-    return {
-      count,
-      limit: this.isExempt(state)
-        ? null
-        : getPlanMemberLimit(state.plan, state.memberLimitOverride),
-    };
+    return { count, limit: this.memberLimitFor(state) };
+  }
+
+  async getActiveJobUsage(organizationId: string): Promise<UsageCount> {
+    const state = await this.getState(organizationId);
+    const count = await this.countActiveJobs(organizationId);
+    return { count, limit: this.activeJobLimitFor(state) };
+  }
+
+  async assertActiveJobCapacity(
+    organizationId: string,
+    excludeJobId?: string,
+  ): Promise<void> {
+    const state = await this.getState(organizationId);
+    const limit = this.activeJobLimitFor(state);
+    if (limit === null) return;
+    const count = await this.countActiveJobs(organizationId, excludeJobId);
+    if (count + 1 > limit) {
+      throw new ActiveJobLimitReachedException(limit);
+    }
+  }
+
+  isActiveJobStatus(status: string | null | undefined): boolean {
+    return ACTIVE_JOBS.includes(status as JobStatus);
+  }
+
+  countActiveJobs(
+    organizationId: string,
+    excludeJobId?: string,
+  ): Promise<number> {
+    const query = this.jobRepository
+      .createQueryBuilder('job')
+      .where('job.organizationId = :organizationId', { organizationId })
+      .andWhere('job.status IN (:...statuses)', { statuses: ACTIVE_JOBS });
+    if (excludeJobId) {
+      query.andWhere('job.id != :excludeJobId', { excludeJobId });
+    }
+    return query.getCount();
   }
 
   async assertMemberCapacity(
@@ -176,6 +232,16 @@ export class BillingEntitlementsService {
     return this.userRepository.count({
       where: { organizationId, status: In(SEAT_STATUSES) },
     });
+  }
+
+  private accessInput(state: OrganizationBillingState) {
+    return {
+      plan: state.plan,
+      status: state.status,
+      trialEndsAt: state.trialEndsAt,
+      subscriptionEndsAt: state.subscriptionEndsAt,
+      pastDueSince: state.pastDueSince,
+    };
   }
 
   async invalidate(organizationId: string): Promise<void> {

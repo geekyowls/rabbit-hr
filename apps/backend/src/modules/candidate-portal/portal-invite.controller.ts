@@ -7,11 +7,12 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 import {
   UserSession,
   type UserSessionData,
 } from '@shared/decorators/user-session.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { RequirePermissions } from '@shared/decorators/require-permissions.decorator';
 import { ApiResponse } from '@shared/decorators/api-response.decorator';
 import { ApiCommonResponses } from '@shared/decorators/api-common-responses.decorator';
@@ -30,6 +31,7 @@ export class PortalInviteController {
   @Post(':id/portal-invite')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(PERMISSIONS_ENUM.CANDIDATE_UPDATE)
+  @RequirePlanFeature(PlanFeature.CANDIDATE_PORTAL)
   @ApiOperation({ summary: 'Email a candidate a link to the candidate portal' })
   @ApiResponse(PortalInviteResponseDto)
   async invite(

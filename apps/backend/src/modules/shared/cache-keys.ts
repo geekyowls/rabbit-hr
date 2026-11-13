@@ -13,6 +13,7 @@ export const CACHE_TTL = {
   PORTAL_OTP: 600,
   PORTAL_OTP_RATE: 900,
   BILLING_STATE: 60,
+  ONBOARDING_CHECKLIST: 30,
 } as const;
 
 export const CACHE_KEYS = {
@@ -25,6 +26,8 @@ export const CACHE_KEYS = {
   integrationCapabilities: (organizationId: string) =>
     `${organizationId}:integration:capabilities`,
   billingState: (organizationId: string) => `${organizationId}:billing:state`,
+  onboardingChecklist: (organizationId: string) =>
+    `${organizationId}:onboarding:checklist`,
   mailboxOauthNonce: (organizationId: string, nonce: string) =>
     `${organizationId}:mailbox-oauth-nonce:${nonce}`,
   dietShare: (organizationId: string, token: string) =>

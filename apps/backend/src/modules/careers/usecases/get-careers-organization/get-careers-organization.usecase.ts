@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { resolveAtsSettings } from '@db/entities';
 import { OrganizationRepository } from '@db/repositories';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import { findCareersOrganization } from '../careers-query';
 import { GetCareersOrganizationCommand } from './get-careers-organization.command';
 
@@ -8,6 +9,7 @@ import { GetCareersOrganizationCommand } from './get-careers-organization.comman
 export class GetCareersOrganization {
   constructor(
     private readonly organizationRepository: OrganizationRepository,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async execute(command: GetCareersOrganizationCommand) {
@@ -22,7 +24,7 @@ export class GetCareersOrganization {
       logo: organization.logo,
       website: organization.website,
       brandColor: settings.brandColor,
-      portalEnabled: settings.portalEnabled,
+      portalEnabled: await this.portalAvailability.isEnabled(organization),
     };
   }
 }

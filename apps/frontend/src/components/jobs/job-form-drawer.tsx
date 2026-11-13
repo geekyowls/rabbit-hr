@@ -60,8 +60,8 @@ import {
   EMPLOYMENT_TYPE_LABEL,
   RATE_UNIT_LABEL,
   WORK_MODE_LABEL,
-  errorMessage,
 } from './job-utils';
+import { apiErrorDescription } from '@/components/billing/billing-error';
 
 const NONE = 'none';
 const amount = z
@@ -478,7 +478,7 @@ export function JobFormDrawer({
     } catch (e) {
       toast.error(
         isEdit ? 'Could not update job' : 'Could not create job',
-        errorMessage(e),
+        apiErrorDescription(e),
       );
     }
   });

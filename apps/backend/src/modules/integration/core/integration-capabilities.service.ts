@@ -47,12 +47,19 @@ export class IntegrationCapabilitiesService {
     organizationId: string,
     userId: string,
   ): Promise<IntegrationCapabilities> {
-    const [organization, jobFeed, mailbox] = await Promise.all([
+    const [organization, jobFeed, mailbox, features] = await Promise.all([
       this.getOrganizationCapabilities(organizationId),
       this.isJobFeedEnabled(organizationId),
       this.getMailbox(organizationId, userId),
+      this.getPlanFeatures(organizationId),
     ]);
-    return { ...organization, jobFeed, mailbox };
+    return {
+      ...organization,
+      jobFeed,
+      mailbox: features.includes(PlanFeature.INBOX)
+        ? mailbox
+        : { connected: false, provider: null },
+    };
   }
 
   async getOrganizationCapabilities(

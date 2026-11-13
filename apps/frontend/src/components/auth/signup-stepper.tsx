@@ -9,9 +9,9 @@ export type SignupStep =
 const STEPS: { key: SignupStep; label: string }[] = [
   { key: 'email', label: 'Email' },
   { key: 'otp', label: 'Verify' },
-  { key: 'details', label: 'Profile' },
-  { key: 'context', label: 'About You' },
-  { key: 'welcome', label: 'Get Started' },
+  { key: 'details', label: 'Workspace' },
+  { key: 'context', label: 'About you' },
+  { key: 'welcome', label: 'Get started' },
 ];
 
 export function SignupStepper({ currentStep }: { currentStep: SignupStep }) {

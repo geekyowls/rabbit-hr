@@ -17,14 +17,12 @@ import {
   ALL_PERMISSIONS,
   EventName,
   OrganizationCreatedEvent,
-  addDays,
+  PlanId,
 } from '@boilerplate/core';
 import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
 import { AuthService } from '@modules/auth/services/auth.service';
 
 import { CreateOrganizationCommand } from './create-organization.command';
-
-const TRIAL_PERIOD_DAYS = 14;
 
 @Injectable()
 export class CreateOrganization {
@@ -75,8 +73,8 @@ export class CreateOrganization {
           status: OrganizationStatus.ACTIVE,
           logo: command.logo ?? null,
           isSystemOrg: false,
-          subscriptionStatus: OrgSubscriptionStatus.TRIAL,
-          trialEndsAt: addDays(TRIAL_PERIOD_DAYS, new Date()),
+          plan: PlanId.FREE,
+          subscriptionStatus: OrgSubscriptionStatus.ACTIVE,
         });
         const savedOrg = await manager.save(org);
 

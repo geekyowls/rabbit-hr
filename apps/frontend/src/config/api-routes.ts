@@ -262,6 +262,11 @@ export const API_ROUTES = {
     RESUME: '/billing/resume',
     SYNC: '/billing/sync',
   },
+  ONBOARDING: {
+    CHECKLIST: '/onboarding/checklist',
+    DISMISS: '/onboarding/dismiss',
+    SAMPLE_DATA: '/onboarding/sample-data',
+  },
   PUBLIC_OFFER_SIGN: {
     GET: (token: string) => `/public/offers/sign/${token}` as const,
     ACCEPT: (token: string) => `/public/offers/sign/${token}/accept` as const,

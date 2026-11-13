@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
@@ -42,13 +42,13 @@ export class RegisterBodyDto {
   @MaxLength(100)
   lastName?: string;
 
-  @ApiProperty({ example: '9876543210' })
+  @ApiPropertyOptional({ example: '7700900123' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(20)
-  phone!: string;
+  phone?: string;
 
-  @ApiProperty({ example: 'IN', default: 'IN' })
+  @ApiPropertyOptional({ example: 'GB' })
   @IsString()
   @IsOptional()
   @MaxLength(8)

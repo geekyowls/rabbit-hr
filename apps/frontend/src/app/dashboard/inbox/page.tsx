@@ -58,6 +58,8 @@ import type {
   ListInboxThreadsRequest,
   MovableEmailFolder,
 } from '@/types/inbox.type';
+import { PlanFeature } from '@boilerplate/shared';
+import { PlanFeatureGate } from '@/components/billing/plan-feature-gate';
 
 const PAGE_SIZE = 25;
 const INTEGRATIONS_PATH = '/dashboard/settings/integrations';
@@ -591,9 +593,11 @@ export default function InboxPage() {
         </div>
       }
     >
-      <Suspense fallback={<ListPageSkeleton filters={4} />}>
-        <InboxContent />
-      </Suspense>
+      <PlanFeatureGate feature={PlanFeature.INBOX}>
+        <Suspense fallback={<ListPageSkeleton filters={4} />}>
+          <InboxContent />
+        </Suspense>
+      </PlanFeatureGate>
     </PermissionGuard>
   );
 }

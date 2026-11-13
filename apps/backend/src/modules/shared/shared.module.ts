@@ -15,6 +15,7 @@ import { PipelineStageService } from './services/pipeline-stage.service';
 import { AtsSettingsService } from './services/ats-settings.service';
 import { CustomFieldValidator } from './services/custom-field-validator.service';
 import { ApplicationStageMover } from './services/application-stage-mover.service';
+import { PortalAvailabilityService } from './services/portal-availability.service';
 
 // Interceptors & Middleware
 import { ResponseInterceptor } from './framework/response.interceptor';
@@ -38,6 +39,7 @@ const SHARED_PROVIDERS = [
   AtsSettingsService,
   CustomFieldValidator,
   ApplicationStageMover,
+  PortalAvailabilityService,
   ResponseInterceptor,
   AuditInterceptor,
   RequestIdMiddleware,

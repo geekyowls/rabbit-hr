@@ -6,13 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { CountryCombobox } from '@/components/ui/country-combobox';
-import { PHONE_CODES, validatePhoneForCountry } from '@boilerplate/shared';
+import {
+  AGENCY_SIZE_LABELS,
+  AGENCY_SIZES,
+  PHONE_CODES,
+  PLANS,
+} from '@boilerplate/shared';
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
+  choosePlanHref,
+  clearPlanIntent,
   parsePlanIntent,
+  readPlanIntent,
   savePlanIntent,
 } from '@/components/billing/billing-links';
+import { useBillingSummary } from '@/hooks/queries/use-billing-query';
 import { zodResolver } from '@/lib/zod-resolver';
 import {
   sendOtpSchema,
@@ -21,6 +30,8 @@ import {
   VerifyOtpFormData,
   signupDetailsSchema,
   SignupDetailsFormData,
+  signupContextSchema,
+  SignupContextFormData,
 } from '@/schemas/auth.schema';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/contexts/session-context';
@@ -38,34 +49,34 @@ import Link from 'next/link';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { SignupStepper, type SignupStep } from './signup-stepper';
 import { fetchApi } from '@/utils/api-client';
-import { Mail, Check, CheckCircle, User, Users } from 'lucide-react';
+import { Mail, CheckCircle } from 'lucide-react';
 import { GoogleLoginButton } from './google-login-button';
 import { cn } from '@/lib/utils';
 
 const STEP_HEADERS: Record<SignupStep, { title: string; subtitle: string }> = {
   email: {
-    title: 'Create an account',
-    subtitle: 'Start your 7-day free trial',
+    title: 'Create your agency workspace',
+    subtitle: 'Free forever for one recruiter, no card needed',
   },
   otp: {
     title: 'Verify your email',
     subtitle: 'Enter the code we sent to your inbox',
   },
   details: {
-    title: 'Complete your profile',
-    subtitle: 'Almost there!',
+    title: 'Set up your workspace',
+    subtitle: 'Tell us who you are and the name of your agency',
   },
   context: {
-    title: 'Tell us about your practice',
-    subtitle: 'This helps us personalize your experience',
+    title: 'About your agency',
+    subtitle: 'This helps us tailor RabbitHR to your team',
   },
   welcome: {
-    title: 'Welcome to RabbitHR!',
-    subtitle: 'Your account is ready',
+    title: 'Welcome to RabbitHR',
+    subtitle: 'Your workspace is ready',
   },
   'waitlist-thanks': {
-    title: 'Thanks for your interest!',
-    subtitle: "We'll reach out to you soon.",
+    title: 'Thanks for your interest',
+    subtitle: 'We will be in touch soon',
   },
 };
 
@@ -91,7 +102,7 @@ export default function SignupForm({
     );
   }, [searchParams]);
   const [verifiedEmail, setVerifiedEmail] = useState('');
-  const [needsPhone, setNeedsPhone] = useState(
+  const [askAgencyName, setAskAgencyName] = useState(
     getInitialStep(searchParams) === 'context',
   );
 
@@ -125,7 +136,7 @@ export default function SignupForm({
               }}
               onGoogleNewUser={() => {
                 onAuthenticated?.();
-                setNeedsPhone(true);
+                setAskAgencyName(true);
                 setStep('context');
               }}
             />
@@ -158,12 +169,12 @@ export default function SignupForm({
           )}
           {step === 'context' && (
             <ContextStep
-              needsPhone={needsPhone}
+              askAgencyName={askAgencyName}
               onSuccess={() => setStep('welcome')}
             />
           )}
           {step === 'welcome' && (
-            <WelcomeStep onContinue={() => router.push('/dashboard')} />
+            <WelcomeStep onContinue={(href) => router.push(href)} />
           )}
           {step === 'waitlist-thanks' && (
             <WaitlistThanksStep onDone={() => router.push('/')} />
@@ -235,7 +246,7 @@ function EmailStep({
           <Input
             id="email"
             type="email"
-            placeholder="john@example.com"
+            placeholder="you@agency.co.uk"
             {...register('email')}
           />
           {errors.email && (
@@ -427,24 +438,17 @@ function DetailsStep({
   const {
     register,
     handleSubmit,
-    control,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignupDetailsFormData>({
     resolver: zodResolver(signupDetailsSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
-      phoneCountryCode: 'IN',
-      phone: '',
       password: '',
       confirmPassword: '',
       organizationName: '',
     },
   });
-
-  const watchedCountryCode = watch('phoneCountryCode') || 'IN';
-  const phoneCode = PHONE_CODES[watchedCountryCode] || '';
 
   const onSubmit = async (data: SignupDetailsFormData) => {
     try {
@@ -455,8 +459,6 @@ function DetailsStep({
           email,
           firstName: data.firstName,
           lastName: data.lastName || undefined,
-          phone: data.phone,
-          phoneCountryCode: data.phoneCountryCode,
           password: data.password,
           organizationName: data.organizationName,
         }),
@@ -526,72 +528,22 @@ function DetailsStep({
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="firstName">First name</Label>
-          <Input id="firstName" placeholder="John" {...register('firstName')} />
+          <Input id="firstName" placeholder="Jane" {...register('firstName')} />
           {errors.firstName && (
             <p className="text-sm text-red-500">{errors.firstName.message}</p>
           )}
         </div>
         <div className="grid gap-2">
           <Label htmlFor="lastName">Last name</Label>
-          <Input id="lastName" placeholder="Doe" {...register('lastName')} />
+          <Input id="lastName" placeholder="Smith" {...register('lastName')} />
         </div>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="phoneCountryCode">Country</Label>
-        <Controller
-          name="phoneCountryCode"
-          control={control}
-          render={({ field }) => (
-            <CountryCombobox
-              value={field.value}
-              onValueChange={field.onChange}
-            />
-          )}
-        />
-        {errors.phoneCountryCode && (
-          <p className="text-sm text-red-500">
-            {errors.phoneCountryCode.message}
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <div className="grid gap-2">
-          <Label htmlFor="phoneCode">Code</Label>
-          <Input
-            id="phoneCode"
-            value={phoneCode}
-            disabled
-            className="bg-muted"
-          />
-        </div>
-        <div className="col-span-2 grid gap-2">
-          <Label htmlFor="phone">Phone number</Label>
-          <Controller
-            name="phone"
-            control={control}
-            render={({ field }) => (
-              <PhoneInput
-                id="phone"
-                countryCode={watchedCountryCode}
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-              />
-            )}
-          />
-          {errors.phone && (
-            <p className="text-sm text-red-500">{errors.phone.message}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="organizationName">Organization name</Label>
+        <Label htmlFor="organizationName">Agency name</Label>
         <Input
           id="organizationName"
-          placeholder="My Practice"
+          placeholder="e.g. Northwind Recruitment"
           {...register('organizationName')}
         />
         {errors.organizationName && (
@@ -674,215 +626,169 @@ function DetailsStep({
   );
 }
 
-const TEAM_SIZE_OPTIONS = ['2-5', '6-10', '11-25', '25+'] as const;
-
 function ContextStep({
   onSuccess,
-  needsPhone,
+  askAgencyName,
 }: {
   onSuccess: () => void;
-  needsPhone: boolean;
+  askAgencyName: boolean;
 }) {
   const { trackAuthEvent } = useAnalytics();
-  const [practiceType, setPracticeType] = useState<'solo' | 'team' | null>(
-    null,
-  );
-  const [teamSize, setTeamSize] = useState<
-    '2-5' | '6-10' | '11-25' | '25+' | null
-  >(null);
-  const [phoneCountryCode, setPhoneCountryCode] = useState('IN');
-  const [phone, setPhone] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { organization } = useSession();
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupContextFormData>({
+    resolver: zodResolver(signupContextSchema),
+    defaultValues: {
+      organizationName: askAgencyName ? (organization?.name ?? '') : undefined,
+      phoneCountryCode: 'GB',
+      phone: '',
+    },
+  });
 
+  const phoneCountryCode = watch('phoneCountryCode') || 'GB';
   const phoneCode = PHONE_CODES[phoneCountryCode] || '';
 
-  const handleSubmit = async () => {
-    if (!practiceType) return;
-
-    if (needsPhone) {
-      const result = validatePhoneForCountry(phoneCountryCode, phone);
-      if (!result.valid) {
-        setPhoneError(result.error || 'Invalid phone number');
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
+  const onSubmit = async (data: SignupContextFormData) => {
+    const phone = data.phone?.trim();
     try {
       await fetchApi(API_ROUTES.AUTH.ONBOARDING_CONTEXT, {
         method: 'POST',
         body: JSON.stringify({
-          practiceType,
-          ...(practiceType === 'team' && teamSize ? { teamSize } : {}),
-          ...(needsPhone ? { phone, phoneCountryCode } : {}),
+          agencySize: data.agencySize,
+          ...(askAgencyName && data.organizationName
+            ? { organizationName: data.organizationName }
+            : {}),
+          ...(phone ? { phone, phoneCountryCode: data.phoneCountryCode } : {}),
         }),
       });
-      trackAuthEvent('SIGNUP_CONTEXT_COMPLETED', { practiceType, teamSize });
+      trackAuthEvent('SIGNUP_CONTEXT_COMPLETED', {
+        agencySize: data.agencySize,
+      });
       onSuccess();
-    } catch {
-      toast.error('Something went wrong', 'Please try again');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      toast.error(
+        'Could not save your details',
+        err instanceof Error ? err.message : 'Please try again',
+      );
     }
   };
 
-  const canContinue =
-    (practiceType === 'solo' || (practiceType === 'team' && teamSize)) &&
-    (!needsPhone || phone.trim().length > 0);
-
   return (
-    <div className="grid gap-6">
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            setPracticeType('solo');
-            setTeamSize(null);
-          }}
-          className={cn(
-            'relative flex flex-col items-center gap-3 rounded-lg border-2 p-5 transition-all hover:border-primary/50',
-            practiceType === 'solo'
-              ? 'border-primary bg-primary/10 ring-2 ring-primary/20 shadow-sm'
-              : practiceType
-                ? 'border-border opacity-60'
-                : 'border-border',
-          )}
-        >
-          {practiceType === 'solo' && (
-            <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Check className="h-3 w-3" />
-            </div>
-          )}
-          <div
-            className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-full',
-              practiceType === 'solo'
-                ? 'bg-primary/15 text-primary'
-                : 'bg-muted text-muted-foreground',
-            )}
-          >
-            <User className="h-6 w-6" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium">Solo practice</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Just me</p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setPracticeType('team')}
-          className={cn(
-            'relative flex flex-col items-center gap-3 rounded-lg border-2 p-5 transition-all hover:border-primary/50',
-            practiceType === 'team'
-              ? 'border-primary bg-primary/10 ring-2 ring-primary/20 shadow-sm'
-              : practiceType
-                ? 'border-border opacity-60'
-                : 'border-border',
-          )}
-        >
-          {practiceType === 'team' && (
-            <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Check className="h-3 w-3" />
-            </div>
-          )}
-          <div
-            className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-full',
-              practiceType === 'team'
-                ? 'bg-primary/15 text-primary'
-                : 'bg-muted text-muted-foreground',
-            )}
-          >
-            <Users className="h-6 w-6" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium">Team practice</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Multiple people
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5">
+      {askAgencyName && (
+        <div className="grid gap-2">
+          <Label htmlFor="organizationName">Agency name</Label>
+          <Input
+            id="organizationName"
+            placeholder="e.g. Northwind Recruitment"
+            {...register('organizationName')}
+          />
+          {errors.organizationName && (
+            <p className="text-sm text-red-500">
+              {errors.organizationName.message}
             </p>
-          </div>
-        </button>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-2">
+        <Label>How many people work at your agency?</Label>
+        <Controller
+          name="agencySize"
+          control={control}
+          render={({ field }) => (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {AGENCY_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => field.onChange(size)}
+                  className={cn(
+                    'rounded-md border px-3 py-2 text-sm font-medium transition-all',
+                    field.value === size
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border hover:border-primary/50',
+                  )}
+                >
+                  {AGENCY_SIZE_LABELS[size]}
+                </button>
+              ))}
+            </div>
+          )}
+        />
+        {errors.agencySize && (
+          <p className="text-sm text-red-500">{errors.agencySize.message}</p>
+        )}
       </div>
 
-      {practiceType === 'team' && (
+      <div className="grid gap-3">
         <div className="grid gap-2">
-          <Label>How many people on your team?</Label>
-          <div className="grid grid-cols-4 gap-2">
-            {TEAM_SIZE_OPTIONS.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setTeamSize(size)}
-                className={cn(
-                  'rounded-md border px-3 py-2 text-sm font-medium transition-all',
-                  teamSize === size
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border hover:border-primary/50',
-                )}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
+          <Label htmlFor="phoneCountryCode">Country</Label>
+          <Controller
+            name="phoneCountryCode"
+            control={control}
+            render={({ field }) => (
+              <CountryCombobox
+                value={field.value}
+                onValueChange={field.onChange}
+              />
+            )}
+          />
         </div>
-      )}
-
-      {needsPhone && (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="phoneCountryCode">Country</Label>
-            <CountryCombobox
-              value={phoneCountryCode}
-              onValueChange={(value) => {
-                setPhoneCountryCode(value);
-                setPhoneError('');
-              }}
+            <Label htmlFor="phoneCode">Code</Label>
+            <Input
+              id="phoneCode"
+              value={phoneCode}
+              disabled
+              className="bg-muted"
             />
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="grid gap-2">
-              <Label htmlFor="phoneCode">Code</Label>
-              <Input
-                id="phoneCode"
-                value={phoneCode}
-                disabled
-                className="bg-muted"
-              />
-            </div>
-            <div className="col-span-2 grid gap-2">
-              <Label htmlFor="phone">Phone number</Label>
-              <PhoneInput
-                id="phone"
-                countryCode={phoneCountryCode}
-                value={phone}
-                onChange={(value) => {
-                  setPhone(value);
-                  setPhoneError('');
-                }}
-              />
-            </div>
+          <div className="col-span-2 grid gap-2">
+            <Label htmlFor="phone">Phone number (optional)</Label>
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  id="phone"
+                  countryCode={phoneCountryCode}
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                />
+              )}
+            />
           </div>
-          {phoneError && <p className="text-sm text-red-500">{phoneError}</p>}
-          <p className="text-xs text-muted-foreground">
-            We may call you to help you get set up.
-          </p>
         </div>
-      )}
+        {errors.phone && (
+          <p className="text-sm text-red-500">{errors.phone.message}</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Add a number if you would like help setting up
+        </p>
+      </div>
 
-      <Button
-        className="w-full"
-        onClick={handleSubmit}
-        disabled={!canContinue || isSubmitting}
-      >
+      <Button className="w-full" type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Saving...' : 'Continue'}
       </Button>
-    </div>
+    </form>
   );
 }
 
-function WelcomeStep({ onContinue }: { onContinue: () => void }) {
+function WelcomeStep({ onContinue }: { onContinue: (href: string) => void }) {
+  const { data: billing } = useBillingSummary();
+  const [intent] = useState(readPlanIntent);
+  const upgradeHref =
+    intent.plan && billing?.configured ? choosePlanHref(intent) : null;
+  const planName = intent.plan ? PLANS[intent.plan].name : null;
+
   return (
     <div className="grid gap-6 text-center">
       <div className="flex justify-center">
@@ -892,16 +798,36 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
       </div>
 
       <div className="grid gap-2">
-        <h3 className="text-lg font-semibold">Your account is ready!</h3>
+        <h3 className="text-lg font-semibold">Your workspace is ready</h3>
         <p className="text-sm text-muted-foreground">
-          Start exploring right away
+          {upgradeHref
+            ? `You are on the Free plan. Start your ${planName} trial next`
+            : 'You are on the Free plan, upgrade any time from Billing'}
         </p>
       </div>
 
-      <div className="grid gap-3">
-        <Button className="w-full" onClick={onContinue}>
-          Go to dashboard
-        </Button>
+      <div className="grid gap-2">
+        {upgradeHref ? (
+          <>
+            <Button className="w-full" onClick={() => onContinue(upgradeHref)}>
+              {`Continue to ${planName}`}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                clearPlanIntent();
+                onContinue('/dashboard');
+              }}
+            >
+              Stay on Free
+            </Button>
+          </>
+        ) : (
+          <Button className="w-full" onClick={() => onContinue('/dashboard')}>
+            Go to dashboard
+          </Button>
+        )}
       </div>
     </div>
   );

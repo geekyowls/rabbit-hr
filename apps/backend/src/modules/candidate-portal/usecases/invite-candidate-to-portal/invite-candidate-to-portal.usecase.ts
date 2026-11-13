@@ -6,6 +6,7 @@ import {
   OrganizationRepository,
   UserRepository,
 } from '@db/repositories';
+import { resolveAtsSettings } from '@db/entities';
 import { ActivityType } from '@db/enums';
 import {
   loadPortalCandidate,
@@ -52,7 +53,10 @@ export class InviteCandidateToPortal {
         select: ['id', 'firstName', 'lastName', 'email'],
       }),
     ]);
-    const branding = toPortalBranding(organization);
+    const branding = toPortalBranding(
+      organization,
+      resolveAtsSettings(organization.atsSettings).portalEnabled,
+    );
     if (!branding.portalEnabled) {
       throw new BadRequestException(
         'Turn on the candidate portal in hiring preferences first',

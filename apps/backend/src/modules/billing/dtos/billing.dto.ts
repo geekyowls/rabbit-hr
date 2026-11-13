@@ -26,7 +26,7 @@ export class SyncSubscriptionDto {
   subscriptionId: string;
 }
 
-export class BillingMembersDto {
+export class BillingUsageDto {
   @ApiProperty()
   count: number;
 
@@ -55,6 +55,9 @@ export class BillingSummaryDto {
   @ApiPropertyOptional({ enum: PlanId, nullable: true })
   plan: PlanId | null;
 
+  @ApiPropertyOptional({ enum: PlanId, nullable: true })
+  effectivePlan: PlanId | null;
+
   @ApiPropertyOptional({ enum: BillingInterval, nullable: true })
   billingInterval: BillingInterval | null;
 
@@ -79,8 +82,14 @@ export class BillingSummaryDto {
   @ApiProperty({ enum: PlanFeature, isArray: true })
   features: PlanFeature[];
 
-  @ApiProperty({ type: BillingMembersDto })
-  members: BillingMembersDto;
+  @ApiProperty({ type: BillingUsageDto })
+  members: BillingUsageDto;
+
+  @ApiProperty({ type: BillingUsageDto })
+  activeJobs: BillingUsageDto;
+
+  @ApiProperty()
+  overLimit: boolean;
 
   @ApiProperty()
   hasSubscription: boolean;

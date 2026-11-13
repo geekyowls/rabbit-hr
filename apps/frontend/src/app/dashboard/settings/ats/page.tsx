@@ -46,6 +46,9 @@ import {
   SALARY_PERIODS,
   type AtsSettings,
 } from '@/types/ats-settings.type';
+import { PlanFeature } from '@boilerplate/shared';
+import { usePlanFeature } from '@/hooks/queries/use-billing-query';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
 
 const schema = z.object({
   defaultCurrency: z.string().regex(/^[A-Z]{3}$/, 'Choose a currency'),
@@ -135,6 +138,9 @@ function AtsSettingsContent() {
   const settings = data ?? sessionSettings;
   const update = useUpdateAtsSettingsMutation();
   const { organization } = useSession();
+  const { hasFeature: hasPortal } = usePlanFeature(
+    PlanFeature.CANDIDATE_PORTAL,
+  );
   const portalUrl =
     organization?.slug && typeof window !== 'undefined'
       ? `${window.location.origin}/portal/login?org=${encodeURIComponent(organization.slug)}`
@@ -363,20 +369,27 @@ function AtsSettingsContent() {
         subtitle="Let candidates sign in with an email code to track applications, interviews, offers and documents"
         bodyClassName="p-4"
         actions={
-          <Controller
-            name="portalEnabled"
-            control={control}
-            render={({ field }) => (
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  aria-label="Enable candidate portal"
-                />
-                {field.value ? 'On' : 'Off'}
-              </label>
-            )}
-          />
+          hasPortal ? (
+            <Controller
+              name="portalEnabled"
+              control={control}
+              render={({ field }) => (
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Enable candidate portal"
+                  />
+                  {field.value ? 'On' : 'Off'}
+                </label>
+              )}
+            />
+          ) : (
+            <UpgradeHint
+              feature={PlanFeature.CANDIDATE_PORTAL}
+              action="turn on the candidate portal"
+            />
+          )
         }
       >
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">

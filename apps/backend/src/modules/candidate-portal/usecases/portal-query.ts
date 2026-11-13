@@ -27,6 +27,7 @@ import {
 } from '@db/enums';
 import { offerSignStatus } from '@modules/offer/usecases/offer-signing';
 import { PipelineStageService } from '@shared/services/pipeline-stage.service';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 
 export const PORTAL_STAGE_LABELS: Record<PipelineStageCategory, string> = {
   [PipelineStageCategory.APPLIED]: 'Application received',
@@ -71,6 +72,7 @@ export function toPortalBranding(
     OrganizationEntity,
     'name' | 'slug' | 'logo' | 'website' | 'atsSettings'
   >,
+  portalEnabled: boolean,
 ): PortalBranding {
   const settings = resolveAtsSettings(organization.atsSettings);
   return {
@@ -80,12 +82,13 @@ export function toPortalBranding(
     website: organization.website,
     brandColor: settings.brandColor,
     welcomeMessage: settings.portalWelcomeMessage,
-    portalEnabled: settings.portalEnabled,
+    portalEnabled,
   };
 }
 
 export async function findPortalOrganizationBySlug(
   organizationRepository: OrganizationRepository,
+  portalAvailability: PortalAvailabilityService,
   slug: string,
   options: { requireEnabled?: boolean } = {},
 ): Promise<OrganizationEntity> {
@@ -98,7 +101,7 @@ export async function findPortalOrganizationBySlug(
   }
   if (
     options.requireEnabled !== false &&
-    !resolveAtsSettings(organization.atsSettings).portalEnabled
+    !(await portalAvailability.isEnabled(organization))
   ) {
     throw new NotFoundException('Candidate portal is not available');
   }

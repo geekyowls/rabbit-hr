@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
+import { PlanFeature } from '@boilerplate/core';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import { OfferEntity } from '@db/entities';
 import { ActivityRepository, OfferRepository } from '@db/repositories';
 import { OfferStatus, PipelineStageCategory } from '@db/enums';
@@ -25,6 +27,7 @@ export class SendOffer {
     private readonly offerLetterService: OfferLetterService,
     private readonly getOffer: GetOffer,
     private readonly config: ConfigService,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: OfferActionCommand) {
@@ -36,14 +39,18 @@ export class SendOffer {
     );
     assertOfferStatus(offer, [OfferStatus.APPROVED], 'send');
     const sentAt = new Date();
-    const token = generateSignToken();
+    const eSign = await this.entitlements.hasFeature(
+      organizationId,
+      PlanFeature.OFFER_ESIGN,
+    );
+    const token = eSign ? generateSignToken() : null;
     const letter = await this.offerLetterService.renderLetter(offer, userId);
 
     const saved = await this.dataSource.transaction(async (manager) => {
       offer.status = OfferStatus.SENT;
       offer.sentAt = sentAt;
       offer.signToken = token;
-      offer.signTokenExpiresAt = signTokenExpiry(offer, sentAt);
+      offer.signTokenExpiresAt = token ? signTokenExpiry(offer, sentAt) : null;
       offer.sentLetterBody = letter;
       offer.signedAt = null;
       offer.signedName = null;
@@ -78,7 +85,7 @@ export class SendOffer {
     this.offerLetterService.sendInBackground(
       saved,
       userId,
-      signUrl(this.config, token),
+      token ? signUrl(this.config, token) : null,
     );
     return this.getOffer.execute(saved.id, organizationId);
   }

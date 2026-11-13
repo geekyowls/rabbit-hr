@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OrganizationRepository } from '@db/repositories';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import {
   findPortalOrganizationBySlug,
   PortalBranding,
@@ -11,14 +12,19 @@ import { GetPortalBrandingCommand } from './get-portal-branding.command';
 export class GetPortalBranding {
   constructor(
     private readonly organizationRepository: OrganizationRepository,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async execute(command: GetPortalBrandingCommand): Promise<PortalBranding> {
     const organization = await findPortalOrganizationBySlug(
       this.organizationRepository,
+      this.portalAvailability,
       command.orgSlug,
       { requireEnabled: false },
     );
-    return toPortalBranding(organization);
+    return toPortalBranding(
+      organization,
+      await this.portalAvailability.isEnabled(organization),
+    );
   }
 }
