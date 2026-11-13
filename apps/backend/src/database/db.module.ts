@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { join } from 'path';
+import { extname, join } from 'path';
 import {
   UserEntity,
   OrganizationEntity,
@@ -180,15 +180,18 @@ const repositories = [
         const isCI = config.get<string>('CI');
         const isDev = nodeEnv === 'development';
         const synchronize = isDev && !isCI;
+        const migrationsRun =
+          nodeEnv === 'production' &&
+          config.get<string>('RUN_MIGRATIONS') !== 'false';
 
         return {
           type: 'postgres',
           url: config.get<string>('DB_URL') ?? '',
           autoLoadEntities: true,
           entities,
-          migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+          migrations: [join(__dirname, `migrations/*${extname(__filename)}`)],
           synchronize,
-          migrationsRun: nodeEnv === 'production',
+          migrationsRun,
           logging: isDev ? true : ['error', 'warn'],
           maxQueryExecutionTime: isDev ? 500 : 1000,
           extra: {

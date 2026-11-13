@@ -1,23 +1,26 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MailService, ResendMailService, SESMailService } from './mail.service';
+import {
+  DisabledMailService,
+  MailService,
+  ResendMailService,
+  SESMailService,
+} from './mail.service';
 
-function getMailServiceClass(provider: string | undefined) {
-  const normalizedProvider = provider?.toUpperCase();
-  switch (normalizedProvider) {
-    case 'SES':
-      return SESMailService;
-    case 'RESEND':
-      return ResendMailService;
-    default:
-      return ResendMailService; // Default to Resend
-  }
+function getMailServiceClass(configService: ConfigService) {
+  const provider = configService.get<string>('MAIL_PROVIDER')?.toUpperCase();
+  if (provider === 'SES') return SESMailService;
+  if (configService.get<string>('RESEND_API_KEY')) return ResendMailService;
+  new Logger('MailService').warn(
+    'RESEND_API_KEY is not set, outgoing email is disabled',
+  );
+  return DisabledMailService;
 }
 
 export const mailService = {
   provide: MailService,
   useFactory: (configService: ConfigService) => {
-    const mailProvider = configService.get<string>('MAIL_PROVIDER');
-    const MailClass = getMailServiceClass(mailProvider);
+    const MailClass = getMailServiceClass(configService);
     return new MailClass();
   },
   inject: [ConfigService],
