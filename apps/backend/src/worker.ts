@@ -4,8 +4,11 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { WorkerModule } from './worker.module';
 import { JsonLogger } from './modules/shared/framework/json-logger';
+import { assertProductionEnv } from './modules/shared/framework/production-env';
 
 async function bootstrap() {
+  assertProductionEnv('worker');
+  process.env.RUN_MIGRATIONS = 'false';
   const app = await NestFactory.createApplicationContext(WorkerModule, {
     logger:
       process.env.NODE_ENV === 'production'

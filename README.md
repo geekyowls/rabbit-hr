@@ -15,7 +15,7 @@ An open source alternative to Bullhorn, Greenhouse, Ashby, Lever and Recruit CRM
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Features](#features) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Architecture](#architecture) · [Roadmap](#roadmap) · [Contributing](#contributing)
+[Features](#features) · [Screenshots](#screenshots) · [Self-host with Docker](#self-host-with-docker) · [Quick start](#quick-start) · [Deploy](#deploy-to-production) · [Architecture](#architecture) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
 ![RabbitHR dashboard](docs/screenshots/dashboard.jpg)
 
@@ -95,6 +95,21 @@ Comparison reflects publicly available information and may change. Product names
   <em>Candidate portal</em>
 </p>
 
+## Self-host with Docker
+
+Runs Postgres, Redis, S3 compatible storage ([RustFS](https://github.com/rustfs/rustfs)), the API, the worker and the web app with Docker Compose.
+
+```bash
+git clone https://github.com/geekyowls/rabbit-hr.git && cd rabbit-hr
+cp .env.example .env
+docker compose up -d --build
+docker compose exec api node dist/scripts/seed.js   # optional demo organization and sample data
+```
+
+Open `http://localhost:13000` and sign in with `admin@rabbithr.test` / `Admin@123`. The API listens on `http://localhost:14000` and storage on `http://localhost:19000`; change the ports in `.env`.
+
+The defaults are for trying RabbitHR on your own machine. Before exposing it, replace every `change-me` value and the all-zero `INTEGRATION_ENCRYPTION_KEY` (`openssl rand -hex 32`), set `FRONTEND_URL`, `NEXT_PUBLIC_API_URL` and `S3_ENDPOINT` to public URLs and rebuild the web app with `docker compose up -d --build`. Email is optional: without `RESEND_API_KEY` (or SES credentials) the app runs and skips sending email, so invites and login codes are not delivered.
+
 ## Quick start
 
 ### Prerequisites
@@ -132,6 +147,48 @@ The careers page lives at `/careers?org=<slug>` and the candidate portal at `/po
 
 Every integration is optional. Features that depend on one stay hidden until it is connected under **Settings > Integrations**. Provider credentials (Google, Microsoft, Zoom, Plivo, WappCloud) are configured through environment variables, see `apps/backend/.env.example`.
 
+## Deploy to production
+
+Two images, both built from the repository root:
+
+| Image | Dockerfile | Runs |
+| --- | --- | --- |
+| Backend | `docker/backend.Dockerfile` | API by default (port 4000, health check at `/api/v1/health`); the worker with the command `node dist/src/worker.js` |
+| Web app | `docker/frontend.Dockerfile` | Static export served by nginx on port 8080; build args `NEXT_PUBLIC_*` are baked in at build time |
+
+```bash
+docker build -f docker/backend.Dockerfile -t rabbithr-backend .
+docker build -f docker/frontend.Dockerfile --build-arg NEXT_PUBLIC_API_URL=https://api.example.com -t rabbithr-web .
+```
+
+The web app is plain static files, so `apps/frontend/out` from `pnpm build:packages && pnpm --filter frontend build` can also be hosted on Cloudflare Pages or any static host that resolves `/path` to `/path.html`.
+
+**Run one API container and one or more worker containers from the same backend image, with the same environment.** With `NODE_ENV=production` both refuse to start and list what is missing when a required variable is unset:
+
+| Variable | Notes |
+| --- | --- |
+| `NODE_ENV` | `production` (set by the image) |
+| `DB_URL` | Postgres connection URL |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Queues, caching and rate limits |
+| `FRONTEND_URL` | Web app URL, used in links and as the CORS origin (`CORS_ORIGINS` adds more) |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | At least 32 characters each |
+| `CANDIDATE_PORTAL_JWT_ACCESS_SECRET`, `CANDIDATE_PORTAL_JWT_REFRESH_SECRET` | At least 32 characters each |
+| `INTEGRATION_ENCRYPTION_KEY` | 64 hex characters (`openssl rand -hex 32`) |
+| `S3_ENDPOINT`, `S3_BUCKET_NAME`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | File storage; the endpoint must be reachable from browsers and the bucket must allow CORS `PUT` and `GET` from `FRONTEND_URL` |
+| `MAIL_PROVIDER`, `RESEND_API_KEY` or `SES_*`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME` | Email; optional but needed for invites and login codes |
+| `TRUST_PROXY` | Number of reverse proxies in front of the API, used for client IPs and rate limits (default `true`, trust all) |
+
+See `apps/backend/.env.example` for every optional integration.
+
+**Migrations** run automatically when the API starts in production; the worker never runs them. To run or inspect them by hand from the backend image:
+
+```bash
+node node_modules/typeorm/cli.js migration:show -d dist/src/database/data-source.js
+node node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js
+```
+
+Swagger (`/api/docs`) is only served outside production.
+
 ## Architecture
 
 ```
@@ -146,7 +203,7 @@ packages/
 - **Backend**: command and use case pattern, JWT access and refresh tokens, separate candidate portal tokens, Redis backed queues and rate limits
 - **Frontend**: shadcn/ui, Radix and Tailwind CSS, TanStack Query and Table, react-hook-form and zod
 - **Processes**: one image runs as the API or the worker
-- **Database**: TypeORM `synchronize` in development; generate migrations before deploying to production
+- **Database**: TypeORM `synchronize` in development, migrations in production
 
 Contributor conventions live in [`CLAUDE.md`](CLAUDE.md), [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md) and [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md).
 

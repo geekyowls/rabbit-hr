@@ -9,10 +9,20 @@ import { LoggingInterceptor } from './modules/shared/framework/logging.intercept
 import { JsonLogger } from './modules/shared/framework/json-logger';
 import { AuditInterceptor } from './modules/shared/framework/audit.interceptor';
 import { GlobalExceptionFilter } from './modules/shared/filters/global-exception.filter';
+import { assertProductionEnv } from './modules/shared/framework/production-env';
 import helmet from 'helmet';
 import * as express from 'express';
 
+function parseTrustProxy(value: string | undefined): boolean | number | string {
+  if (!value || value === 'true') return true;
+  if (value === 'false') return false;
+  const hops = Number(value);
+  return Number.isInteger(hops) ? hops : value;
+}
+
 async function bootstrap() {
+  assertProductionEnv('api');
+
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     logger:
@@ -20,14 +30,15 @@ async function bootstrap() {
   });
 
   const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.set('trust proxy', true);
+  expressApp.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   const isDev = process.env.NODE_ENV !== 'production';
 
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',')
+  const corsOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL)
+    ?.split(',')
     .map((o) => o.trim())
     .filter(Boolean);
 
