@@ -20,6 +20,8 @@ import {
   isApiKeyProvider,
   type ApiKeyCredentials,
 } from '../../adapters/api-key-providers';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
+import { planFeatureForIntegration } from '../../core/integration-capabilities.types';
 
 const nonEmpty = (value?: string): string | undefined =>
   value && value.trim() !== '' ? value.trim() : undefined;
@@ -30,6 +32,7 @@ export class SaveCredentials {
     private readonly supportedIntegrationRepository: SupportedIntegrationRepository,
     private readonly organizationIntegrationRepository: OrganizationIntegrationRepository,
     private readonly configService: ConfigService,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: SaveCredentialsCommand): Promise<{
@@ -56,6 +59,14 @@ export class SaveCredentials {
     if (integration.authType !== IntegrationAuthType.API_KEY) {
       throw new BadRequestException(
         `Integration "${command.provider}" does not support API key authentication`,
+      );
+    }
+
+    const planFeature = planFeatureForIntegration(integration);
+    if (planFeature) {
+      await this.entitlements.assertFeature(
+        command.organizationId,
+        planFeature,
       );
     }
 

@@ -113,6 +113,8 @@ export enum PERMISSIONS_ENUM {
   WHATSAPP_TEMPLATE_MANAGE = 'whatsapp:template:manage',
 
   JOB_FEED_MANAGE = 'job-feed:manage',
+
+  BILLING_MANAGE = 'billing:manage',
 }
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS_ENUM);
@@ -352,5 +354,9 @@ export const PERMISSION_GROUPS: Record<
   jobFeed: {
     label: 'Job Board Feed',
     permissions: [PERMISSIONS_ENUM.JOB_FEED_MANAGE],
+  },
+  billing: {
+    label: 'Billing',
+    permissions: [PERMISSIONS_ENUM.BILLING_MANAGE],
   },
 };

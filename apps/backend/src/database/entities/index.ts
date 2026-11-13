@@ -37,3 +37,4 @@ export * from './interviewer-availability.entity';
 export * from './user-time-off.entity';
 export * from './interview-booking-link.entity';
 export * from './candidate-portal-session.entity';
+export * from './billing-webhook-event.entity';

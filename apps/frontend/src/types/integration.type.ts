@@ -1,3 +1,4 @@
+import type { PlanFeature } from '@boilerplate/shared';
 export type IntegrationCategory =
   | 'calendar'
   | 'video_conferencing'
@@ -28,6 +29,7 @@ export interface IntegrationListItem {
   status?: IntegrationStatus;
   errorMessage?: string | null;
   webhookToken?: string | null;
+  planFeature: PlanFeature | null;
 }
 
 export interface SaveCredentialsResponse {

@@ -406,6 +406,18 @@ Provider adapters live in `src/modules/integration/adapters/`.
   - Body: `{ page, limit, actorId?, action?, method?, startDate?, endDate? }`
 - `GET /:id`: permission `AUDIT_READ`
 
+### Billing (`/api/v1/billing`)
+
+Plans live in ONE shared config (`packages/shared/src/billing.ts`: `PLANS`, `PlanFeature`, `resolveBillingAccess`). Payments go through the `PaymentProvider` interface (`modules/billing/services/payment-provider.interface.ts`, token `PAYMENT_PROVIDER`); Dodo is the only implementation today.
+
+- `GET /`: authenticated, plan, status, access (`full`/`read_only`/`needs_plan`), features, member usage, checkout options
+- `POST /checkout`, `/change-plan`, `/portal`, `/cancel`, `/resume`, `/sync`: permission `BILLING_MANAGE`
+- `POST /webhooks/dodo`: public, Standard Webhooks signature verified, idempotent via `billing_webhook_events`
+- `BillingEntitlementsService` (global `BillingCoreModule`, API + worker): `assertFeature`, `assertMemberCapacity`, cached org billing state (`${organizationId}:billing:state`)
+- `@RequirePlanFeature(PlanFeature.X)` gates Growth features; `IntegrationCapabilitiesService` masks calls, WhatsApp, calendar and job feed by plan
+- `BillingAccessInterceptor` (APP_INTERCEPTOR) returns 402 on mutations when access is not `full`, except billing, auth, `users/me`, `me/*`, system admin and read-only POSTs (`/list`, `/board`, `/preview`)
+- Enforcement is off when Dodo env is missing or `BILLING_ENFORCEMENT_DISABLED=true`; the system org is always exempt
+
 ### System Admin (`/api/v1/system-admin`)
 
 All guarded by `SystemAdminGuard` (user's organization has `isSystemOrg = true`):
@@ -415,6 +427,7 @@ All guarded by `SystemAdminGuard` (user's organization has `isSystemOrg = true`)
 - `POST /organizations/:id/access`: generate access token for impersonation
 - `POST /reset-login-lockout`: clear a login lockout
 - `POST /sync-permissions`: sync role permissions with `ALL_PERMISSIONS`
+- `PATCH /organizations/:id/billing`: set plan (incl. enterprise), status, member limit, trial and access dates
 
 ### Pagination Pattern
 

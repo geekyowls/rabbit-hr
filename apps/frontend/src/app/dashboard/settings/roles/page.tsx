@@ -34,6 +34,9 @@ import {
 } from '@/components/patterns';
 import { toast } from '@/lib/toast';
 import type { Role } from '@/types/role.type';
+import { PlanFeature } from '@boilerplate/shared';
+import { usePlanFeature } from '@/hooks/queries';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
 
 function RolesContent() {
   useBreadcrumb([
@@ -45,6 +48,9 @@ function RolesContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
   const { hasPermission } = usePermissions();
+  const { hasFeature: canCustomizeRoles } = usePlanFeature(
+    PlanFeature.CUSTOM_ROLES,
+  );
   const { trackRoleEvent } = useAnalytics();
 
   const loadRoles = useCallback(async () => {
@@ -92,7 +98,8 @@ function RolesContent() {
     }
   };
 
-  const canUpdate = hasPermission(PERMISSIONS_ENUM.ROLE_UPDATE);
+  const canUpdate =
+    canCustomizeRoles && hasPermission(PERMISSIONS_ENUM.ROLE_UPDATE);
   const editRole = (role: Role) =>
     router.push(`/dashboard/settings/roles/edit?id=${role.id}`);
 
@@ -164,7 +171,9 @@ function RolesContent() {
         description="Who can see and do what across the workspace"
         backHref="/dashboard/settings"
         actions={
-          hasPermission(PERMISSIONS_ENUM.ROLE_CREATE) ? (
+          !canCustomizeRoles ? (
+            <UpgradeHint feature={PlanFeature.CUSTOM_ROLES} />
+          ) : hasPermission(PERMISSIONS_ENUM.ROLE_CREATE) ? (
             <ToolbarButton
               variant="primary"
               icon={Plus}

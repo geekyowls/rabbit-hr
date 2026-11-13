@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ALL_PERMISSIONS, addDays } from '@boilerplate/core';
+import { ALL_PERMISSIONS } from '@boilerplate/core';
 import {
   EventName,
   UserRegisteredEvent,
@@ -18,8 +18,6 @@ import { AuthService } from '../../services/auth.service';
 import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
 import { UserRegisterCommand } from './user-register.command';
 import { RegisterResponseDto } from '../../dtos/auth-response.dto';
-
-const TRIAL_PERIOD_DAYS = 14;
 
 @Injectable()
 export class UserRegister {
@@ -84,7 +82,6 @@ export class UserRegister {
       slug,
       domain,
       subscriptionStatus: OrgSubscriptionStatus.TRIAL,
-      trialEndsAt: addDays(TRIAL_PERIOD_DAYS, new Date()),
     });
     await this.organizationRepository.save(organization);
 

@@ -7,8 +7,12 @@ import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { CountryCombobox } from '@/components/ui/country-combobox';
 import { PHONE_CODES, validatePhoneForCountry } from '@boilerplate/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import {
+  parsePlanIntent,
+  savePlanIntent,
+} from '@/components/billing/billing-links';
 import { zodResolver } from '@/lib/zod-resolver';
 import {
   sendOtpSchema,
@@ -80,6 +84,12 @@ export default function SignupForm({
   const searchParams = useSearchParams();
   const { setUser, loadFullSession } = useSession();
   const [step, setStep] = useState<SignupStep>(getInitialStep(searchParams));
+
+  useEffect(() => {
+    savePlanIntent(
+      parsePlanIntent(searchParams.get('plan'), searchParams.get('billing')),
+    );
+  }, [searchParams]);
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [needsPhone, setNeedsPhone] = useState(
     getInitialStep(searchParams) === 'context',

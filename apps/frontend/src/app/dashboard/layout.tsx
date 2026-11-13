@@ -11,6 +11,7 @@ import { SidebarProvider } from '@/contexts/sidebar-context';
 import { CommandPalette } from '@/components/common/command-palette';
 import { KeyboardShortcutsHelp } from '@/components/common/keyboard-shortcuts-help';
 import { IntegrationStatusPill } from '@/components/dashboard/integration-status-pill';
+import { BillingGate } from '@/components/billing/billing-gate';
 import { cn } from '@/lib/utils';
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-screen bg-gray-50/10 dark:bg-dark-background flex flex-col overflow-hidden">
       {!isFocusMode && <DashboardHeader />}
+      <BillingGate />
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {!isFocusMode && <DashboardNav />}
         <div className="flex-1 flex flex-col min-w-0">

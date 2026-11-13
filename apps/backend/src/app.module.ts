@@ -46,6 +46,8 @@ import { CallModule } from './modules/call/call.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { JobFeedModule } from './modules/job-feed/job-feed.module';
 import { CandidatePortalModule } from './modules/candidate-portal/candidate-portal.module';
+import { BillingCoreModule } from './modules/billing/core/billing-core.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -111,6 +113,8 @@ import { CandidatePortalModule } from './modules/candidate-portal/candidate-port
     WhatsappModule,
     JobFeedModule,
     CandidatePortalModule,
+    BillingCoreModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [

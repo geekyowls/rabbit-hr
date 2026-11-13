@@ -51,6 +51,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { getPlan, type OrgSubscriptionStatus } from '@boilerplate/shared';
+import { StatusPill } from '@/components/patterns';
+import {
+  OrganizationBillingDialog,
+  type OrganizationBillingTarget,
+} from '@/components/system/organization-billing-dialog';
+import {
+  SUBSCRIPTION_STATUS_LABELS,
+  SUBSCRIPTION_STATUS_TONES,
+} from '@/components/billing/billing-status';
 
 interface Organization {
   id: string;
@@ -62,6 +72,11 @@ interface Organization {
   phone: string | null;
   userCount: number;
   createdAt: string;
+  plan: string | null;
+  subscriptionStatus: OrgSubscriptionStatus;
+  memberLimitOverride: number | null;
+  trialEndsAt: string | null;
+  subscriptionEndsAt: string | null;
 }
 
 interface OrganizationsListResponse {
@@ -93,6 +108,8 @@ export default function OrganizationsPage() {
   const debouncedSearch = useDebounce(search, 500);
   const [syncPermissionsOpen, setSyncPermissionsOpen] = useState(false);
   const [isSyncingPermissions, setIsSyncingPermissions] = useState(false);
+  const [billingTarget, setBillingTarget] =
+    useState<OrganizationBillingTarget | null>(null);
 
   const loadOrganizations = useCallback(async () => {
     setIsLoading(true);
@@ -219,6 +236,22 @@ export default function OrganizationsPage() {
         ),
       },
       {
+        id: 'plan',
+        header: 'Plan',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">
+              {getPlan(row.original.plan)?.name ?? 'None'}
+            </span>
+            <StatusPill
+              tone={SUBSCRIPTION_STATUS_TONES[row.original.subscriptionStatus]}
+            >
+              {SUBSCRIPTION_STATUS_LABELS[row.original.subscriptionStatus]}
+            </StatusPill>
+          </div>
+        ),
+      },
+      {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
@@ -252,6 +285,9 @@ export default function OrganizationsPage() {
                 onClick={() => handleAccessOrg(row.original.id)}
               >
                 Access Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBillingTarget(row.original)}>
+                Manage billing
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {row.original.status === 'active' && (
@@ -355,6 +391,12 @@ export default function OrganizationsPage() {
       />
 
       <DataTablePagination table={table} totalItems={totalItems} />
+
+      <OrganizationBillingDialog
+        target={billingTarget}
+        onClose={() => setBillingTarget(null)}
+        onSaved={loadOrganizations}
+      />
 
       <AlertDialog
         open={syncPermissionsOpen}

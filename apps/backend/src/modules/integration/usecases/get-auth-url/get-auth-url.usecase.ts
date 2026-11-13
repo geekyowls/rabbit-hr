@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { RedisCacheService } from '@boilerplate/core';
 import { SupportedIntegrationRepository } from '@db/repositories';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
+import { planFeatureForIntegration } from '../../core/integration-capabilities.types';
 import { CACHE_KEYS, CACHE_TTL } from '@shared/cache-keys';
 import { GetAuthUrlCommand } from './get-auth-url.command';
 
@@ -12,6 +14,7 @@ export class GetAuthUrl {
     private readonly supportedIntegrationRepository: SupportedIntegrationRepository,
     private readonly configService: ConfigService,
     private readonly cacheService: RedisCacheService,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: GetAuthUrlCommand): Promise<{ authUrl: string }> {
@@ -29,6 +32,14 @@ export class GetAuthUrl {
     if (!integration.isActive) {
       throw new BadRequestException(
         `Integration "${command.provider}" is not active`,
+      );
+    }
+
+    const planFeature = planFeatureForIntegration(integration);
+    if (planFeature) {
+      await this.entitlements.assertFeature(
+        command.organizationId,
+        planFeature,
       );
     }
 

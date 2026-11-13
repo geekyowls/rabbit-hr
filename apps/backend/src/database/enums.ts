@@ -132,19 +132,7 @@ export enum ContentShowFrequency {
   ONCE = 'once',
 }
 
-export enum OrgSubscriptionStatus {
-  TRIAL = 'trial',
-  ACTIVE = 'active',
-  PAST_DUE = 'past_due',
-  GRACE = 'grace',
-  CANCELLED = 'cancelled',
-  EXPIRED = 'expired',
-}
-
-export enum BillingInterval {
-  MONTH = 'month',
-  YEAR = 'year',
-}
+export { OrgSubscriptionStatus, BillingInterval } from '@boilerplate/core';
 
 export enum PaymentProvider {
   DODO = 'dodo',

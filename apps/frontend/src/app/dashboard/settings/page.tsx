@@ -14,7 +14,9 @@ import {
   Workflow,
   ListPlus,
   CalendarClock,
+  CreditCard,
 } from 'lucide-react';
+import { PlanFeature } from '@boilerplate/shared';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   PERMISSIONS_ENUM,
@@ -27,6 +29,9 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { SettingsPageSkeleton } from '@/components/skeletons';
+import { useBillingSummary } from '@/hooks/queries';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
+import { BILLING_SETTINGS_PATH } from '@/components/billing/billing-links';
 
 interface SettingsCard {
   href: string;
@@ -35,6 +40,8 @@ interface SettingsCard {
   icon: React.ComponentType<{ className?: string }>;
   permission?: string | string[];
   tourId: string;
+  feature?: PlanFeature;
+  lockedWithoutFeature?: boolean;
 }
 
 const settingsCards: SettingsCard[] = [
@@ -69,6 +76,8 @@ const settingsCards: SettingsCard[] = [
     icon: ListPlus,
     permission: PERMISSIONS_ENUM.CUSTOM_FIELD_MANAGE,
     tourId: 'settings-custom-fields',
+    feature: PlanFeature.CUSTOM_FIELDS,
+    lockedWithoutFeature: true,
   },
   {
     href: '/dashboard/settings/email-templates',
@@ -108,6 +117,7 @@ const settingsCards: SettingsCard[] = [
     icon: ShieldCheck,
     permission: PERMISSIONS_ENUM.ROLE_LIST_READ,
     tourId: 'settings-roles',
+    feature: PlanFeature.CUSTOM_ROLES,
   },
   {
     href: '/dashboard/settings/audit',
@@ -116,6 +126,16 @@ const settingsCards: SettingsCard[] = [
     icon: ClipboardList,
     permission: PERMISSIONS_ENUM.AUDIT_LIST_READ,
     tourId: 'settings-audit',
+    feature: PlanFeature.AUDIT_LOG,
+    lockedWithoutFeature: true,
+  },
+  {
+    href: BILLING_SETTINGS_PATH,
+    title: 'Billing',
+    description: 'Plan, team member limit and invoices',
+    icon: CreditCard,
+    permission: PERMISSIONS_ENUM.BILLING_MANAGE,
+    tourId: 'settings-billing',
   },
   {
     href: '/dashboard/settings/general',
@@ -129,6 +149,9 @@ const settingsCards: SettingsCard[] = [
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const { hasAnyPermission } = usePermissions();
+  const { data: billing } = useBillingSummary();
+  const lacksFeature = (feature?: PlanFeature) =>
+    !!feature && !!billing?.enforced && !billing.features.includes(feature);
 
   useEffect(() => setMounted(true), []);
 
@@ -146,26 +169,43 @@ export default function SettingsPage() {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {visibleCards.map((card) => (
-        <Link key={card.href} href={card.href}>
-          <Card
-            className="h-full transition-colors hover:bg-muted/50"
-            data-tour={card.tourId}
+      {visibleCards.map((card) => {
+        const locked = lacksFeature(card.feature);
+        return (
+          <Link
+            key={card.href}
+            href={
+              locked && card.lockedWithoutFeature
+                ? BILLING_SETTINGS_PATH
+                : card.href
+            }
           >
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <card.icon className="h-5 w-5 text-primary" />
+            <Card
+              className="h-full transition-colors hover:bg-muted/50"
+              data-tour={card.tourId}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <card.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">{card.title}</CardTitle>
+                    <CardDescription>{card.description}</CardDescription>
+                    {locked && card.feature && (
+                      <UpgradeHint
+                        feature={card.feature}
+                        asLink={false}
+                        className="mt-1"
+                      />
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-base">{card.title}</CardTitle>
-                  <CardDescription>{card.description}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
-      ))}
+              </CardHeader>
+            </Card>
+          </Link>
+        );
+      })}
     </div>
   );
 }

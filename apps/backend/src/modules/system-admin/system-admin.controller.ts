@@ -25,6 +25,7 @@ import {
   ListOrganizationsDto,
   CreateOrganizationDto,
   UpdateOrganizationStatusDto,
+  UpdateOrganizationBillingDto,
   ResetLoginLockoutDto,
   SyncPermissionsDto,
 } from './dtos';
@@ -34,6 +35,8 @@ import { CreateOrganization } from './usecases/create-organization/create-organi
 import { CreateOrganizationCommand } from './usecases/create-organization/create-organization.command';
 import { UpdateOrganizationStatus } from './usecases/update-organization-status/update-organization-status.usecase';
 import { UpdateOrganizationStatusCommand } from './usecases/update-organization-status/update-organization-status.command';
+import { UpdateOrganizationBilling } from './usecases/update-organization-billing/update-organization-billing.usecase';
+import { UpdateOrganizationBillingCommand } from './usecases/update-organization-billing/update-organization-billing.command';
 import { AccessOrganization } from './usecases/access-organization/access-organization.usecase';
 import { AccessOrganizationCommand } from './usecases/access-organization/access-organization.command';
 import { ResetLoginLockout } from './usecases/reset-login-lockout/reset-login-lockout.usecase';
@@ -49,6 +52,7 @@ export class SystemAdminController {
     private readonly listOrganizations: ListOrganizations,
     private readonly createOrganization: CreateOrganization,
     private readonly updateOrganizationStatus: UpdateOrganizationStatus,
+    private readonly updateOrganizationBilling: UpdateOrganizationBilling,
     private readonly accessOrganization: AccessOrganization,
     private readonly resetLoginLockoutUsecase: ResetLoginLockout,
     private readonly syncRolePermissionsUsecase: SyncRolePermissions,
@@ -115,6 +119,33 @@ export class SystemAdminController {
         organizationId: user.organizationId,
         targetOrganizationId: id,
         status: dto.status,
+      }),
+    );
+  }
+
+  @Patch('organizations/:id/billing')
+  @UseGuards(SystemAdminGuard)
+  @RequireAuthentication()
+  @ApiOperation({
+    summary:
+      'Set plan, status, member limit and dates (enterprise, comp, trial)',
+  })
+  @ApiResponse({ status: 200 })
+  async updateBilling(
+    @UserSession() user: UserSessionData,
+    @Param('id') id: string,
+    @Body() dto: UpdateOrganizationBillingDto,
+  ) {
+    return this.updateOrganizationBilling.execute(
+      UpdateOrganizationBillingCommand.create({
+        userId: user.userId,
+        organizationId: user.organizationId,
+        targetOrganizationId: id,
+        plan: dto.plan,
+        status: dto.status,
+        memberLimitOverride: dto.memberLimitOverride,
+        trialEndsAt: dto.trialEndsAt,
+        subscriptionEndsAt: dto.subscriptionEndsAt,
       }),
     );
   }

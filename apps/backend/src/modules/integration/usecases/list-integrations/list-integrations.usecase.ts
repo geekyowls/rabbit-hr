@@ -8,6 +8,7 @@ import { IntegrationAuthType, OrganizationIntegrationStatus } from '@db/enums';
 import { isApiKeyProvider } from '../../adapters/api-key-providers';
 import { ListIntegrationsCommand } from './list-integrations.command';
 import { IntegrationListItemDto } from '../../dtos/integration-list-item.dto';
+import { planFeatureForIntegration } from '../../core/integration-capabilities.types';
 
 @Injectable()
 export class ListIntegrations {
@@ -53,6 +54,7 @@ export class ListIntegrations {
         status: orgIntegration?.status,
         errorMessage: orgIntegration?.errorMessage ?? null,
         webhookToken: orgIntegration?.webhookToken ?? null,
+        planFeature: planFeatureForIntegration(si),
       };
     });
   }

@@ -6,6 +6,7 @@ import { UserStatus } from '@db/enums';
 import { buildUrl, generateInviteToken, addHours } from '@boilerplate/core';
 import { EventName, UserInvitedEvent } from '@boilerplate/core';
 import { AppEventEmitter } from '@modules/events/services/event-emitter.service';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 
 import { InviteUserCommand } from './invite-user.command';
 
@@ -22,6 +23,7 @@ export class InviteUser {
     private readonly roleRepository: RoleRepository,
     private readonly configService: ConfigService,
     private readonly eventEmitter: AppEventEmitter,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: InviteUserCommand): Promise<InviteUserResult> {
@@ -36,6 +38,8 @@ export class InviteUser {
         'User with this email already exists in this organization',
       );
     }
+
+    await this.entitlements.assertMemberCapacity(command.organizationId);
 
     if (command.roleId) {
       const role = await this.roleRepository.findOne({
