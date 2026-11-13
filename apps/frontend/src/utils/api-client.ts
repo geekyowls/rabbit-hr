@@ -65,7 +65,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
     const message = Array.isArray(rawMessage)
       ? rawMessage[0] || 'Request failed'
       : rawMessage || 'Request failed';
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, data.errors);
   }
 
   // Paginated response - return as-is

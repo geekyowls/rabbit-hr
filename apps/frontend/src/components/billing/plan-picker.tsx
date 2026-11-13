@@ -17,11 +17,13 @@ import { cn } from '@/lib/utils';
 import type { CheckoutOption } from '@/types/billing.type';
 import { CONTACT_SALES_URL } from './billing-links';
 
-const STARTER_FEATURES = [
-  'Unlimited jobs, candidates and clients',
-  'Pipeline, interviews and offers',
-  'Careers page and candidate portal',
+const STARTER_HIGHLIGHTS = [
+  'Unlimited active jobs, candidates and clients',
+  'Shared email inbox',
+  'Offer e-signature and candidate portal',
 ];
+
+const STARTER_FEATURES = PLANS[PlanId.STARTER].features;
 
 function planHighlights(plan: PlanDefinition): string[] {
   const members =
@@ -29,13 +31,17 @@ function planHighlights(plan: PlanDefinition): string[] {
       ? 'Custom team member limit'
       : `Up to ${plan.memberLimit} team members`;
   switch (plan.id) {
+    case PlanId.FREE:
+      return [members, `Up to ${plan.activeJobLimit} active jobs`];
     case PlanId.STARTER:
-      return [members, ...STARTER_FEATURES];
+      return [members, ...STARTER_HIGHLIGHTS];
     case PlanId.GROWTH:
       return [
         members,
         'Everything in Starter',
-        ...plan.features.map((feature) => PLAN_FEATURE_LABELS[feature]),
+        ...plan.features
+          .filter((feature) => !STARTER_FEATURES.includes(feature))
+          .map((feature) => PLAN_FEATURE_LABELS[feature]),
       ];
     case PlanId.SCALE:
       return [members, 'Everything in Growth'];

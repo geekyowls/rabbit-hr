@@ -8,7 +8,7 @@ export interface OrganizationCreatedEvent extends BaseEvent {
   adminUserId?: string;
   adminPassword?: string;
   loginLink?: string;
-  signupSource?: 'free_trial' | 'paid';
+  signupSource?: 'free_plan' | 'paid';
   utm?: {
     source?: string;
     medium?: string;
@@ -30,5 +30,4 @@ export interface OrganizationPaymentReceivedEvent extends BaseEvent {
 }
 
 export type OrganizationEvent =
-  | OrganizationCreatedEvent
-  | OrganizationPaymentReceivedEvent;
+  OrganizationCreatedEvent | OrganizationPaymentReceivedEvent;

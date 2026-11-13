@@ -55,6 +55,7 @@ import {
   type JobListItem,
   type JobStatus,
 } from '@/types/job.type';
+import { apiErrorDescription } from '@/components/billing/billing-error';
 
 const LIMIT = 25;
 const ALL = 'all';
@@ -164,7 +165,7 @@ function JobsPageContent() {
       await updateStatus.mutateAsync({ id: job.id, status: next });
       toast.success(`Job ${JOB_STATUS_LABEL[next].toLowerCase()}`, job.title);
     } catch (e) {
-      toast.error('Could not update status', errorMessage(e));
+      toast.error('Could not update status', apiErrorDescription(e));
     }
   };
 

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CandidateRepository, OrganizationRepository } from '@db/repositories';
 import { CustomFieldEntityType } from '@db/enums';
 import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import {
   loadPortalCandidate,
   loadPortalOrganization,
@@ -16,6 +17,7 @@ export class GetPortalMe {
     private readonly candidateRepository: CandidateRepository,
     private readonly organizationRepository: OrganizationRepository,
     private readonly customFieldValidator: CustomFieldValidator,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async execute(command: PortalCandidateCommand) {
@@ -37,7 +39,10 @@ export class GetPortalMe {
     ]);
     return {
       candidate: toPortalProfile(candidate, definitions),
-      organization: toPortalBranding(organization),
+      organization: toPortalBranding(
+        organization,
+        await this.portalAvailability.isEnabled(organization),
+      ),
       customFields: toPortalCustomFields(definitions),
     };
   }

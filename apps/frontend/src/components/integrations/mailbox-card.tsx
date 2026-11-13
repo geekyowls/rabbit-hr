@@ -43,6 +43,9 @@ import type {
   MailboxConnectionStatus,
   MailboxProvider,
 } from '@/types/mailbox.type';
+import { PlanFeature } from '@boilerplate/shared';
+import { usePlanFeature } from '@/hooks/queries/use-billing-query';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
 
 const PROVIDER_LABEL: Record<MailboxProvider, string> = {
   gmail: 'Gmail',
@@ -163,6 +166,7 @@ export function MailboxCard() {
   const [notConfigured, setNotConfigured] = useState<MailboxProvider[]>([]);
   const [target, setTarget] = useState<Mailbox | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
+  const { hasFeature: hasInbox } = usePlanFeature(PlanFeature.INBOX);
 
   const start = async (provider: MailboxProvider) => {
     setPending(provider);
@@ -246,19 +250,24 @@ export function MailboxCard() {
       </div>
 
       <div className="mt-auto flex items-center justify-end gap-2 pt-3">
-        {connectedCount > 0 && (
+        {!hasInbox && (
+          <UpgradeHint feature={PlanFeature.INBOX} className="mr-auto" />
+        )}
+        {hasInbox && connectedCount > 0 && (
           <Button asChild size="sm" variant="outline" className="h-7 text-xs">
             <Link href="/dashboard/inbox">Open inbox</Link>
           </Button>
         )}
-        <Button
-          size="sm"
-          variant={mailboxes.length > 0 ? 'outline' : 'default'}
-          className="h-7 px-3 text-xs"
-          onClick={() => setManageOpen(true)}
-        >
-          {mailboxes.length > 0 ? 'Manage' : 'Connect'}
-        </Button>
+        {(hasInbox || mailboxes.length > 0) && (
+          <Button
+            size="sm"
+            variant={mailboxes.length > 0 ? 'outline' : 'default'}
+            className="h-7 px-3 text-xs"
+            onClick={() => setManageOpen(true)}
+          >
+            {mailboxes.length > 0 ? 'Manage' : 'Connect'}
+          </Button>
+        )}
       </div>
 
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
@@ -310,7 +319,9 @@ export function MailboxCard() {
                   variant="outline"
                   className="h-8 text-xs"
                   disabled={
-                    pending !== null || notConfigured.includes(provider)
+                    !hasInbox ||
+                    pending !== null ||
+                    notConfigured.includes(provider)
                   }
                   onClick={() => start(provider)}
                 >

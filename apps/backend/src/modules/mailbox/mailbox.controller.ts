@@ -15,12 +15,13 @@ import {
 import type { Response } from 'express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { PERMISSIONS_ENUM } from '@boilerplate/core';
+import { PERMISSIONS_ENUM, PlanFeature } from '@boilerplate/core';
 import { MailboxProvider } from '@db/enums';
 import {
   UserSession,
   type UserSessionData,
 } from '@shared/decorators/user-session.decorator';
+import { RequirePlanFeature } from '@shared/decorators/require-plan-feature.decorator';
 import { RequirePermissions } from '@shared/decorators/require-permissions.decorator';
 import { ApiResponse } from '@shared/decorators/api-response.decorator';
 import { ApiCommonResponses } from '@shared/decorators/api-common-responses.decorator';
@@ -80,6 +81,7 @@ export class MailboxController {
   @Post('connect/:provider')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(PERMISSIONS_ENUM.INBOX_READ)
+  @RequirePlanFeature(PlanFeature.INBOX)
   @ApiOperation({ summary: 'Get the OAuth URL to connect a mailbox' })
   @ApiResponse(MailboxAuthUrlDto)
   async connect(
@@ -140,6 +142,7 @@ export class MailboxController {
   @Post(':id/sync')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(PERMISSIONS_ENUM.INBOX_READ)
+  @RequirePlanFeature(PlanFeature.INBOX)
   @ApiOperation({ summary: 'Queue a sync for a mailbox now' })
   @ApiResponse(MailboxSyncResponseDto)
   async sync(

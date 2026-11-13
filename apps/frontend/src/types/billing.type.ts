@@ -11,11 +11,17 @@ export interface CheckoutOption {
   interval: BillingInterval;
 }
 
+export interface BillingUsage {
+  count: number;
+  limit: number | null;
+}
+
 export interface BillingSummary {
   configured: boolean;
   enforced: boolean;
   isSystemOrg: boolean;
   plan: PlanId | null;
+  effectivePlan: PlanId | null;
   billingInterval: BillingInterval | null;
   status: OrgSubscriptionStatus;
   access: BillingAccess;
@@ -24,7 +30,9 @@ export interface BillingSummary {
   pastDueSince: string | null;
   cancelAtPeriodEnd: boolean;
   features: PlanFeature[];
-  members: { count: number; limit: number | null };
+  members: BillingUsage;
+  activeJobs: BillingUsage;
+  overLimit: boolean;
   hasSubscription: boolean;
   hasCustomer: boolean;
   checkoutOptions: CheckoutOption[];

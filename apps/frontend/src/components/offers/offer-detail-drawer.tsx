@@ -71,6 +71,9 @@ import {
   OfferReasonDialog,
   type OfferReasonDialogConfig,
 } from './offer-reason-dialog';
+import { PlanFeature } from '@boilerplate/shared';
+import { usePlanFeature } from '@/hooks/queries/use-billing-query';
+import { UpgradeHint } from '@/components/billing/upgrade-hint';
 
 const NO_PERMISSION = 'You do not have permission for this action';
 
@@ -204,6 +207,7 @@ export function OfferDetailDrawer({
   const canApprove = hasPermission(PERMISSIONS_ENUM.OFFER_APPROVE);
   const canSend = hasPermission(PERMISSIONS_ENUM.OFFER_SEND);
   const canDelete = hasPermission(PERMISSIONS_ENUM.OFFER_DELETE);
+  const { hasFeature: hasESign } = usePlanFeature(PlanFeature.OFFER_ESIGN);
 
   const decisionReason = () => {
     if (!offer) return null;
@@ -348,6 +352,13 @@ export function OfferDetailDrawer({
               }
             />
           </>
+        )}
+        {offer.status === 'approved' && !hasESign && (
+          <UpgradeHint
+            feature={PlanFeature.OFFER_ESIGN}
+            action="collect e-signatures"
+            className="self-center"
+          />
         )}
         {offer.status === 'approved' && (
           <ActionButton

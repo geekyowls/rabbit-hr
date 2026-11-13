@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PlanFeature } from '@boilerplate/core';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import { MailboxConnectionEntity } from '@db/entities';
 import { MailboxConnectionStatus, MailboxProvider } from '@db/enums';
 import { MailboxConnectionRepository } from '@db/repositories';
@@ -31,6 +33,7 @@ export class MailboxSyncService {
     private readonly scheduler: MailboxSyncScheduler,
     private readonly gmail: GmailMailProvider,
     private readonly outlook: OutlookMailProvider,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   adapter(provider: MailboxProvider): MailProviderAdapter {
@@ -45,6 +48,14 @@ export class MailboxSyncService {
     }
     if (mailbox.isDemo) {
       return { status: 'skipped', reason: 'demo' };
+    }
+    if (
+      !(await this.entitlements.hasFeature(
+        mailbox.organizationId,
+        PlanFeature.INBOX,
+      ))
+    ) {
+      return { status: 'skipped', reason: 'plan' };
     }
     if (!this.scheduler.isSyncable(mailbox)) {
       await this.scheduler.unschedule(mailbox.id);

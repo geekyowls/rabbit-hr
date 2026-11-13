@@ -56,6 +56,16 @@ const ACCOUNTS: SeedAccount[] = [
     firstName: 'Alex',
     lastName: 'Owner',
   },
+  {
+    orgName: 'Freeway Recruitment',
+    slug: 'freeway',
+    domain: 'freeway.rabbithr.app',
+    isSystemOrg: false,
+    email: 'owner@freeway.test',
+    password: 'Owner@123',
+    firstName: 'Fran',
+    lastName: 'Free',
+  },
 ];
 
 const INTEGRATIONS = [
@@ -223,7 +233,7 @@ const SEED_BILLING: Record<
   string,
   {
     plan: PlanId;
-    interval: BillingInterval;
+    interval: BillingInterval | null;
     status: OrgSubscriptionStatus;
     trialDays: number | null;
     onlyIfUnset: boolean;
@@ -242,6 +252,13 @@ const SEED_BILLING: Record<
     status: OrgSubscriptionStatus.TRIAL,
     trialDays: 10,
     onlyIfUnset: true,
+  },
+  freeway: {
+    plan: PlanId.FREE,
+    interval: null,
+    status: OrgSubscriptionStatus.ACTIVE,
+    trialDays: null,
+    onlyIfUnset: false,
   },
 };
 
@@ -275,7 +292,9 @@ async function seedBilling() {
       : null;
     organization.subscriptionEndsAt = billing.trialDays
       ? organization.trialEndsAt
-      : FAR_FUTURE;
+      : billing.plan === PlanId.FREE
+        ? null
+        : FAR_FUTURE;
     await orgRepo.save(organization);
     console.log(`Billing for ${slug}: ${billing.plan} ${billing.status}`);
   }

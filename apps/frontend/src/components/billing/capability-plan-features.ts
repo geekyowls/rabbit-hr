@@ -15,5 +15,5 @@ export const CAPABILITY_PLAN_FEATURES: Record<
   calls: PlanFeature.CALLS,
   whatsapp: PlanFeature.WHATSAPP,
   jobFeed: PlanFeature.JOB_FEED,
-  mailbox: null,
+  mailbox: PlanFeature.INBOX,
 };

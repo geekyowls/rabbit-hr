@@ -7,6 +7,7 @@ import {
 import { CandidateRepository, OrganizationRepository } from '@db/repositories';
 import { CustomFieldEntityType } from '@db/enums';
 import { CustomFieldValidator } from '@shared/services/custom-field-validator.service';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import {
   findPortalOrganizationBySlug,
   toPortalBranding,
@@ -26,12 +27,14 @@ export class VerifyPortalOtp {
     private readonly otpStore: PortalOtpStore,
     private readonly tokenService: PortalTokenService,
     private readonly customFieldValidator: CustomFieldValidator,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async execute(command: VerifyPortalOtpCommand) {
     const email = command.email.trim().toLowerCase();
     const organization = await findPortalOrganizationBySlug(
       this.organizationRepository,
+      this.portalAvailability,
       command.orgSlug,
     );
     const result = await this.otpStore.check(
@@ -73,7 +76,7 @@ export class VerifyPortalOtp {
     return {
       ...tokens,
       candidate: toPortalProfile(candidate, definitions),
-      organization: toPortalBranding(organization),
+      organization: toPortalBranding(organization, true),
     };
   }
 }

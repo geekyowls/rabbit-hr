@@ -12,6 +12,7 @@ import {
   normalizeScreeningQuestions,
   uniqueIds,
 } from '../job-validation';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import { GetJob } from '../get-job/get-job.usecase';
 import { UpdateJobCommand } from './update-job.command';
 
@@ -23,6 +24,7 @@ export class UpdateJob {
     private readonly userRepository: UserRepository,
     private readonly getJob: GetJob,
     private readonly customFieldValidator: CustomFieldValidator,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: UpdateJobCommand) {
@@ -35,6 +37,16 @@ export class UpdateJob {
 
     const { screeningQuestions, customFields, hiringTeamIds, ...rest } =
       pickDefined(command.payload);
+    if (
+      rest.status &&
+      this.entitlements.isActiveJobStatus(rest.status) &&
+      !this.entitlements.isActiveJobStatus(job.status)
+    ) {
+      await this.entitlements.assertActiveJobCapacity(
+        command.organizationId,
+        job.id,
+      );
+    }
     await assertJobReferences(
       this.clientRepository,
       this.userRepository,

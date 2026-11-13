@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ActivityRepository, JobRepository } from '@db/repositories';
 import { ActivityType, JobStatus } from '@db/enums';
+import { BillingEntitlementsService } from '@modules/billing/core/billing-entitlements.service';
 import { GetJob } from '../get-job/get-job.usecase';
 import { UpdateJobStatusCommand } from './update-job-status.command';
 
@@ -10,6 +11,7 @@ export class UpdateJobStatus {
     private readonly jobRepository: JobRepository,
     private readonly activityRepository: ActivityRepository,
     private readonly getJob: GetJob,
+    private readonly entitlements: BillingEntitlementsService,
   ) {}
 
   async execute(command: UpdateJobStatusCommand) {
@@ -21,6 +23,15 @@ export class UpdateJobStatus {
     }
 
     const previous = job.status;
+    if (
+      this.entitlements.isActiveJobStatus(command.status) &&
+      !this.entitlements.isActiveJobStatus(previous)
+    ) {
+      await this.entitlements.assertActiveJobCapacity(
+        command.organizationId,
+        job.id,
+      );
+    }
     if (previous !== command.status) {
       job.status = command.status;
       if (command.status === JobStatus.PUBLISHED && !job.publishedAt) {

@@ -36,6 +36,18 @@ export function savePlanIntent(intent: PlanIntent): void {
   }
 }
 
+export function clearPlanIntent(): void {
+  try {
+    sessionStorage.removeItem(PLAN_INTENT_KEY);
+  } catch {
+    return;
+  }
+}
+
+export function hasPlanIntent(): boolean {
+  return readPlanIntent().plan !== null;
+}
+
 export function readPlanIntent(): PlanIntent {
   try {
     const raw = sessionStorage.getItem(PLAN_INTENT_KEY);

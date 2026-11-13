@@ -123,6 +123,8 @@ import { BookingLinkDialog } from './booking-link-dialog';
 import { ScheduleInterviewDrawer } from '@/components/interviews/schedule-interview-drawer';
 import { InterviewDetailDrawer } from '@/components/interviews/interview-detail-drawer';
 import type { Interview } from '@/types/interview.type';
+import { PlanFeature } from '@boilerplate/shared';
+import { usePlanFeature } from '@/hooks/queries/use-billing-query';
 
 const SAMPLE_LINKS: { label: string; icon: ReactNode }[] = [
   { label: 'GitHub', icon: <GithubIcon className="h-4 w-4 shrink-0" /> },
@@ -465,7 +467,11 @@ export function CandidateDetailDrawer({
   const updateCandidate = useUpdateCandidateMutation();
   const deleteCandidate = useDeleteCandidateMutation();
   const inviteToPortal = useInviteToPortalMutation();
-  const { portalEnabled } = useOrganizationAtsSettings();
+  const { portalEnabled: portalSetting } = useOrganizationAtsSettings();
+  const { hasFeature: hasPortal } = usePlanFeature(
+    PlanFeature.CANDIDATE_PORTAL,
+  );
+  const portalEnabled = portalSetting && hasPortal;
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission(PERMISSIONS_ENUM.CANDIDATE_UPDATE);
   const fmt = useFormatters();

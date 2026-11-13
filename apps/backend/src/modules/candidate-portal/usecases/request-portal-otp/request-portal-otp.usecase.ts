@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandidateRepository, OrganizationRepository } from '@db/repositories';
 import { ContextLogger } from '@shared/framework/context-logger';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import {
   findPortalOrganizationBySlug,
   toPortalBranding,
@@ -24,12 +25,14 @@ export class RequestPortalOtp {
     private readonly otpStore: PortalOtpStore,
     private readonly portalMail: PortalMailService,
     private readonly config: ConfigService,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async execute(command: RequestPortalOtpCommand) {
     const email = command.email.trim().toLowerCase();
     const organization = await findPortalOrganizationBySlug(
       this.organizationRepository,
+      this.portalAvailability,
       command.orgSlug,
     );
     await this.otpStore.assertCanRequest(organization.id, email);
@@ -46,7 +49,7 @@ export class RequestPortalOtp {
       this.portalMail.sendInBackground(
         candidate.email,
         buildPortalOtpEmail({
-          branding: toPortalBranding(organization),
+          branding: toPortalBranding(organization, true),
           firstName: candidate.firstName,
           code,
           expiresInMinutes: PORTAL_OTP_EXPIRY_MINUTES,

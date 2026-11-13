@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BillingAccess,
@@ -14,11 +15,13 @@ import { PERMISSIONS_ENUM } from '@/constants/permissions.constants';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useBillingSummary, useCheckoutMutation } from '@/hooks/queries';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/patterns';
 import { IntervalToggle, PlanPicker } from '@/components/billing/plan-picker';
 import {
   BILLING_SETTINGS_PATH,
+  clearPlanIntent,
   parsePlanIntent,
   readPlanIntent,
 } from '@/components/billing/billing-links';
@@ -45,8 +48,16 @@ function ChoosePlanContent() {
   });
   const [interval, setInterval] = useState<BillingInterval>(intent.interval);
 
+  const onFree = data?.effectivePlan === PlanId.FREE;
+
   useEffect(() => {
-    if (data && data.access === BillingAccess.FULL && data.plan) {
+    if (
+      data &&
+      data.access === BillingAccess.FULL &&
+      data.effectivePlan &&
+      data.effectivePlan !== PlanId.FREE
+    ) {
+      clearPlanIntent();
       router.replace(BILLING_SETTINGS_PATH);
     }
   }, [data, router]);
@@ -87,7 +98,18 @@ function ChoosePlanContent() {
             ? 'Pick a plan to reactivate your workspace'
             : `Every plan starts with a ${TRIAL_PERIOD_DAYS}-day free trial, cancel any time before it ends`
         }
-        actions={<IntervalToggle value={interval} onChange={setInterval} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {onFree && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard" onClick={clearPlanIntent}>
+                  Continue on Free
+                </Link>
+              </Button>
+            )}
+            <IntervalToggle value={interval} onChange={setInterval} />
+          </div>
+        }
       />
       <PlanPicker
         interval={interval}

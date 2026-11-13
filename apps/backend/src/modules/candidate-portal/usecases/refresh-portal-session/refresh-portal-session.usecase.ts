@@ -4,8 +4,8 @@ import {
   CandidateRepository,
   OrganizationRepository,
 } from '@db/repositories';
-import { resolveAtsSettings } from '@db/entities';
 import { OrganizationStatus } from '@db/enums';
+import { PortalAvailabilityService } from '@shared/services/portal-availability.service';
 import { PortalTokenService } from '../../services/portal-token.service';
 import { loadPortalOrganization } from '../portal-query';
 import { RefreshPortalSessionCommand } from './refresh-portal-session.command';
@@ -17,6 +17,7 @@ export class RefreshPortalSession {
     private readonly sessionRepository: CandidatePortalSessionRepository,
     private readonly candidateRepository: CandidateRepository,
     private readonly organizationRepository: OrganizationRepository,
+    private readonly portalAvailability: PortalAvailabilityService,
   ) {}
 
   async execute(command: RefreshPortalSessionCommand) {
@@ -48,7 +49,7 @@ export class RefreshPortalSession {
     if (
       !candidate ||
       organization.status !== OrganizationStatus.ACTIVE ||
-      !resolveAtsSettings(organization.atsSettings).portalEnabled
+      !(await this.portalAvailability.isEnabled(organization))
     ) {
       throw new UnauthorizedException('Session has expired');
     }
