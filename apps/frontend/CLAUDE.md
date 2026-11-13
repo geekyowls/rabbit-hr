@@ -127,8 +127,13 @@ All routes are defined in `src/config/api-routes.ts`. Here's what exists:
 
 **Billing** (authenticated)
 - `BILLING.SUMMARY`, `BILLING.CHECKOUT`, `BILLING.CHANGE_PLAN`, `BILLING.PORTAL`, `BILLING.CANCEL`, `BILLING.RESUME`, `BILLING.SYNC`
-- Hooks in `hooks/queries/use-billing-query.ts` (`useBillingSummary`, `usePlanFeature`); UI in `components/billing/` (`BillingGate` banner and plan redirect, `PlanPicker`, `UpgradeHint`, `PlanFeatureGate`)
+- Hooks in `hooks/queries/use-billing-query.ts` (`useBillingSummary`, `usePlanFeature`); UI in `components/billing/` (`BillingGate` read only and over limit banners, `PlanPicker`, `UpgradeHint`, `PlanFeatureGate`, `apiErrorDescription` for limit errors with a plans link)
+- Use `summary.effectivePlan` (not `plan`) for what the org can do; a lapsed paid plan shows as Free
 - Pages: `/dashboard/settings/billing`, `/dashboard/billing/choose` (reads `?plan=&billing=`, also saved from `/signup`)
+
+**Onboarding** (authenticated, `ORGANIZATION_UPDATE`)
+- `ONBOARDING.CHECKLIST`, `ONBOARDING.DISMISS`, `ONBOARDING.SAMPLE_DATA` (POST adds, DELETE removes)
+- Hooks in `hooks/queries/use-onboarding-query.ts`; `OnboardingChecklistCard` (`components/onboarding/`) sits at the top of `/dashboard`
 
 **System Admin** (authenticated, system org only)
 - `SYSTEM_ADMIN.ORGANIZATIONS.LIST` / `CREATE` / `UPDATE_STATUS(id)` / `ACCESS(id)` / `UPDATE_BILLING(id)`

@@ -410,13 +410,24 @@ Provider adapters live in `src/modules/integration/adapters/`.
 
 Plans live in ONE shared config (`packages/shared/src/billing.ts`: `PLANS`, `PlanFeature`, `resolveBillingAccess`). Payments go through the `PaymentProvider` interface (`modules/billing/services/payment-provider.interface.ts`, token `PAYMENT_PROVIDER`); Dodo is the only implementation today.
 
-- `GET /`: authenticated, plan, status, access (`full`/`read_only`/`needs_plan`), features, member usage, checkout options
+- Plans: `free` (1 member, 3 active jobs, core ATS only), `starter` (adds `inbox`, `offerEsign`, `candidatePortal`), `growth`/`scale`/`enterprise` (everything). Active jobs are `ACTIVE_JOB_STATUSES` (published, on hold); drafts do not count
+- New orgs (signup, Google, system admin) start on `free` with status active. `resolveEffectivePlan` drops a lapsed paid plan (expired, cancelled past period end, trial ended) to `free` with full access; only `past_due` beyond grace is read only
+- `GET /`: authenticated, plan, effective plan, status, access (`full`/`read_only`/`needs_plan`), features, member and active job usage, `overLimit`, checkout options
 - `POST /checkout`, `/change-plan`, `/portal`, `/cancel`, `/resume`, `/sync`: permission `BILLING_MANAGE`
 - `POST /webhooks/dodo`: public, Standard Webhooks signature verified, idempotent via `billing_webhook_events`
-- `BillingEntitlementsService` (global `BillingCoreModule`, API + worker): `assertFeature`, `assertMemberCapacity`, cached org billing state (`${organizationId}:billing:state`)
+- `BillingEntitlementsService` (global `BillingCoreModule`, API + worker): `assertFeature`, `assertMemberCapacity`, `assertActiveJobCapacity` (409 `ACTIVE_JOB_LIMIT_REACHED`), cached org billing state (`${organizationId}:billing:state`)
+- `PortalAvailabilityService` (shared): portal is on only when the org setting is on AND the plan has `candidatePortal`. Offers sent without `offerEsign` go out as a letter with no signing link. Mailbox connect/sync and inbox threads require `inbox`
 - `@RequirePlanFeature(PlanFeature.X)` gates Growth features; `IntegrationCapabilitiesService` masks calls, WhatsApp, calendar and job feed by plan
 - `BillingAccessInterceptor` (APP_INTERCEPTOR) returns 402 on mutations when access is not `full`, except billing, auth, `users/me`, `me/*`, system admin and read-only POSTs (`/list`, `/board`, `/preview`)
 - Enforcement is off when Dodo env is missing or `BILLING_ENFORCEMENT_DISABLED=true`; the system org is always exempt
+
+### Onboarding (`/api/v1/onboarding`)
+
+All need `ORGANIZATION_UPDATE`. State lives in `organizations.metadata` (`agencySize`, `onboardingDismissedAt`, `sampleData` ids).
+
+- `GET /checklist`: setup steps computed from real data, cached 30s (`${organizationId}:onboarding:checklist`). Team step is `upgradeRequired` (excluded from progress) when the member limit is 1; inbox step is hidden without `inbox`
+- `POST /dismiss`: hide the checklist for the org
+- `POST /sample-data`, `DELETE /sample-data`: add or remove a labelled demo set (clients and draft jobs suffixed `(sample)`, candidates tagged `sample-data` with `@example.com` emails)
 
 ### System Admin (`/api/v1/system-admin`)
 
