@@ -48,6 +48,7 @@ import { JobFeedModule } from './modules/job-feed/job-feed.module';
 import { CandidatePortalModule } from './modules/candidate-portal/candidate-portal.module';
 import { BillingCoreModule } from './modules/billing/core/billing-core.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 
 @Module({
   imports: [
@@ -115,6 +116,7 @@ import { BillingModule } from './modules/billing/billing.module';
     CandidatePortalModule,
     BillingCoreModule,
     BillingModule,
+    OnboardingModule,
   ],
   controllers: [AppController],
   providers: [
